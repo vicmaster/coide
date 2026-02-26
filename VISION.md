@@ -161,8 +161,8 @@ Electron Main Process (Node.js)
 Electron Renderer Process (React)
 ├── Chat UI
 ├── Sidebar (sessions, skills, commands)
-├── Right Panel (agents, todo, context placeholders)
-└── Zustand store (sessions persisted to localStorage)
+├── Right Panel (agents, todo/tasks, context)
+└── Zustand store (sessions + tasks persisted to localStorage)
 ```
 
 ### Key Implementation Notes
@@ -212,8 +212,14 @@ Electron Renderer Process (React)
 - [x] Commands panel (hardcoded list)
 
 ### Right Panel
-- [x] Tabs: Agents | Todo | Context (placeholder content)
+- [x] Tabs: Agents | Todo | Context
 - [x] Toggle open/close from Chat header
+- [x] Live Todo/Task panel — intercepts TodoWrite, TaskCreate, TaskUpdate events
+- [x] Progress bar with completion counter (e.g. 3/7 done)
+- [x] Task items with status dots (gray=pending, blue pulse=in_progress, green=completed)
+- [x] Strikethrough on completed tasks, italic activeForm on in-progress
+- [x] Collapsible task descriptions on click
+- [x] Tasks cleared on `/clear`, persisted with session via Zustand
 
 ---
 
@@ -226,7 +232,7 @@ Electron Renderer Process (React)
 
 ### Later
 - [ ] Agent tree panel (live sub-agent hierarchy)
-- [ ] Todo / task panel (live updates from Claude)
+- [x] Todo / task panel (live updates from Claude)
 - [ ] Context / token usage tracker
 - [ ] Desktop notifications
 - [ ] Image / screenshot drag-and-drop
