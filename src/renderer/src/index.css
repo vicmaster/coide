@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: #0d0d0d;
+  color: #e5e5e5;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.drag-region {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 38px;
+  -webkit-app-region: drag;
+  z-index: 100;
+  pointer-events: none;
+}
+
+button, input, textarea, a, [role="button"] {
+  -webkit-app-region: no-drag;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+
+/* Monaco editor overrides to blend with app background */
+.monaco-editor,
+.monaco-editor .overflow-guard,
+.monaco-diff-editor {
+  background-color: #111111 !important;
+}
+
+.monaco-editor .margin {
+  background-color: #111111 !important;
+}
+
+.monaco-editor .monaco-scrollable-element {
+  background-color: #111111 !important;
+}

@@ -1,0 +1,136 @@
+import React, { useState } from 'react'
+import type { ToolCallMessage } from '../store/sessions'
+import DiffViewer from './DiffViewer'
+import { buildDiffFromToolInput } from '../utils/diff'
+
+const TOOL_ICONS: Record<string, string> = {
+  Bash: '$',
+  Read: 'R',
+  Write: 'W',
+  Edit: 'E',
+  Glob: '*',
+  Grep: '/',
+  Task: 'T',
+  WebFetch: '↗',
+  WebSearch: '↗',
+  TodoWrite: '✓',
+  TodoRead: '✓'
+}
+
+function toolIcon(name: string): string {
+  return TOOL_ICONS[name] ?? '⚙'
+}
+
+// Format tool input into a readable one-liner summary
+function inputSummary(name: string, input: Record<string, unknown>): string {
+  if (name === 'Bash') return String(input.command ?? '').split('\n')[0].slice(0, 80)
+  if (name === 'Read') return String(input.file_path ?? input.path ?? '')
+  if (name === 'Write' || name === 'Edit') return String(input.file_path ?? input.path ?? '')
+  if (name === 'Glob') return String(input.pattern ?? '')
+  if (name === 'Grep') return String(input.pattern ?? '')
+  if (name === 'WebFetch' || name === 'WebSearch') return String(input.url ?? input.query ?? '')
+  const first = Object.values(input)[0]
+  return first != null ? String(first).slice(0, 60) : ''
+}
+
+export default function ToolCallCard({ message }: { message: ToolCallMessage }): React.JSX.Element {
+  const isFileOp = message.tool_name === 'Edit' || message.tool_name === 'Write'
+  const [expanded, setExpanded] = useState(isFileOp)
+  const done = message.result !== undefined
+  const denied = message.denied === true
+  const summary = inputSummary(message.tool_name, message.input)
+
+  const diff = isFileOp
+    ? buildDiffFromToolInput(message.tool_name, message.input, message.originalContent)
+    : null
+
+  const dotClass = denied
+    ? 'bg-red-500/60'
+    : done
+      ? 'bg-green-500/60'
+      : 'bg-yellow-400/70 animate-pulse'
+
+  return (
+    <div className={`my-1 rounded-lg border overflow-hidden text-xs ${denied ? 'border-red-500/[0.12] bg-red-500/[0.03]' : 'border-white/[0.07] bg-white/[0.025]'}`}>
+      {/* Header row */}
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-white/[0.03] transition-colors"
+      >
+        {/* Status dot */}
+        <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${dotClass}`} />
+
+        {/* Icon */}
+        <span className="font-mono text-white/25 w-3 text-center flex-shrink-0">
+          {toolIcon(message.tool_name)}
+        </span>
+
+        {/* Tool name */}
+        <span className={`font-medium flex-shrink-0 ${denied ? 'text-red-400/60' : 'text-white/50'}`}>
+          {message.tool_name}
+        </span>
+
+        {/* Status labels for file ops */}
+        {isFileOp && denied && (
+          <span className="text-[10px] text-red-400/50 flex-shrink-0">rejected — file not modified</span>
+        )}
+        {isFileOp && done && !denied && (
+          <span className="text-[10px] text-green-400/40 flex-shrink-0">file updated</span>
+        )}
+
+        {/* Denied label for non-file ops */}
+        {!isFileOp && denied && (
+          <span className="text-[10px] text-red-400/50 flex-shrink-0">denied</span>
+        )}
+
+        {/* Summary */}
+        {summary && !denied && (
+          <span className="text-white/25 font-mono truncate min-w-0">{summary}</span>
+        )}
+
+        {/* Expand toggle */}
+        <span className="ml-auto text-white/15 flex-shrink-0">{expanded ? '▲' : '▼'}</span>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-white/[0.06]">
+          {/* Diff view for file operations */}
+          {diff ? (
+            <div className="p-3">
+              <DiffViewer
+                filePath={diff.filePath}
+                original={diff.original}
+                modified={diff.modified}
+                height={240}
+              />
+            </div>
+          ) : (
+            /* Raw input for other tools */
+            <div className="px-3 py-2">
+              <p className="text-[10px] text-white/20 uppercase tracking-wider mb-1.5">Input</p>
+              <pre className="text-[11px] text-white/50 font-mono overflow-x-auto whitespace-pre-wrap break-words leading-relaxed max-h-40 overflow-y-auto">
+                {JSON.stringify(message.input, null, 2)}
+              </pre>
+            </div>
+          )}
+
+          {/* Result */}
+          {done && !denied && (
+            <div className="px-3 py-2 border-t border-white/[0.05]">
+              <p className="text-[10px] text-white/20 uppercase tracking-wider mb-1.5">Output</p>
+              <pre className="text-[11px] text-white/50 font-mono overflow-x-auto whitespace-pre-wrap break-words leading-relaxed max-h-48 overflow-y-auto">
+                {message.result || '(empty)'}
+              </pre>
+            </div>
+          )}
+
+          {!done && !denied && (
+            <div className="px-3 py-2 border-t border-white/[0.05]">
+              <span className="text-[11px] text-white/20 italic">Running…</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}

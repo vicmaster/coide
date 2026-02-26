@@ -1,0 +1,242 @@
+import React, { useState, useEffect } from 'react'
+import { useSessionsStore } from '../store/sessions'
+import { BUILT_IN_COMMANDS } from '../data/commands'
+
+type Tab = 'sessions' | 'skills' | 'commands'
+
+export default function Sidebar(): React.JSX.Element {
+  const [activeTab, setActiveTab] = useState<Tab>('sessions')
+  const { createSession, activeSessionId } = useSessionsStore()
+
+  const handleNewSession = (): void => {
+    const store = useSessionsStore.getState()
+    const currentSession = store.sessions.find((s) => s.id === store.activeSessionId)
+    const cwd = currentSession?.cwd ?? localStorage.getItem('cwd') ?? '/Users/victor/Projects'
+    createSession(cwd)
+  }
+
+  return (
+    <aside className="flex h-full w-56 flex-col bg-[#111111] border-r border-white/[0.06]">
+      {/* Title — offset for macOS traffic lights */}
+      <div className="flex items-center px-4 pt-[46px] pb-3">
+        <span className="text-sm font-semibold tracking-tight text-white/80">coide</span>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex px-2 gap-0.5 mb-2">
+        {(['sessions', 'skills', 'commands'] as Tab[]).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 py-1.5 rounded-md text-[11px] font-medium capitalize transition-colors ${
+              activeTab === tab
+                ? 'bg-white/10 text-white'
+                : 'text-white/35 hover:text-white/60 hover:bg-white/5'
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-2 pb-2">
+        {activeTab === 'sessions' && <SessionsList />}
+        {activeTab === 'skills' && <SkillsList />}
+        {activeTab === 'commands' && <CommandsList />}
+      </div>
+
+      {/* New session */}
+      {activeTab === 'sessions' && (
+        <div className="p-2 border-t border-white/[0.06]">
+          <button
+            onClick={handleNewSession}
+            className="w-full rounded-md bg-blue-600/90 hover:bg-blue-600 py-1.5 text-xs font-medium text-white transition-colors"
+          >
+            + New Session
+          </button>
+        </div>
+      )}
+    </aside>
+  )
+}
+
+function SectionLabel({ label }: { label: string }): React.JSX.Element {
+  return (
+    <p className="px-2 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/20">
+      {label}
+    </p>
+  )
+}
+
+function SessionsList(): React.JSX.Element {
+  const sessions = useSessionsStore((state) => state.sessions)
+  const activeSessionId = useSessionsStore((state) => state.activeSessionId)
+  const { setActiveSession, deleteSession } = useSessionsStore()
+
+  if (sessions.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 gap-1">
+        <p className="text-[11px] text-white/20">No sessions yet</p>
+        <p className="text-[10px] text-white/12">Start typing to begin</p>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <SectionLabel label="Recent" />
+      {sessions.map((session) => (
+        <div key={session.id} className="group relative">
+          <button
+            onClick={() => setActiveSession(session.id)}
+            className={`w-full rounded-md px-2 py-1.5 text-left transition-colors ${
+              session.id === activeSessionId
+                ? 'bg-white/10 text-white/90'
+                : 'text-white/50 hover:bg-white/5 hover:text-white/70'
+            }`}
+          >
+            <p className="text-xs truncate pr-5">{session.title}</p>
+            <p className="text-[10px] text-white/25 mt-0.5 font-mono truncate">
+              {session.cwd.split('/').pop()}
+            </p>
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              deleteSession(session.id)
+            }}
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 text-white/20 hover:text-white/60 transition-all"
+            title="Delete session"
+          >
+            ×
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function SkillsList(): React.JSX.Element {
+  const [skills, setSkills] = useState<{ global: SkillInfo[]; project: SkillInfo[] }>({ global: [], project: [] })
+  const [search, setSearch] = useState('')
+  const setPendingAction = useSessionsStore((s) => s.setPendingAction)
+
+  const cwd = useSessionsStore((state) => {
+    const session = state.sessions.find((s) => s.id === state.activeSessionId)
+    return session?.cwd ?? localStorage.getItem('cwd') ?? '/Users/victor/Projects'
+  })
+
+  useEffect(() => {
+    window.api.skills.list(cwd).then(setSkills)
+  }, [cwd])
+
+  const filter = (list: SkillInfo[]): SkillInfo[] => {
+    if (!search.trim()) return list
+    const q = search.toLowerCase()
+    return list.filter((s) => s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q))
+  }
+
+  const filteredProject = filter(skills.project)
+  const filteredGlobal = filter(skills.global)
+  const hasResults = filteredProject.length > 0 || filteredGlobal.length > 0
+
+  return (
+    <div className="space-y-2">
+      <input
+        type="text"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Filter skills…"
+        className="w-full rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-1.5 text-[11px] text-white/80 placeholder-white/20 outline-none focus:border-white/[0.15]"
+      />
+      {filteredProject.length > 0 && (
+        <div>
+          <SectionLabel label="Project" />
+          <div className="space-y-1">
+            {filteredProject.map((skill) => (
+              <SkillRow key={skill.filePath} skill={skill} onRun={() => setPendingAction({ type: 'send', text: `/${skill.name}` })} />
+            ))}
+          </div>
+        </div>
+      )}
+      {filteredGlobal.length > 0 && (
+        <div>
+          <SectionLabel label="Global" />
+          <div className="space-y-1">
+            {filteredGlobal.map((skill) => (
+              <SkillRow key={skill.filePath} skill={skill} onRun={() => setPendingAction({ type: 'send', text: `/${skill.name}` })} />
+            ))}
+          </div>
+        </div>
+      )}
+      {!hasResults && (
+        <p className="text-center text-[10px] text-white/20 py-4">
+          {search ? 'No matching skills' : 'No skills found'}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function SkillRow({ skill, onRun }: { skill: SkillInfo; onRun: () => void }): React.JSX.Element {
+  return (
+    <div className="group rounded-md border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.06] px-2.5 py-2 transition-colors">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-white/70">/{skill.name}</span>
+        <button
+          onClick={onRun}
+          className="opacity-0 group-hover:opacity-100 text-[10px] text-blue-400 hover:text-blue-300 transition-all"
+        >
+          Run
+        </button>
+      </div>
+      <p className="mt-0.5 text-[10px] text-white/30 truncate">{skill.description}</p>
+    </div>
+  )
+}
+
+function CommandsList(): React.JSX.Element {
+  const [search, setSearch] = useState('')
+
+  const filtered = search.trim()
+    ? BUILT_IN_COMMANDS.filter(
+        (c) =>
+          c.name.toLowerCase().includes(search.toLowerCase()) ||
+          c.description.toLowerCase().includes(search.toLowerCase())
+      )
+    : BUILT_IN_COMMANDS
+
+  return (
+    <div className="space-y-2">
+      <input
+        type="text"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Filter commands…"
+        className="w-full rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-1.5 text-[11px] text-white/80 placeholder-white/20 outline-none focus:border-white/[0.15]"
+      />
+      {filtered.length > 0 ? (
+        <div>
+          <SectionLabel label="CLI Reference" />
+          <p className="px-2 mb-1.5 text-[10px] text-white/20">
+            These commands work in the Claude Code CLI terminal, not in coide chat.
+          </p>
+          <div className="space-y-0.5">
+            {filtered.map((cmd) => (
+              <div
+                key={cmd.name}
+                className="rounded-md px-2 py-1.5"
+              >
+                <div className="text-xs font-mono text-white/40">{cmd.name}</div>
+                <div className="text-[10px] text-white/25">{cmd.description}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <p className="text-center text-[10px] text-white/20 py-4">No matching commands</p>
+      )}
+    </div>
+  )
+}

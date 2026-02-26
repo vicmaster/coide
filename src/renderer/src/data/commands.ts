@@ -1,0 +1,19 @@
+export const BUILT_IN_COMMANDS = [
+  { name: '/help', description: 'Show available commands' },
+  { name: '/clear', description: 'Clear conversation history' },
+  { name: '/compact', description: 'Compact conversation context' },
+  { name: '/config', description: 'Open or manage settings' },
+  { name: '/cost', description: 'Show token usage and cost' },
+  { name: '/doctor', description: 'Check Claude Code health' },
+  { name: '/init', description: 'Initialize project with CLAUDE.md' },
+  { name: '/login', description: 'Switch auth or account' },
+  { name: '/logout', description: 'Sign out of Claude' },
+  { name: '/memory', description: 'Edit CLAUDE.md memory' },
+  { name: '/model', description: 'Switch Claude model' },
+  { name: '/permissions', description: 'Manage tool permissions' },
+  { name: '/pr-review', description: 'Review a pull request' },
+  { name: '/review', description: 'Review recent changes' },
+  { name: '/status', description: 'Show session status' },
+  { name: '/terminal-setup', description: 'Install shell integration' },
+  { name: '/vim', description: 'Toggle vim keybinding mode' }
+]
