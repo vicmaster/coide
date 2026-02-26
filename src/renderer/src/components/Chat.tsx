@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { useSessionsStore, type Message, type ToolCallMessage } from '../store/sessions'
+import { useSessionsStore, type Message, type ToolCallMessage, type TaskStatus } from '../store/sessions'
 import MarkdownRenderer from './MarkdownRenderer'
 import ToolCallCard from './ToolCallCard'
 import PermissionDialog, { type PermissionRequest } from './PermissionDialog'
@@ -56,7 +56,7 @@ export default function Chat({
 
     const cleanup = window.api.claude.onEvent((raw: unknown) => {
       const event = raw as ClaudeEvent
-      const { activeSessionId: sid, addMessage, updateClaudeSessionId, updateToolResult } =
+      const { activeSessionId: sid, addMessage, updateClaudeSessionId, updateToolResult, addTask, updateTask, setTasks, removeTask, setTaskId } =
         useSessionsStore.getState()
       if (!sid) return
 
@@ -75,10 +75,61 @@ export default function Chat({
           input: event.input,
           originalContent: event.originalContent
         })
+
+        // Intercept task tool events
+        if (tool_name === 'TaskCreate') {
+          const inp = event.input as Record<string, unknown>
+          addTask(sid, {
+            taskId: event.tool_id, // temporary, replaced when tool_result arrives
+            subject: String(inp.subject ?? ''),
+            description: String(inp.description ?? ''),
+            activeForm: inp.activeForm ? String(inp.activeForm) : undefined,
+            status: 'pending',
+            createdByToolId: event.tool_id
+          })
+        }
+
+        if (tool_name === 'TaskUpdate') {
+          const inp = event.input as Record<string, unknown>
+          const taskId = String(inp.taskId ?? '')
+          if (inp.status === 'deleted') {
+            removeTask(sid, taskId)
+          } else {
+            const updates: Record<string, unknown> = {}
+            if (inp.status) updates.status = inp.status as TaskStatus
+            if (inp.subject) updates.subject = String(inp.subject)
+            if (inp.description) updates.description = String(inp.description)
+            if (inp.activeForm) updates.activeForm = String(inp.activeForm)
+            updateTask(sid, taskId, updates)
+          }
+        }
+
+        // TodoWrite sends the entire list at once: { todos: [{ content, status, activeForm }] }
+        if (tool_name === 'TodoWrite') {
+          const inp = event.input as Record<string, unknown>
+          const todos = inp.todos as Array<Record<string, unknown>> | undefined
+          if (Array.isArray(todos)) {
+            const tasks = todos.map((t, i) => ({
+              taskId: `todo-${i}`,
+              subject: String(t.content ?? t.subject ?? ''),
+              description: '',
+              activeForm: t.activeForm ? String(t.activeForm) : undefined,
+              status: (t.status as TaskStatus) ?? 'pending',
+              createdByToolId: event.tool_id
+            }))
+            setTasks(sid, tasks)
+          }
+        }
       }
 
       if (event.type === 'tool_result') {
         updateToolResult(sid, event.tool_id, event.content)
+
+        // Extract real task ID from result like "Task #3 created successfully"
+        const taskMatch = event.content?.match(/Task #(\d+)/)
+        if (taskMatch) {
+          setTaskId(sid, event.tool_id, taskMatch[1])
+        }
       }
 
       if (event.type === 'tool_denied') {

@@ -20,6 +20,17 @@ export type ToolCallMessage = {
 
 export type Message = TextMessage | ToolCallMessage
 
+export type TaskStatus = 'pending' | 'in_progress' | 'completed'
+
+export type Task = {
+  taskId: string
+  subject: string
+  description: string
+  activeForm?: string
+  status: TaskStatus
+  createdByToolId: string
+}
+
 export type Session = {
   id: string
   claudeSessionId: string | null
@@ -27,6 +38,7 @@ export type Session = {
   cwd: string
   createdAt: number
   messages: Message[]
+  tasks: Task[]
 }
 
 export type PendingAction = { type: 'send' | 'insert'; text: string }
@@ -43,6 +55,11 @@ type SessionsStore = {
   updateSessionCwd: (sessionId: string, cwd: string) => void
   clearMessages: (sessionId: string) => void
   deleteSession: (sessionId: string) => void
+  addTask: (sessionId: string, task: Task) => void
+  updateTask: (sessionId: string, taskId: string, updates: Partial<Task>) => void
+  setTasks: (sessionId: string, tasks: Task[]) => void
+  setTaskId: (sessionId: string, toolId: string, realTaskId: string) => void
+  removeTask: (sessionId: string, taskId: string) => void
   setPendingAction: (action: PendingAction) => void
   clearPendingAction: () => void
 }
@@ -62,7 +79,8 @@ export const useSessionsStore = create<SessionsStore>()(
           title: 'New session',
           cwd,
           createdAt: Date.now(),
-          messages: []
+          messages: [],
+          tasks: []
         }
         set((state) => ({ sessions: [session, ...state.sessions], activeSessionId: id }))
         return id
@@ -121,7 +139,7 @@ export const useSessionsStore = create<SessionsStore>()(
       clearMessages: (sessionId: string) => {
         set((state) => ({
           sessions: state.sessions.map((s) =>
-            s.id === sessionId ? { ...s, messages: [], title: 'New session' } : s
+            s.id === sessionId ? { ...s, messages: [], tasks: [], title: 'New session' } : s
           )
         }))
       },
@@ -137,6 +155,59 @@ export const useSessionsStore = create<SessionsStore>()(
         })
       },
 
+      addTask: (sessionId: string, task: Task) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? { ...s, tasks: [...(s.tasks ?? []), task] } : s
+          )
+        }))
+      },
+
+      setTasks: (sessionId: string, tasks: Task[]) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? { ...s, tasks } : s
+          )
+        }))
+      },
+
+      updateTask: (sessionId: string, taskId: string, updates: Partial<Task>) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) => {
+            if (s.id !== sessionId) return s
+            return {
+              ...s,
+              tasks: (s.tasks ?? []).map((t) =>
+                t.taskId === taskId ? { ...t, ...updates } : t
+              )
+            }
+          })
+        }))
+      },
+
+      setTaskId: (sessionId: string, toolId: string, realTaskId: string) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) => {
+            if (s.id !== sessionId) return s
+            return {
+              ...s,
+              tasks: (s.tasks ?? []).map((t) =>
+                t.createdByToolId === toolId ? { ...t, taskId: realTaskId } : t
+              )
+            }
+          })
+        }))
+      },
+
+      removeTask: (sessionId: string, taskId: string) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) => {
+            if (s.id !== sessionId) return s
+            return { ...s, tasks: (s.tasks ?? []).filter((t) => t.taskId !== taskId) }
+          })
+        }))
+      },
+
       setPendingAction: (action: PendingAction) => {
         set({ pendingAction: action })
       },
@@ -150,7 +221,15 @@ export const useSessionsStore = create<SessionsStore>()(
       partialize: (state) => ({
         sessions: state.sessions,
         activeSessionId: state.activeSessionId
-      })
+      }),
+      merge: (persisted, current) => {
+        const stored = persisted as Partial<SessionsStore> | undefined
+        const sessions = (stored?.sessions ?? current.sessions).map((s) => ({
+          ...s,
+          tasks: s.tasks ?? []
+        }))
+        return { ...current, ...stored, sessions }
+      }
     }
   )
 )

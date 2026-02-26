@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useSessionsStore, type Task } from '../store/sessions'
 
 type Tab = 'agents' | 'todo' | 'context'
 
@@ -88,12 +89,89 @@ function AgentNode({
 }
 
 function TodoList(): React.JSX.Element {
+  const tasks = useSessionsStore((state) => {
+    const session = state.sessions.find((s) => s.id === state.activeSessionId)
+    return session?.tasks ?? []
+  })
+
+  const completed = tasks.filter((t) => t.status === 'completed').length
+  const total = tasks.length
+  const pct = total > 0 ? Math.round((completed / total) * 100) : 0
+
+  if (total === 0) {
+    return (
+      <div>
+        <SectionLabel label="Tasks" />
+        <p className="text-[11px] text-white/20 text-center mt-4">
+          Todo items appear when Claude creates a task list
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div>
-      <SectionLabel label="Tasks" />
-      <p className="text-[11px] text-white/20 text-center mt-4">
-        Todo items appear when Claude creates a task list
-      </p>
+      {/* Header + counter */}
+      <div className="flex items-center justify-between px-1 mb-2">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-white/20">Tasks</p>
+        <span className="text-[10px] text-white/30 font-mono">{completed}/{total} done</span>
+      </div>
+
+      {/* Progress bar */}
+      <div className="h-1 w-full rounded-full bg-white/[0.07] mb-3">
+        <div
+          className="h-1 rounded-full bg-green-500/60 transition-all duration-500 ease-out"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+
+      {/* Task list */}
+      <div className="space-y-0.5">
+        {tasks.map((task) => (
+          <TaskItem key={task.taskId} task={task} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function TaskItem({ task }: { task: Task }): React.JSX.Element {
+  const [expanded, setExpanded] = useState(false)
+
+  const dotClass =
+    task.status === 'completed'
+      ? 'bg-green-400'
+      : task.status === 'in_progress'
+        ? 'bg-blue-400 animate-pulse'
+        : 'bg-white/20'
+
+  return (
+    <div>
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-start gap-2 rounded-md px-2 py-1.5 hover:bg-white/5 transition-colors text-left"
+      >
+        <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 mt-1 ${dotClass}`} />
+        <div className="min-w-0 flex-1">
+          <span
+            className={`text-xs leading-snug ${
+              task.status === 'completed'
+                ? 'text-white/30 line-through'
+                : 'text-white/60'
+            }`}
+          >
+            {task.subject}
+          </span>
+          {task.status === 'in_progress' && task.activeForm && (
+            <p className="text-[10px] italic text-blue-400/60 mt-0.5">{task.activeForm}</p>
+          )}
+        </div>
+      </button>
+      {expanded && task.description && (
+        <div className="ml-5 mr-2 mb-1 px-2 py-1.5 rounded bg-white/[0.03] border border-white/[0.05]">
+          <p className="text-[10px] text-white/30 leading-relaxed whitespace-pre-wrap">{task.description}</p>
+        </div>
+      )}
     </div>
   )
 }

@@ -20,7 +20,11 @@ const TOOL_ICONS: Record<string, string> = {
   WebFetch: '↗',
   WebSearch: '↗',
   TodoWrite: '✓',
-  TodoRead: '✓'
+  TodoRead: '✓',
+  TaskCreate: '✓',
+  TaskUpdate: '✓',
+  TaskList: '✓',
+  TaskGet: '✓'
 }
 
 function toolIcon(name: string): string {

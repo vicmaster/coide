@@ -14,7 +14,11 @@ const TOOL_ICONS: Record<string, string> = {
   WebFetch: '↗',
   WebSearch: '↗',
   TodoWrite: '✓',
-  TodoRead: '✓'
+  TodoRead: '✓',
+  TaskCreate: '✓',
+  TaskUpdate: '✓',
+  TaskList: '✓',
+  TaskGet: '✓'
 }
 
 function toolIcon(name: string): string {
@@ -29,6 +33,10 @@ function inputSummary(name: string, input: Record<string, unknown>): string {
   if (name === 'Glob') return String(input.pattern ?? '')
   if (name === 'Grep') return String(input.pattern ?? '')
   if (name === 'WebFetch' || name === 'WebSearch') return String(input.url ?? input.query ?? '')
+  if (name === 'TaskCreate') return String(input.subject ?? '')
+  if (name === 'TaskUpdate') return `#${input.taskId ?? '?'} → ${input.status ?? '?'}`
+  if (name === 'TaskList') return 'List all tasks'
+  if (name === 'TaskGet') return `#${input.taskId ?? '?'}`
   const first = Object.values(input)[0]
   return first != null ? String(first).slice(0, 60) : ''
 }
