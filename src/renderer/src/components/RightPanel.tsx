@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useSessionsStore, type Task } from '../store/sessions'
+import { useSessionsStore, type Task, type Agent } from '../store/sessions'
 
 type Tab = 'agents' | 'todo' | 'context'
 
@@ -46,44 +46,91 @@ function SectionLabel({ label }: { label: string }): React.JSX.Element {
 }
 
 function AgentTree(): React.JSX.Element {
+  const agents = useSessionsStore((state) => {
+    const session = state.sessions.find((s) => s.id === state.activeSessionId)
+    return session?.agents ?? []
+  })
+
+  const doneCount = agents.filter((a) => a.status === 'done').length
+  const total = agents.length
+  const hasRunning = agents.some((a) => a.status === 'running')
+  const orchestratorStatus: AgentNodeStatus = hasRunning ? 'running' : total > 0 ? 'done' : 'idle'
+
   return (
     <div>
-      <SectionLabel label="Agent Tree" />
-      <AgentNode name="Orchestrator" status="idle" depth={0} />
-      <p className="mt-4 text-[11px] text-white/20 text-center">
-        Agents appear here during a session
-      </p>
+      {total > 0 ? (
+        <div className="flex items-center justify-between px-1 mb-2">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-white/20">Agent Tree</p>
+          <span className="text-[10px] text-white/30 font-mono">{doneCount}/{total} done</span>
+        </div>
+      ) : (
+        <SectionLabel label="Agent Tree" />
+      )}
+      <AgentNodeRow name="Orchestrator" status={orchestratorStatus} depth={0} />
+      {agents.map((agent) => (
+        <AgentNodeRow
+          key={agent.toolId}
+          name={agent.name}
+          status={agent.status}
+          depth={1}
+          meta={agent}
+        />
+      ))}
+      {total === 0 && (
+        <p className="mt-4 text-[11px] text-white/20 text-center">
+          Agents appear here during a session
+        </p>
+      )}
     </div>
   )
 }
 
-type AgentStatus = 'running' | 'done' | 'failed' | 'pending' | 'idle'
+type AgentNodeStatus = 'running' | 'done' | 'failed' | 'idle'
 
-function AgentNode({
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`
+  const s = ms / 1000
+  return s < 60 ? `${s.toFixed(1)}s` : `${Math.floor(s / 60)}m${Math.round(s % 60)}s`
+}
+
+function AgentNodeRow({
   name,
   status,
-  depth
+  depth,
+  meta
 }: {
   name: string
-  status: AgentStatus
+  status: AgentNodeStatus
   depth: number
+  meta?: Agent
 }): React.JSX.Element {
-  const statusColors: Record<AgentStatus, string> = {
+  const statusColors: Record<AgentNodeStatus, string> = {
     running: 'bg-blue-400 animate-pulse',
     done: 'bg-green-400',
     failed: 'bg-red-400',
-    pending: 'bg-white/20',
     idle: 'bg-white/[0.08]'
   }
 
+  const metaParts: string[] = []
+  if (meta?.durationMs != null) metaParts.push(formatDuration(meta.durationMs))
+  if (meta?.totalTokens != null) metaParts.push(`${(meta.totalTokens / 1000).toFixed(1)}k tok`)
+
   return (
     <div
-      className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-white/5 transition-colors"
+      className="flex items-start gap-2 rounded-md px-2 py-1.5 hover:bg-white/5 transition-colors"
       style={{ paddingLeft: `${depth * 14 + 8}px` }}
     >
-      {depth > 0 && <span className="text-[10px] text-white/15">└</span>}
-      <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${statusColors[status]}`} />
-      <span className="text-xs text-white/50">{name}</span>
+      {depth > 0 && <span className="text-[10px] text-white/15 mt-0.5">└</span>}
+      <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 mt-1 ${statusColors[status]}`} />
+      <div className="min-w-0">
+        <span className="text-xs text-white/50">{name}</span>
+        {meta?.subagentType && (
+          <span className="ml-1.5 text-[10px] text-white/20">{meta.subagentType}</span>
+        )}
+        {metaParts.length > 0 && (
+          <p className="text-[10px] text-white/20 mt-0.5">{metaParts.join(' · ')}</p>
+        )}
+      </div>
     </div>
   )
 }

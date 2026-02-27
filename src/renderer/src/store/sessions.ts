@@ -31,6 +31,18 @@ export type Task = {
   createdByToolId: string
 }
 
+export type AgentStatus = 'running' | 'done' | 'failed'
+
+export type Agent = {
+  toolId: string
+  name: string
+  subagentType: string
+  status: AgentStatus
+  startedAt: number
+  durationMs?: number
+  totalTokens?: number
+}
+
 export type Session = {
   id: string
   claudeSessionId: string | null
@@ -39,6 +51,7 @@ export type Session = {
   createdAt: number
   messages: Message[]
   tasks: Task[]
+  agents: Agent[]
 }
 
 export type PendingAction = { type: 'send' | 'insert'; text: string }
@@ -60,6 +73,8 @@ type SessionsStore = {
   setTasks: (sessionId: string, tasks: Task[]) => void
   setTaskId: (sessionId: string, toolId: string, realTaskId: string) => void
   removeTask: (sessionId: string, taskId: string) => void
+  addAgent: (sessionId: string, agent: Agent) => void
+  updateAgent: (sessionId: string, toolId: string, updates: Partial<Agent>) => void
   setPendingAction: (action: PendingAction) => void
   clearPendingAction: () => void
 }
@@ -80,7 +95,8 @@ export const useSessionsStore = create<SessionsStore>()(
           cwd,
           createdAt: Date.now(),
           messages: [],
-          tasks: []
+          tasks: [],
+          agents: []
         }
         set((state) => ({ sessions: [session, ...state.sessions], activeSessionId: id }))
         return id
@@ -139,7 +155,7 @@ export const useSessionsStore = create<SessionsStore>()(
       clearMessages: (sessionId: string) => {
         set((state) => ({
           sessions: state.sessions.map((s) =>
-            s.id === sessionId ? { ...s, messages: [], tasks: [], title: 'New session' } : s
+            s.id === sessionId ? { ...s, messages: [], tasks: [], agents: [], title: 'New session' } : s
           )
         }))
       },
@@ -208,6 +224,28 @@ export const useSessionsStore = create<SessionsStore>()(
         }))
       },
 
+      addAgent: (sessionId: string, agent: Agent) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? { ...s, agents: [...(s.agents ?? []), agent] } : s
+          )
+        }))
+      },
+
+      updateAgent: (sessionId: string, toolId: string, updates: Partial<Agent>) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) => {
+            if (s.id !== sessionId) return s
+            return {
+              ...s,
+              agents: (s.agents ?? []).map((a) =>
+                a.toolId === toolId ? { ...a, ...updates } : a
+              )
+            }
+          })
+        }))
+      },
+
       setPendingAction: (action: PendingAction) => {
         set({ pendingAction: action })
       },
@@ -226,7 +264,8 @@ export const useSessionsStore = create<SessionsStore>()(
         const stored = persisted as Partial<SessionsStore> | undefined
         const sessions = (stored?.sessions ?? current.sessions).map((s) => ({
           ...s,
-          tasks: s.tasks ?? []
+          tasks: s.tasks ?? [],
+          agents: s.agents ?? []
         }))
         return { ...current, ...stored, sessions }
       }

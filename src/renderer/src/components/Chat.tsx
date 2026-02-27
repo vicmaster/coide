@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { useSessionsStore, type Message, type ToolCallMessage, type TaskStatus } from '../store/sessions'
+import { useSessionsStore, type Message, type ToolCallMessage, type TaskStatus, type AgentStatus } from '../store/sessions'
 import { useSettingsStore } from '../store/settings'
 import MarkdownRenderer from './MarkdownRenderer'
 import ToolCallCard from './ToolCallCard'
@@ -65,7 +65,7 @@ export default function Chat({
 
     const cleanup = window.api.claude.onEvent((raw: unknown) => {
       const event = raw as ClaudeEvent
-      const { activeSessionId: sid, addMessage, updateClaudeSessionId, updateToolResult, addTask, updateTask, setTasks, removeTask, setTaskId } =
+      const { activeSessionId: sid, addMessage, updateClaudeSessionId, updateToolResult, addTask, updateTask, setTasks, removeTask, setTaskId, addAgent, updateAgent } =
         useSessionsStore.getState()
       if (!sid) return
 
@@ -129,6 +129,18 @@ export default function Chat({
             setTasks(sid, tasks)
           }
         }
+
+        // Sub-agent spawned via Task tool
+        if (tool_name === 'Task') {
+          const inp = event.input as Record<string, unknown>
+          addAgent(sid, {
+            toolId: event.tool_id,
+            name: String(inp.description ?? 'Sub-agent'),
+            subagentType: String(inp.subagent_type ?? 'general'),
+            status: 'running',
+            startedAt: Date.now()
+          })
+        }
       }
 
       if (event.type === 'tool_result') {
@@ -138,6 +150,22 @@ export default function Chat({
         const taskMatch = event.content?.match(/Task #(\d+)/)
         if (taskMatch) {
           setTaskId(sid, event.tool_id, taskMatch[1])
+        }
+
+        // Update agent status on completion
+        const session = useSessionsStore.getState().sessions.find((s) => s.id === sid)
+        const agent = session?.agents?.find((a) => a.toolId === event.tool_id)
+        if (agent) {
+          const updates: Partial<{ status: AgentStatus; durationMs: number; totalTokens: number }> = {
+            status: 'done',
+            durationMs: Date.now() - agent.startedAt
+          }
+          try {
+            const parsed = JSON.parse(event.content)
+            if (typeof parsed.totalTokens === 'number') updates.totalTokens = parsed.totalTokens
+            if (typeof parsed.totalDurationMs === 'number') updates.durationMs = parsed.totalDurationMs
+          } catch { /* result may not be JSON */ }
+          updateAgent(sid, event.tool_id, updates)
         }
       }
 
@@ -167,11 +195,21 @@ export default function Chat({
         addMessage(sid, { id: Date.now().toString(), role: 'error', text: event.result })
         setIsLoading(false)
         setPermissionQueue([])
+        // Mark any still-running agents as failed
+        const errSession = useSessionsStore.getState().sessions.find((s) => s.id === sid)
+        errSession?.agents?.filter((a) => a.status === 'running').forEach((a) => {
+          updateAgent(sid, a.toolId, { status: 'failed' })
+        })
       }
 
       if (event.type === 'stream_end') {
         setIsLoading(false)
         setPermissionQueue([])
+        // Mark any still-running agents as failed
+        const endSession = useSessionsStore.getState().sessions.find((s) => s.id === sid)
+        endSession?.agents?.filter((a) => a.status === 'running').forEach((a) => {
+          updateAgent(sid, a.toolId, { status: 'failed' })
+        })
       }
     })
 

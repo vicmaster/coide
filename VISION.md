@@ -222,6 +222,12 @@ Electron Renderer Process (React)
 - [x] Strikethrough on completed tasks, italic activeForm on in-progress
 - [x] Collapsible task descriptions on click
 - [x] Tasks cleared on `/clear`, persisted with session via Zustand
+- [x] Live Agent Tree panel — intercepts Task tool events for sub-agent hierarchy
+- [x] Orchestrator root node with derived status (idle/running/done)
+- [x] Child agent nodes with blue pulse (running), green (done), red (failed)
+- [x] Duration and token count metadata after agent completion
+- [x] Progress counter header (e.g. 2/3 done)
+- [x] Agents cleared on `/clear`, persisted with session via Zustand
 
 ---
 
@@ -234,7 +240,7 @@ Electron Renderer Process (React)
 - [x] Visual diff viewer with accept / reject
 
 ### Later
-- [ ] Agent tree panel (live sub-agent hierarchy)
+- [x] Agent tree panel (live sub-agent hierarchy)
 - [x] Todo / task panel (live updates from Claude)
 - [ ] Context / token usage tracker
 - [ ] Desktop notifications
