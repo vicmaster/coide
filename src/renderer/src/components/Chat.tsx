@@ -11,6 +11,7 @@ type ClaudeEvent =
   | { type: 'tool_input'; tool_id: string; input: Record<string, unknown>; originalContent?: string | null }
   | { type: 'tool_result'; tool_id: string; content: string }
   | { type: 'tool_denied'; tool_id: string; tool_name: string; input: Record<string, unknown>; originalContent?: string | null }
+  | { type: 'usage'; input_tokens: number; output_tokens: number; cache_creation_input_tokens: number; cache_read_input_tokens: number }
   | { type: 'result'; result: string; session_id: string; is_error: boolean }
   | { type: 'error'; result: string }
   | { type: 'stream_end' }
@@ -65,9 +66,19 @@ export default function Chat({
 
     const cleanup = window.api.claude.onEvent((raw: unknown) => {
       const event = raw as ClaudeEvent
-      const { activeSessionId: sid, addMessage, updateClaudeSessionId, updateToolResult, addTask, updateTask, setTasks, removeTask, setTaskId, addAgent, updateAgent } =
+      const { activeSessionId: sid, addMessage, updateClaudeSessionId, updateToolResult, addTask, updateTask, setTasks, removeTask, setTaskId, addAgent, updateAgent, addUsage } =
         useSessionsStore.getState()
       if (!sid) return
+
+      if (event.type === 'usage') {
+        addUsage(sid, {
+          inputTokens: event.input_tokens,
+          outputTokens: event.output_tokens,
+          cacheCreationTokens: event.cache_creation_input_tokens,
+          cacheReadTokens: event.cache_read_input_tokens
+        })
+        return
+      }
 
       if (event.type === 'tool_start') {
         pendingToolsRef.current.set(event.tool_id, event.tool_name)

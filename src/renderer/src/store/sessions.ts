@@ -31,6 +31,13 @@ export type Task = {
   createdByToolId: string
 }
 
+export type SessionUsage = {
+  inputTokens: number
+  outputTokens: number
+  cacheCreationTokens: number
+  cacheReadTokens: number
+}
+
 export type AgentStatus = 'running' | 'done' | 'failed'
 
 export type Agent = {
@@ -52,6 +59,7 @@ export type Session = {
   messages: Message[]
   tasks: Task[]
   agents: Agent[]
+  usage: SessionUsage
 }
 
 export type PendingAction = { type: 'send' | 'insert'; text: string }
@@ -73,6 +81,7 @@ type SessionsStore = {
   setTasks: (sessionId: string, tasks: Task[]) => void
   setTaskId: (sessionId: string, toolId: string, realTaskId: string) => void
   removeTask: (sessionId: string, taskId: string) => void
+  addUsage: (sessionId: string, delta: SessionUsage) => void
   addAgent: (sessionId: string, agent: Agent) => void
   updateAgent: (sessionId: string, toolId: string, updates: Partial<Agent>) => void
   setPendingAction: (action: PendingAction) => void
@@ -96,7 +105,8 @@ export const useSessionsStore = create<SessionsStore>()(
           createdAt: Date.now(),
           messages: [],
           tasks: [],
-          agents: []
+          agents: [],
+          usage: { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 }
         }
         set((state) => ({ sessions: [session, ...state.sessions], activeSessionId: id }))
         return id
@@ -155,7 +165,7 @@ export const useSessionsStore = create<SessionsStore>()(
       clearMessages: (sessionId: string) => {
         set((state) => ({
           sessions: state.sessions.map((s) =>
-            s.id === sessionId ? { ...s, messages: [], tasks: [], agents: [], title: 'New session' } : s
+            s.id === sessionId ? { ...s, messages: [], tasks: [], agents: [], usage: { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 }, title: 'New session' } : s
           )
         }))
       },
@@ -224,6 +234,24 @@ export const useSessionsStore = create<SessionsStore>()(
         }))
       },
 
+      addUsage: (sessionId: string, delta: SessionUsage) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) => {
+            if (s.id !== sessionId) return s
+            const u = s.usage
+            return {
+              ...s,
+              usage: {
+                inputTokens: u.inputTokens + delta.inputTokens,
+                outputTokens: u.outputTokens + delta.outputTokens,
+                cacheCreationTokens: u.cacheCreationTokens + delta.cacheCreationTokens,
+                cacheReadTokens: u.cacheReadTokens + delta.cacheReadTokens
+              }
+            }
+          })
+        }))
+      },
+
       addAgent: (sessionId: string, agent: Agent) => {
         set((state) => ({
           sessions: state.sessions.map((s) =>
@@ -265,7 +293,8 @@ export const useSessionsStore = create<SessionsStore>()(
         const sessions = (stored?.sessions ?? current.sessions).map((s) => ({
           ...s,
           tasks: s.tasks ?? [],
-          agents: s.agents ?? []
+          agents: s.agents ?? [],
+          usage: s.usage ?? { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 }
         }))
         return { ...current, ...stored, sessions }
       }

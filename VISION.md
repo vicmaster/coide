@@ -228,6 +228,12 @@ Electron Renderer Process (React)
 - [x] Duration and token count metadata after agent completion
 - [x] Progress counter header (e.g. 2/3 done)
 - [x] Agents cleared on `/clear`, persisted with session via Zustand
+- [x] Live Context & Token Usage tracker
+- [x] Token usage accumulated from `assistant` event `usage` field (input, output, cache read/write)
+- [x] Progress bar with color coding: blue → yellow (>70%) → red (>90%)
+- [x] Breakdown: input tokens, output tokens, cache stats (shown when > 0)
+- [x] Files in Context: derived from Read/Edit/Write/Glob/Grep tool calls, deduplicated
+- [x] Usage and files cleared on `/clear`, persisted with session via Zustand
 
 ---
 
@@ -242,7 +248,7 @@ Electron Renderer Process (React)
 ### Later
 - [x] Agent tree panel (live sub-agent hierarchy)
 - [x] Todo / task panel (live updates from Claude)
-- [ ] Context / token usage tracker
+- [x] Context / token usage tracker
 - [ ] Desktop notifications
 - [ ] Image / screenshot drag-and-drop
 - [ ] Settings UI

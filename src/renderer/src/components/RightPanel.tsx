@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { useSessionsStore, type Task, type Agent } from '../store/sessions'
+import React, { useState, useMemo } from 'react'
+import { useSessionsStore, type Task, type Agent, type ToolCallMessage } from '../store/sessions'
 
 type Tab = 'agents' | 'todo' | 'context'
 
@@ -223,7 +223,41 @@ function TaskItem({ task }: { task: Task }): React.JSX.Element {
   )
 }
 
+function formatTokens(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
+  return String(n)
+}
+
+const CONTEXT_LIMIT = 200_000
+const FILE_TOOL_NAMES = new Set(['Read', 'Edit', 'Write', 'Glob', 'Grep'])
+
 function ContextTracker(): React.JSX.Element {
+  const usage = useSessionsStore((state) => {
+    const session = state.sessions.find((s) => s.id === state.activeSessionId)
+    return session?.usage ?? { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 }
+  })
+
+  const messages = useSessionsStore((state) => {
+    const session = state.sessions.find((s) => s.id === state.activeSessionId)
+    return session?.messages ?? []
+  })
+
+  const total = usage.inputTokens + usage.outputTokens
+  const pct = Math.min((total / CONTEXT_LIMIT) * 100, 100)
+  const barColor = pct > 90 ? 'bg-red-500/70' : pct > 70 ? 'bg-yellow-500/60' : 'bg-blue-500/60'
+
+  const files = useMemo(() => {
+    const paths = new Set<string>()
+    for (const msg of messages) {
+      if (msg.role !== 'tool_call') continue
+      const tc = msg as ToolCallMessage
+      if (!FILE_TOOL_NAMES.has(tc.tool_name)) continue
+      const fp = tc.input?.file_path ?? tc.input?.path
+      if (typeof fp === 'string' && fp) paths.add(fp)
+    }
+    return Array.from(paths)
+  }, [messages])
+
   return (
     <div className="space-y-4">
       <div>
@@ -231,17 +265,63 @@ function ContextTracker(): React.JSX.Element {
         <div className="rounded-lg border border-white/[0.06] bg-white/[0.03] p-3">
           <div className="flex justify-between text-[11px] mb-2">
             <span className="text-white/40">Used</span>
-            <span className="text-white/50 font-mono">0 / 200k</span>
+            <span className="text-white/50 font-mono">{formatTokens(total)} / 200k</span>
           </div>
           <div className="h-1 w-full rounded-full bg-white/[0.07]">
-            <div className="h-1 rounded-full bg-blue-500/60" style={{ width: '0%' }} />
+            <div
+              className={`h-1 rounded-full transition-all duration-500 ease-out ${barColor}`}
+              style={{ width: `${pct}%` }}
+            />
           </div>
+          {total > 0 && (
+            <div className="mt-2 space-y-0.5 text-[10px] text-white/25">
+              <div className="flex justify-between">
+                <span>Input</span>
+                <span className="font-mono">{formatTokens(usage.inputTokens)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Output</span>
+                <span className="font-mono">{formatTokens(usage.outputTokens)}</span>
+              </div>
+              {usage.cacheReadTokens > 0 && (
+                <div className="flex justify-between">
+                  <span>Cache read</span>
+                  <span className="font-mono">{formatTokens(usage.cacheReadTokens)}</span>
+                </div>
+              )}
+              {usage.cacheCreationTokens > 0 && (
+                <div className="flex justify-between">
+                  <span>Cache write</span>
+                  <span className="font-mono">{formatTokens(usage.cacheCreationTokens)}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       <div>
-        <SectionLabel label="Files in Context" />
-        <p className="text-[11px] text-white/20 px-1">No files read yet</p>
+        <div className="flex items-center justify-between px-1 mb-2">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-white/20">Files in Context</p>
+          {files.length > 0 && (
+            <span className="text-[10px] text-white/30 font-mono">{files.length} files</span>
+          )}
+        </div>
+        {files.length === 0 ? (
+          <p className="text-[11px] text-white/20 px-1">No files read yet</p>
+        ) : (
+          <div className="space-y-0.5">
+            {files.map((fp) => (
+              <div
+                key={fp}
+                className="rounded-md px-2 py-1 text-[11px] text-white/40 truncate hover:bg-white/5 transition-colors"
+                title={fp}
+              >
+                {fp.split('/').pop()}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

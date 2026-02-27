@@ -180,7 +180,7 @@ function handleEvent(raw: Record<string, unknown>, win: BrowserWindow): void {
     win.webContents.send('claude:event', { type: 'stream_end' })
   }
 
-  // 'system', 'assistant', 'rate_limit_event', 'thinking' — no action needed
+  // 'assistant' usage is extracted in the onData loop (before tool logic) so it's not missed on `continue`
 }
 
 export function runClaude(
@@ -243,6 +243,21 @@ export function runClaude(
           // Always settle the promise when result arrives
           if (raw.type === 'result') {
             settle(() => resolve((raw.session_id as string) ?? null))
+          }
+
+          // Forward usage data from every assistant event (before tool logic which may `continue`)
+          if (raw.type === 'assistant') {
+            const msg = raw.message as Record<string, unknown> | undefined
+            const usage = msg?.usage as Record<string, number> | undefined
+            if (usage) {
+              win.webContents.send('claude:event', {
+                type: 'usage',
+                input_tokens: usage.input_tokens ?? 0,
+                output_tokens: usage.output_tokens ?? 0,
+                cache_creation_input_tokens: usage.cache_creation_input_tokens ?? 0,
+                cache_read_input_tokens: usage.cache_read_input_tokens ?? 0
+              })
+            }
           }
 
           // Detect tool_use in assistant events (only when not already waiting)
