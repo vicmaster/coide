@@ -27,6 +27,7 @@ A desktop/web client that wraps the existing Claude Code CLI using your existing
 ### 3. Approval UX
 - Modal with context instead of raw `[y/n]` prompt
 - Shows: what will this do, what files are affected, risk level
+- Skip-permissions toggle: auto-approve all tools (like `--dangerously-skip-permissions`)
 
 ### 4. Context & State Panel
 - Live indicator of what files Claude has read this session
@@ -162,7 +163,7 @@ Electron Renderer Process (React)
 ├── Chat UI
 ├── Sidebar (sessions, skills, commands)
 ├── Right Panel (agents, todo/tasks, context)
-└── Zustand store (sessions + tasks persisted to localStorage)
+└── Zustand stores (sessions, settings — persisted to localStorage)
 ```
 
 ### Key Implementation Notes
@@ -194,6 +195,7 @@ Electron Renderer Process (React)
 - [x] User / assistant / error message bubbles
 - [x] Loading indicator (bouncing dots)
 - [x] Stop button while Claude is running
+- [x] Skip-permissions toggle — auto-approve all tools, amber indicator when active
 - [x] CWD picker — click path to open native folder picker
 - [x] Markdown rendering for assistant messages (react-markdown + shiki, JS regex engine)
 
@@ -228,7 +230,8 @@ Electron Renderer Process (React)
 ### Next Up
 - [x] Markdown rendering for assistant messages (react-markdown + shiki)
 - [x] Tool call cards (collapsible, shows bash runs / file reads / writes)
-- [ ] Visual diff viewer with accept / reject
+- [x] Skip-permissions toggle (auto-approve all tools, persisted setting)
+- [x] Visual diff viewer with accept / reject
 
 ### Later
 - [ ] Agent tree panel (live sub-agent hierarchy)

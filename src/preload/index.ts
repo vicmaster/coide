@@ -28,6 +28,10 @@ const api = {
   },
   skills: {
     list: (cwd: string) => ipcRenderer.invoke('skills:list', { cwd })
+  },
+  settings: {
+    setSkipPermissions: (value: boolean) =>
+      ipcRenderer.invoke('settings:skip-permissions', value)
   }
 }
 

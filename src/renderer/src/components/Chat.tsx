@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useSessionsStore, type Message, type ToolCallMessage, type TaskStatus } from '../store/sessions'
+import { useSettingsStore } from '../store/settings'
 import MarkdownRenderer from './MarkdownRenderer'
 import ToolCallCard from './ToolCallCard'
 import PermissionDialog, { type PermissionRequest } from './PermissionDialog'
@@ -30,6 +31,14 @@ export default function Chat({
   // Tracks tool_start before tool_input arrives (contains name before input is parsed)
   const pendingToolsRef = useRef<Map<string, string>>(new Map())
   const [acSelectedIndex, setAcSelectedIndex] = useState(0)
+
+  const skipPermissions = useSettingsStore((s) => s.skipPermissions)
+  const setSkipPermissions = useSettingsStore((s) => s.setSkipPermissions)
+
+  // Sync persisted setting to main process on mount and when it changes
+  useEffect(() => {
+    window.api.settings.setSkipPermissions(skipPermissions)
+  }, [skipPermissions])
 
   const activeSession = useSessionsStore((state) =>
     state.sessions.find((s) => s.id === state.activeSessionId)
@@ -168,6 +177,11 @@ export default function Chat({
 
     const permCleanup = window.api.claude.onPermission((raw: unknown) => {
       const perm = raw as PermissionRequest
+      // Safety net: if skip-permissions is on, auto-approve instead of showing dialog
+      if (useSettingsStore.getState().skipPermissions) {
+        window.api.claude.respondPermission(true)
+        return
+      }
       setPermissionQueue((q) => [...q, perm])
     })
 
@@ -384,6 +398,20 @@ export default function Chat({
               Stop
             </button>
           )}
+          <button
+            onClick={() => setSkipPermissions(!skipPermissions)}
+            title={skipPermissions ? 'Auto-approve enabled — click to require approval' : 'Click to auto-approve all tools'}
+            className={`rounded-md px-2 py-0.5 text-[11px] transition-colors flex items-center gap-1 ${
+              skipPermissions
+                ? 'border border-amber-500/40 bg-amber-500/10 text-amber-400'
+                : 'text-white/25 hover:text-white/50'
+            }`}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+            {skipPermissions && <span>Auto</span>}
+          </button>
           <button
             onClick={onToggleRightPanel}
             className={`rounded-md px-2 py-0.5 text-[11px] transition-colors ${

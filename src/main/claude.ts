@@ -187,13 +187,15 @@ export function runClaude(
   prompt: string,
   cwd: string,
   sessionId: string | null,
-  win: BrowserWindow
+  win: BrowserWindow,
+  skipPermissions = false
 ): Promise<string | null> {
   return new Promise((resolve, reject) => {
     abortClaude()
 
     // Use -p (print/non-interactive) for JSON event stream
     const args = ['-p', prompt, '--output-format', 'stream-json', '--verbose']
+    if (skipPermissions) args.push('--dangerously-skip-permissions')
     if (sessionId) args.push('--resume', sessionId)
 
     const env = { ...process.env } as Record<string, string>
@@ -252,26 +254,37 @@ export function runClaude(
                 const needsPermission = toolBlocks.some((b) => PERMISSION_REQUIRED.has(b.name as string))
 
                 if (needsPermission) {
-                  // Show dialog for dangerous tools; auto-approve safe ones immediately
-                  for (const block of toolBlocks) {
-                    const toolInput = (block.input ?? {}) as Record<string, unknown>
-                    const toolInfo: PendingPermission = {
-                      tool_id: block.id as string,
-                      tool_name: block.name as string,
-                      input: toolInput,
-                      originalContent: captureOriginalContent(block.name as string, toolInput)
+                  if (skipPermissions) {
+                    // Auto-approve all tools — show cards immediately, no dialog
+                    for (const block of toolBlocks) {
+                      const toolInput = (block.input ?? {}) as Record<string, unknown>
+                      const originalContent = captureOriginalContent(block.name as string, toolInput)
+                      win.webContents.send('claude:event', { type: 'tool_start', tool_id: block.id as string, tool_name: block.name as string })
+                      win.webContents.send('claude:event', { type: 'tool_input', tool_id: block.id as string, input: toolInput, originalContent })
                     }
-                    if (PERMISSION_REQUIRED.has(block.name as string)) {
-                      pendingPermissions.push(toolInfo)
-                      win.webContents.send('claude:permission', toolInfo)
-                    } else {
-                      // Safe tool: show card immediately without asking
-                      win.webContents.send('claude:event', { type: 'tool_start', tool_id: toolInfo.tool_id, tool_name: toolInfo.tool_name })
-                      win.webContents.send('claude:event', { type: 'tool_input', tool_id: toolInfo.tool_id, input: toolInfo.input })
+                    // Fall through to normal event processing (no buffering)
+                  } else {
+                    // Show dialog for dangerous tools; auto-approve safe ones immediately
+                    for (const block of toolBlocks) {
+                      const toolInput = (block.input ?? {}) as Record<string, unknown>
+                      const toolInfo: PendingPermission = {
+                        tool_id: block.id as string,
+                        tool_name: block.name as string,
+                        input: toolInput,
+                        originalContent: captureOriginalContent(block.name as string, toolInput)
+                      }
+                      if (PERMISSION_REQUIRED.has(block.name as string)) {
+                        pendingPermissions.push(toolInfo)
+                        win.webContents.send('claude:permission', toolInfo)
+                      } else {
+                        // Safe tool: show card immediately without asking
+                        win.webContents.send('claude:event', { type: 'tool_start', tool_id: toolInfo.tool_id, tool_name: toolInfo.tool_name })
+                        win.webContents.send('claude:event', { type: 'tool_input', tool_id: toolInfo.tool_id, input: toolInfo.input })
+                      }
                     }
+                    waitingForPermission = true
+                    continue // Buffer subsequent events until user responds
                   }
-                  waitingForPermission = true
-                  continue // Buffer subsequent events until user responds
                 } else {
                   // All tools are safe — auto-approve, show tool cards immediately
                   for (const block of toolBlocks) {

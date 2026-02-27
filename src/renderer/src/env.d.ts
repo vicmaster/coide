@@ -26,5 +26,8 @@ interface Window {
     skills: {
       list: (cwd: string) => Promise<{ global: SkillInfo[]; project: SkillInfo[] }>
     }
+    settings: {
+      setSkipPermissions: (value: boolean) => Promise<void>
+    }
   }
 }

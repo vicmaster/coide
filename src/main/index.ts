@@ -27,6 +27,7 @@ async function scanSkillsDir(dir: string, scope: 'global' | 'project'): Promise<
 }
 
 let mainWindow: BrowserWindow | null = null
+let skipPermissions = false
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -64,7 +65,7 @@ ipcMain.handle(
   async (_event, { prompt, cwd, sessionId }: { prompt: string; cwd: string; sessionId: string | null }) => {
     if (!mainWindow) return null
     try {
-      const newSessionId = await runClaude(prompt, cwd, sessionId, mainWindow)
+      const newSessionId = await runClaude(prompt, cwd, sessionId, mainWindow, skipPermissions)
       return { sessionId: newSessionId }
     } catch (err) {
       return { error: String(err) }
@@ -78,6 +79,10 @@ ipcMain.handle('claude:abort', () => {
 
 ipcMain.handle('claude:permission-response', (_event, approved: boolean) => {
   respondPermission(approved)
+})
+
+ipcMain.handle('settings:skip-permissions', (_event, value: boolean) => {
+  skipPermissions = value
 })
 
 ipcMain.handle('dialog:pickFolder', async () => {
