@@ -1,3 +1,4 @@
+<!-- Coide - Desktop GUI for Claude Code -->
 # Coide — Claude Code GUI Client Vision
 
 A desktop/web client that wraps the existing Claude Code CLI using your existing account and subscription (no separate API key), with a dramatically better UX than the terminal.
@@ -250,7 +251,7 @@ Electron Renderer Process (React)
 - [x] Todo / task panel (live updates from Claude)
 - [x] Context / token usage tracker
 - [x] Desktop notifications
-- [ ] Image / screenshot drag-and-drop
+- [x] Image / screenshot drag-and-drop
 - [ ] Settings UI
 - [ ] Session search — full-text search across all past sessions to find old conversations
 - [ ] File changelog — per-session list of every file touched, cumulative diff, one-click revert

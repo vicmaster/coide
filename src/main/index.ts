@@ -1,7 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
-import { readdir, readFile } from 'fs/promises'
-import { homedir } from 'os'
+import { readdir, readFile, mkdir, writeFile, rm } from 'fs/promises'
+import { homedir, tmpdir } from 'os'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { runClaude, abortClaude, respondPermission } from './claude'
 
@@ -94,6 +94,26 @@ ipcMain.handle('dialog:pickFolder', async () => {
   return result.canceled ? null : result.filePaths[0]
 })
 
+const IMAGES_DIR = join(tmpdir(), 'coide-images')
+const EXT_MAP: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/gif': 'gif',
+  'image/webp': 'webp'
+}
+
+ipcMain.handle(
+  'claude:save-image',
+  async (_event, { base64, mediaType }: { base64: string; mediaType: string }) => {
+    const ext = EXT_MAP[mediaType] ?? 'png'
+    await mkdir(IMAGES_DIR, { recursive: true })
+    const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+    const filePath = join(IMAGES_DIR, filename)
+    await writeFile(filePath, Buffer.from(base64, 'base64'))
+    return filePath
+  }
+)
+
 ipcMain.handle('skills:list', async (_event, { cwd }: { cwd: string }) => {
   const globalDir = join(homedir(), '.claude', 'commands')
   const projectDir = join(cwd, '.claude', 'commands')
@@ -113,6 +133,10 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
+})
+
+app.on('will-quit', () => {
+  rm(IMAGES_DIR, { recursive: true, force: true }).catch(() => {})
 })
 
 app.on('window-all-closed', () => {

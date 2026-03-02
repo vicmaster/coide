@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { useSessionsStore, type Message, type ToolCallMessage, type TaskStatus, type AgentStatus } from '../store/sessions'
+import { useSessionsStore, type Message, type TextMessage, type ToolCallMessage, type ImageAttachment, type TaskStatus, type AgentStatus } from '../store/sessions'
 import { useSettingsStore } from '../store/settings'
 import MarkdownRenderer from './MarkdownRenderer'
 import ToolCallCard from './ToolCallCard'
@@ -32,6 +32,10 @@ export default function Chat({
   // Tracks tool_start before tool_input arrives (contains name before input is parsed)
   const pendingToolsRef = useRef<Map<string, string>>(new Map())
   const [acSelectedIndex, setAcSelectedIndex] = useState(0)
+  const [stagedImages, setStagedImages] = useState<ImageAttachment[]>([])
+  const [isDragging, setIsDragging] = useState(false)
+  const dragCounterRef = useRef(0)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const skipPermissions = useSettingsStore((s) => s.skipPermissions)
   const setSkipPermissions = useSettingsStore((s) => s.setSkipPermissions)
@@ -253,13 +257,85 @@ export default function Chat({
     }
   }, [subscribeToEvents])
 
+  const SUPPORTED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
+
+  const processImageFile = useCallback(async (file: File): Promise<void> => {
+    if (!SUPPORTED_TYPES.includes(file.type)) return
+    // Read as data URL for rendering (handles any file size)
+    const dataUrl = await new Promise<string>((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.readAsDataURL(file)
+    })
+    // Extract raw base64 from data URL to send to main process for saving to disk
+    const base64 = dataUrl.split(',')[1]
+    const path = await window.api.claude.saveImage(base64, file.type)
+    setStagedImages((prev) => [...prev, { path, mediaType: file.type, dataUrl }])
+  }, [])
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }, [])
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounterRef.current++
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDragging(true)
+    }
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounterRef.current--
+    if (dragCounterRef.current === 0) {
+      setIsDragging(false)
+    }
+  }, [])
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounterRef.current = 0
+    setIsDragging(false)
+    const files = Array.from(e.dataTransfer.files)
+    for (const file of files) {
+      await processImageFile(file)
+    }
+  }, [processImageFile])
+
+  // Paste handler for images
+  useEffect(() => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+    const handlePaste = async (e: ClipboardEvent): Promise<void> => {
+      const items = Array.from(e.clipboardData?.items ?? [])
+      for (const item of items) {
+        if (item.kind === 'file' && SUPPORTED_TYPES.includes(item.type)) {
+          e.preventDefault()
+          const file = item.getAsFile()
+          if (file) await processImageFile(file)
+        }
+      }
+    }
+    textarea.addEventListener('paste', handlePaste)
+    return () => textarea.removeEventListener('paste', handlePaste)
+  }, [processImageFile])
+
+  const removeImage = useCallback((index: number) => {
+    setStagedImages((prev) => prev.filter((_, i) => i !== index))
+  }, [])
+
   const handlePermissionRespond = (approved: boolean): void => {
     setPermissionQueue((q) => q.slice(1))
     window.api.claude.respondPermission(approved)
   }
 
   const sendMessage = useCallback(async (text: string): Promise<void> => {
-    if (!text.trim() || isLoading) return
+    if ((!text.trim() && stagedImages.length === 0) || isLoading) return
 
     let prompt = text.trim()
 
@@ -282,7 +358,11 @@ export default function Chat({
       }
     }
 
+    // Capture staged images before clearing
+    const images = [...stagedImages]
+
     setInput('')
+    setStagedImages([])
     setIsLoading(true)
     pendingToolsRef.current.clear()
     setPermissionQueue([])
@@ -293,7 +373,19 @@ export default function Chat({
       sid = useSessionsStore.getState().createSession(defaultCwd)
     }
 
-    useSessionsStore.getState().addMessage(sid, { id: Date.now().toString(), role: 'user', text: text.trim() })
+    // Append image paths to prompt so Claude CLI picks them up
+    if (images.length > 0) {
+      const imagePaths = images.map((img) => `[Image: ${img.path}]`).join('\n')
+      prompt = `${prompt}\n\n${imagePaths}`
+    }
+
+    const userMessage: TextMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      text: text.trim(),
+      ...(images.length > 0 ? { images } : {})
+    }
+    useSessionsStore.getState().addMessage(sid, userMessage)
 
     const session = useSessionsStore.getState().sessions.find((s) => s.id === sid)!
 
@@ -305,7 +397,7 @@ export default function Chat({
         .addMessage(sid, { id: Date.now().toString(), role: 'error', text: String(err) })
       setIsLoading(false)
     }
-  }, [isLoading])
+  }, [isLoading, stagedImages])
 
   const handleSend = async (): Promise<void> => {
     await sendMessage(input)
@@ -430,7 +522,27 @@ export default function Chat({
   const currentPermission = permissionQueue[0] ?? null
 
   return (
-    <div className="flex h-full flex-col">
+    <div
+      className="flex h-full flex-col relative"
+      onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Drop zone overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-blue-400/50 bg-blue-500/10 px-12 py-10">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
+            <p className="text-sm font-medium text-blue-300">Drop image here</p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/[0.06] px-4 pt-[46px] pb-2.5">
         <div className="flex items-center gap-2.5">
@@ -521,8 +633,28 @@ export default function Chat({
             onHover={setAcSelectedIndex}
           />
         )}
+        {stagedImages.length > 0 && (
+          <div className="flex gap-2 mb-2 flex-wrap">
+            {stagedImages.map((img, i) => (
+              <div key={i} className="relative group">
+                <img
+                  src={img.dataUrl}
+                  alt=""
+                  className="h-12 w-12 rounded-lg object-cover border border-white/10"
+                />
+                <button
+                  onClick={() => removeImage(i)}
+                  className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="flex items-end gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 focus-within:border-white/[0.15] transition-colors">
           <textarea
+            ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -534,7 +666,7 @@ export default function Chat({
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim() || isLoading}
+            disabled={(!input.trim() && stagedImages.length === 0) || isLoading}
             className="flex-shrink-0 rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-25"
           >
             Send
@@ -565,10 +697,23 @@ const MessageRow = React.memo(function MessageRow({ message }: { message: Messag
   }
 
   if (message.role === 'user') {
+    const textMsg = message as TextMessage
     return (
       <div className="flex justify-end">
-        <div className="max-w-[75%] rounded-2xl bg-blue-600 px-4 py-3 text-sm text-white whitespace-pre-wrap">
-          {message.text}
+        <div className="max-w-[75%] rounded-2xl bg-blue-600 px-4 py-3 text-sm text-white">
+          {textMsg.images && textMsg.images.length > 0 && (
+            <div className="flex gap-2 flex-wrap mb-2">
+              {textMsg.images.map((img, i) => (
+                <img
+                  key={i}
+                  src={img.dataUrl}
+                  alt=""
+                  className="h-20 rounded-lg object-cover max-w-[200px]"
+                />
+              ))}
+            </div>
+          )}
+          <div className="whitespace-pre-wrap">{textMsg.text}</div>
         </div>
       </div>
     )

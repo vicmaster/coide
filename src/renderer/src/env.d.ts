@@ -19,6 +19,7 @@ interface Window {
       onPermission: (callback: (permission: unknown) => void) => () => void
       respondPermission: (approved: boolean) => void
       abort: () => void
+      saveImage: (base64: string, mediaType: string) => Promise<string>
     }
     dialog: {
       pickFolder: () => Promise<string | null>

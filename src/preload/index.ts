@@ -21,7 +21,10 @@ const api = {
     respondPermission: (approved: boolean) =>
       ipcRenderer.invoke('claude:permission-response', approved),
 
-    abort: () => ipcRenderer.invoke('claude:abort')
+    abort: () => ipcRenderer.invoke('claude:abort'),
+
+    saveImage: (base64: string, mediaType: string): Promise<string> =>
+      ipcRenderer.invoke('claude:save-image', { base64, mediaType })
   },
   dialog: {
     pickFolder: (): Promise<string | null> => ipcRenderer.invoke('dialog:pickFolder')

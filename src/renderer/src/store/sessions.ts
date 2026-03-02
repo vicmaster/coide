@@ -1,10 +1,13 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+export type ImageAttachment = { path: string; mediaType: string; dataUrl: string }
+
 export type TextMessage = {
   id: string
   role: 'user' | 'assistant' | 'error'
   text: string
+  images?: ImageAttachment[]
 }
 
 export type ToolCallMessage = {
