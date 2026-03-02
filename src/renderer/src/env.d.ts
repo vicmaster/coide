@@ -28,7 +28,7 @@ interface Window {
       list: (cwd: string) => Promise<{ global: SkillInfo[]; project: SkillInfo[] }>
     }
     settings: {
-      setSkipPermissions: (value: boolean) => Promise<void>
+      sync: (settings: Record<string, unknown>) => Promise<void>
     }
     fs: {
       readFile: (filePath: string) => Promise<{ content?: string; error?: string }>

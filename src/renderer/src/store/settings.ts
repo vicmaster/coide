@@ -1,17 +1,25 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { type CoideSettings, DEFAULT_SETTINGS } from '../../../shared/types'
 
-type SettingsStore = {
-  skipPermissions: boolean
-  setSkipPermissions: (value: boolean) => void
+type SettingsStore = CoideSettings & {
+  updateSettings: (partial: Partial<CoideSettings>) => void
+  resetSettings: () => void
 }
 
 export const useSettingsStore = create<SettingsStore>()(
   persist(
     (set) => ({
-      skipPermissions: false,
-      setSkipPermissions: (value: boolean) => set({ skipPermissions: value })
+      ...DEFAULT_SETTINGS,
+      updateSettings: (partial: Partial<CoideSettings>) => set(partial),
+      resetSettings: () => set(DEFAULT_SETTINGS)
     }),
-    { name: 'coide-settings' }
+    {
+      name: 'coide-settings',
+      merge: (persisted, current) => ({
+        ...current,
+        ...(persisted as Partial<SettingsStore>)
+      })
+    }
   )
 )

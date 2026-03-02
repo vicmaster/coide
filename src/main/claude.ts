@@ -1,10 +1,10 @@
 import { BrowserWindow, Notification } from 'electron'
 import { appendFileSync, writeFileSync, readFileSync, unlinkSync, existsSync } from 'fs'
+import { type CoideSettings, DEFAULT_SETTINGS } from '../shared/types'
 // Use eval('require') to bypass vite/rollup bundling for native modules
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const pty = (eval('require') as NodeRequire)('node-pty') as typeof import('node-pty')
 
-const CLAUDE_BIN = '/Users/victor/.local/bin/claude'
 const LOG = '/tmp/coide-debug.log'
 
 function log(msg: string): void {
@@ -14,7 +14,10 @@ function log(msg: string): void {
 
 try { writeFileSync(LOG, '') } catch {}
 
+let notificationsEnabled = true
+
 function notify(win: BrowserWindow, title: string, body: string): void {
+  if (!notificationsEnabled) return
   if (win.isDestroyed() || win.isFocused()) return
   const n = new Notification({ title, body })
   n.on('click', () => {
@@ -207,24 +210,31 @@ export function runClaude(
   cwd: string,
   sessionId: string | null,
   win: BrowserWindow,
-  skipPermissions = false
+  settings: CoideSettings
 ): Promise<string | null> {
   return new Promise((resolve, reject) => {
     abortClaude()
+
+    const skipPermissions = settings.skipPermissions
+    notificationsEnabled = settings.notifications
+    const claudeBin = settings.claudeBinaryPath || DEFAULT_SETTINGS.claudeBinaryPath
 
     // Use -p (print/non-interactive) for JSON event stream
     // Always skip CLI-level permissions — coide's own permission dialog is the gate
     const args = ['-p', prompt, '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions']
     if (sessionId) args.push('--resume', sessionId)
+    if (settings.model) args.push('--model', settings.model)
+    if (settings.systemPrompt) args.push('--append-system-prompt', settings.systemPrompt)
+    if (settings.effort) args.push('--effort', settings.effort)
 
     const env = { ...process.env } as Record<string, string>
     delete env['CLAUDECODE']
     delete env['CLAUDE_CODE_SESSION_ID']
 
-    log(`Spawning PTY: ${CLAUDE_BIN} -p <prompt> --output-format stream-json --verbose${sessionId ? ' --resume ' + sessionId : ''}`)
+    log(`Spawning PTY: ${claudeBin} ${args.filter(a => a !== prompt).join(' ')}`)
     log(`CWD: ${cwd}`)
 
-    const ptyProc = pty.spawn(CLAUDE_BIN, args, {
+    const ptyProc = pty.spawn(claudeBin, args, {
       name: 'xterm',
       cols: 220,
       rows: 50,

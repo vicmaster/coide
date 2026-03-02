@@ -33,8 +33,8 @@ const api = {
     list: (cwd: string) => ipcRenderer.invoke('skills:list', { cwd })
   },
   settings: {
-    setSkipPermissions: (value: boolean) =>
-      ipcRenderer.invoke('settings:skip-permissions', value)
+    sync: (settings: Record<string, unknown>) =>
+      ipcRenderer.invoke('settings:sync', settings)
   },
   fs: {
     readFile: (filePath: string): Promise<{ content?: string; error?: string }> =>

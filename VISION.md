@@ -252,7 +252,7 @@ Electron Renderer Process (React)
 - [x] Context / token usage tracker
 - [x] Desktop notifications
 - [x] Image / screenshot drag-and-drop
-- [ ] Settings UI
+- [x] Settings UI
 - [x] Session search — full-text search across all past sessions to find old conversations
 - [x] File changelog — per-session list of every file touched, cumulative diff, one-click revert
 - [x] Keyboard shortcuts — Cmd+K clear, Cmd+N new session, Cmd+[/] switch sessions, Escape stop

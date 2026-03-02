@@ -5,6 +5,7 @@ import MarkdownRenderer from './MarkdownRenderer'
 import ToolCallCard from './ToolCallCard'
 import PermissionDialog, { type PermissionRequest } from './PermissionDialog'
 import SlashAutocomplete, { useSlashItems, type AutocompleteItem } from './SlashAutocomplete'
+import SettingsModal from './SettingsModal'
 
 type ClaudeEvent =
   | { type: 'tool_start'; tool_id: string; tool_name: string }
@@ -34,16 +35,25 @@ export default function Chat({
   const [acSelectedIndex, setAcSelectedIndex] = useState(0)
   const [stagedImages, setStagedImages] = useState<ImageAttachment[]>([])
   const [isDragging, setIsDragging] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const dragCounterRef = useRef(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const skipPermissions = useSettingsStore((s) => s.skipPermissions)
-  const setSkipPermissions = useSettingsStore((s) => s.setSkipPermissions)
+  const updateSettings = useSettingsStore((s) => s.updateSettings)
+  const fontSize = useSettingsStore((s) => s.fontSize)
+  const defaultCwd = useSettingsStore((s) => s.defaultCwd)
 
-  // Sync persisted setting to main process on mount and when it changes
+  // Sync all settings to main process on mount and whenever any setting changes
   useEffect(() => {
-    window.api.settings.setSkipPermissions(skipPermissions)
-  }, [skipPermissions])
+    const sync = (): void => {
+      const { updateSettings: _, resetSettings: __, ...data } = useSettingsStore.getState()
+      window.api.settings.sync(data)
+    }
+    sync()
+    const unsub = useSettingsStore.subscribe(sync)
+    return unsub
+  }, [])
 
   const activeSessionId = useSessionsStore((state) => state.activeSessionId)
   const messages = useSessionsStore((state) => {
@@ -53,7 +63,7 @@ export default function Chat({
   const cwd = useSessionsStore((state) => {
     const s = state.sessions.find((s) => s.id === state.activeSessionId)
     return s?.cwd ?? null
-  }) ?? localStorage.getItem('cwd') ?? '/Users/victor/Projects'
+  }) ?? localStorage.getItem('cwd') ?? defaultCwd
   const claudeSessionId = useSessionsStore((state) => {
     const s = state.sessions.find((s) => s.id === state.activeSessionId)
     return s?.claudeSessionId ?? null
@@ -346,7 +356,7 @@ export default function Chat({
       const session = useSessionsStore.getState().sessions.find(
         (s) => s.id === useSessionsStore.getState().activeSessionId
       )
-      const skillCwd = session?.cwd ?? localStorage.getItem('cwd') ?? '/Users/victor/Projects'
+      const skillCwd = session?.cwd ?? localStorage.getItem('cwd') ?? defaultCwd
       try {
         const skills = await window.api.skills.list(skillCwd)
         const allNames = [...skills.global, ...skills.project].map((s) => s.name)
@@ -369,7 +379,7 @@ export default function Chat({
 
     let sid = useSessionsStore.getState().activeSessionId
     if (!sid) {
-      const defaultCwd = localStorage.getItem('cwd') ?? '/Users/victor/Projects'
+      const defaultCwd = localStorage.getItem('cwd') ?? defaultCwd
       sid = useSessionsStore.getState().createSession(defaultCwd)
     }
 
@@ -430,7 +440,7 @@ export default function Chat({
     const store = useSessionsStore.getState()
     let sid = store.activeSessionId
     if (!sid) {
-      sid = store.createSession(localStorage.getItem('cwd') ?? '/Users/victor/Projects')
+      sid = store.createSession(localStorage.getItem('cwd') ?? defaultCwd)
     }
     const session = useSessionsStore.getState().sessions.find((s) => s.id === sid)!
     const addInfo = (text: string): void => {
@@ -567,7 +577,7 @@ export default function Chat({
             </button>
           )}
           <button
-            onClick={() => setSkipPermissions(!skipPermissions)}
+            onClick={() => updateSettings({ skipPermissions: !skipPermissions })}
             title={skipPermissions ? 'Auto-approve enabled — click to require approval' : 'Click to auto-approve all tools'}
             className={`rounded-md px-2 py-0.5 text-[11px] transition-colors flex items-center gap-1 ${
               skipPermissions
@@ -581,6 +591,16 @@ export default function Chat({
             {skipPermissions && <span>Auto</span>}
           </button>
           <button
+            onClick={() => setSettingsOpen(true)}
+            title="Settings"
+            className="rounded-md px-2 py-0.5 text-white/25 hover:text-white/50 transition-colors"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
+          <button
             onClick={onToggleRightPanel}
             className={`rounded-md px-2 py-0.5 text-[11px] transition-colors ${
               rightPanelOpen ? 'text-white/50 hover:text-white/70' : 'text-white/25 hover:text-white/50'
@@ -592,7 +612,7 @@ export default function Chat({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+      <div className={`flex-1 overflow-y-auto px-6 py-4 space-y-4 ${fontSize === 'small' ? 'text-[13px]' : fontSize === 'large' ? 'text-[17px]' : 'text-[15px]'}`}>
         {messages.length === 0 && !isLoading && (
           <div className="flex h-full flex-col items-center justify-center gap-3">
             <p className="text-[32px] font-semibold tracking-tight text-white/[0.07]">coide</p>
@@ -687,6 +707,8 @@ export default function Chat({
           onDeny={() => handlePermissionRespond(false)}
         />
       )}
+
+      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
     </div>
   )
 }
@@ -700,7 +722,7 @@ const MessageRow = React.memo(function MessageRow({ message }: { message: Messag
     const textMsg = message as TextMessage
     return (
       <div className="flex justify-end">
-        <div className="max-w-[75%] rounded-2xl bg-blue-600 px-4 py-3 text-sm text-white">
+        <div className="max-w-[75%] rounded-2xl bg-blue-600 px-4 py-3 text-white">
           {textMsg.images && textMsg.images.length > 0 && (
             <div className="flex gap-2 flex-wrap mb-2">
               {textMsg.images.map((img, i) => (
@@ -721,14 +743,14 @@ const MessageRow = React.memo(function MessageRow({ message }: { message: Messag
 
   if (message.role === 'error') {
     return (
-      <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400 whitespace-pre-wrap">
+      <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3 text-red-400 whitespace-pre-wrap">
         {message.text}
       </div>
     )
   }
 
   return (
-    <div className="max-w-[85%] rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/90">
+    <div className="max-w-[85%] rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white/90">
       <MarkdownRenderer>{message.text}</MarkdownRenderer>
     </div>
   )

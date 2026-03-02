@@ -4,6 +4,7 @@ import { readdir, readFile, mkdir, writeFile, rm } from 'fs/promises'
 import { homedir, tmpdir } from 'os'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { runClaude, abortClaude, respondPermission } from './claude'
+import { type CoideSettings, DEFAULT_SETTINGS } from '../shared/types'
 
 type SkillInfo = { name: string; description: string; scope: 'global' | 'project'; filePath: string }
 
@@ -27,7 +28,7 @@ async function scanSkillsDir(dir: string, scope: 'global' | 'project'): Promise<
 }
 
 let mainWindow: BrowserWindow | null = null
-let skipPermissions = false
+let currentSettings: CoideSettings = { ...DEFAULT_SETTINGS }
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -65,7 +66,7 @@ ipcMain.handle(
   async (_event, { prompt, cwd, sessionId }: { prompt: string; cwd: string; sessionId: string | null }) => {
     if (!mainWindow) return null
     try {
-      const newSessionId = await runClaude(prompt, cwd, sessionId, mainWindow, skipPermissions)
+      const newSessionId = await runClaude(prompt, cwd, sessionId, mainWindow, currentSettings)
       return { sessionId: newSessionId }
     } catch (err) {
       return { error: String(err) }
@@ -81,8 +82,8 @@ ipcMain.handle('claude:permission-response', (_event, approved: boolean) => {
   respondPermission(approved)
 })
 
-ipcMain.handle('settings:skip-permissions', (_event, value: boolean) => {
-  skipPermissions = value
+ipcMain.handle('settings:sync', (_event, settings: Partial<CoideSettings>) => {
+  currentSettings = { ...DEFAULT_SETTINGS, ...settings }
 })
 
 ipcMain.handle('dialog:pickFolder', async () => {
