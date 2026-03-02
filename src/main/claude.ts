@@ -75,6 +75,7 @@ export function respondPermission(approved: boolean): void {
     win.webContents.send('claude:event', {
       type: 'tool_input',
       tool_id: toolInfo.tool_id,
+      tool_name: toolInfo.tool_name,
       input: toolInfo.input,
       originalContent: toolInfo.originalContent
     })
@@ -293,7 +294,7 @@ export function runClaude(
                       const toolInput = (block.input ?? {}) as Record<string, unknown>
                       const originalContent = captureOriginalContent(block.name as string, toolInput)
                       win.webContents.send('claude:event', { type: 'tool_start', tool_id: block.id as string, tool_name: block.name as string })
-                      win.webContents.send('claude:event', { type: 'tool_input', tool_id: block.id as string, input: toolInput, originalContent })
+                      win.webContents.send('claude:event', { type: 'tool_input', tool_id: block.id as string, tool_name: block.name as string, input: toolInput, originalContent })
                     }
                     // Fall through to normal event processing (no buffering)
                   } else {
@@ -313,7 +314,7 @@ export function runClaude(
                       } else {
                         // Safe tool: show card immediately without asking
                         win.webContents.send('claude:event', { type: 'tool_start', tool_id: toolInfo.tool_id, tool_name: toolInfo.tool_name })
-                        win.webContents.send('claude:event', { type: 'tool_input', tool_id: toolInfo.tool_id, input: toolInfo.input })
+                        win.webContents.send('claude:event', { type: 'tool_input', tool_id: toolInfo.tool_id, tool_name: toolInfo.tool_name, input: toolInfo.input })
                       }
                     }
                     waitingForPermission = true
@@ -323,7 +324,7 @@ export function runClaude(
                   // All tools are safe — auto-approve, show tool cards immediately
                   for (const block of toolBlocks) {
                     win.webContents.send('claude:event', { type: 'tool_start', tool_id: block.id as string, tool_name: block.name as string })
-                    win.webContents.send('claude:event', { type: 'tool_input', tool_id: block.id as string, input: (block.input ?? {}) as Record<string, unknown> })
+                    win.webContents.send('claude:event', { type: 'tool_input', tool_id: block.id as string, tool_name: block.name as string, input: (block.input ?? {}) as Record<string, unknown> })
                   }
                   // Fall through to normal event processing (no buffering)
                 }
