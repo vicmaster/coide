@@ -1,15 +1,19 @@
-import React, { useRef, useEffect } from 'react'
-import { DiffEditor, useMonaco } from '@monaco-editor/react'
+import React, { useState, useEffect } from 'react'
+import { loader, DiffEditor, useMonaco } from '@monaco-editor/react'
+import * as monaco from 'monaco-editor'
 import { detectLanguage } from '../utils/diff'
+
+// Use local monaco-editor instead of CDN (which may not load in Electron)
+loader.config({ monaco })
 
 const THEME_NAME = 'coide-dark'
 
 function useCoideTheme(): boolean {
   const monaco = useMonaco()
-  const defined = useRef(false)
+  const [defined, setDefined] = useState(false)
 
   useEffect(() => {
-    if (monaco && !defined.current) {
+    if (monaco && !defined) {
       monaco.editor.defineTheme(THEME_NAME, {
         base: 'vs-dark',
         inherit: true,
@@ -26,11 +30,11 @@ function useCoideTheme(): boolean {
           'editorOverviewRuler.border': '#00000000'
         }
       })
-      defined.current = true
+      setDefined(true)
     }
-  }, [monaco])
+  }, [monaco, defined])
 
-  return defined.current
+  return defined
 }
 
 export default function DiffViewer({
