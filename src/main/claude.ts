@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, Notification } from 'electron'
 import { appendFileSync, writeFileSync, readFileSync, unlinkSync, existsSync } from 'fs'
 // Use eval('require') to bypass vite/rollup bundling for native modules
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -13,6 +13,16 @@ function log(msg: string): void {
 }
 
 try { writeFileSync(LOG, '') } catch {}
+
+function notify(win: BrowserWindow, title: string, body: string): void {
+  if (win.isDestroyed() || win.isFocused()) return
+  const n = new Notification({ title, body })
+  n.on('click', () => {
+    win.show()
+    win.focus()
+  })
+  n.show()
+}
 
 function stripAnsi(str: string): string {
   return str
@@ -178,6 +188,14 @@ function handleEvent(raw: Record<string, unknown>, win: BrowserWindow): void {
       is_error: raw.is_error ?? false
     })
     win.webContents.send('claude:event', { type: 'stream_end' })
+
+    if (raw.is_error) {
+      const errText = String(raw.result ?? 'Something went wrong').slice(0, 80)
+      notify(win, 'Task Failed', errText)
+    } else {
+      const resultText = String(raw.result ?? '').slice(0, 80) || 'Claude finished your task'
+      notify(win, 'Task Complete', resultText)
+    }
   }
 
   // 'assistant' usage is extracted in the onData loop (before tool logic) so it's not missed on `continue`
@@ -291,6 +309,7 @@ export function runClaude(
                       if (PERMISSION_REQUIRED.has(block.name as string)) {
                         pendingPermissions.push(toolInfo)
                         win.webContents.send('claude:permission', toolInfo)
+                        notify(win, 'Permission Needed', `Claude wants to use ${block.name as string}`)
                       } else {
                         // Safe tool: show card immediately without asking
                         win.webContents.send('claude:event', { type: 'tool_start', tool_id: toolInfo.tool_id, tool_name: toolInfo.tool_name })
