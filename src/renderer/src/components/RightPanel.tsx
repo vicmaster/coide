@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react'
 import { useSessionsStore, type Task, type Agent, type ToolCallMessage } from '../store/sessions'
+import FileChangelog from './FileChangelog'
 
-type Tab = 'agents' | 'todo' | 'context'
+type Tab = 'agents' | 'todo' | 'context' | 'files'
 
 export default function RightPanel(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<Tab>('agents')
@@ -11,7 +12,7 @@ export default function RightPanel(): React.JSX.Element {
       {/* Header — matches sidebar and chat header height */}
       <div className="flex items-end px-3 pt-[46px] pb-2.5 border-b border-white/[0.06]">
         <div className="flex gap-0.5">
-          {(['agents', 'todo', 'context'] as Tab[]).map((tab) => (
+          {(['agents', 'todo', 'context', 'files'] as Tab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -32,6 +33,7 @@ export default function RightPanel(): React.JSX.Element {
         {activeTab === 'agents' && <AgentTree />}
         {activeTab === 'todo' && <TodoList />}
         {activeTab === 'context' && <ContextTracker />}
+        {activeTab === 'files' && <FileChangelog />}
       </div>
     </aside>
   )
@@ -300,29 +302,13 @@ function ContextTracker(): React.JSX.Element {
         </div>
       </div>
 
-      <div>
-        <div className="flex items-center justify-between px-1 mb-2">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-white/20">Files in Context</p>
-          {files.length > 0 && (
-            <span className="text-[10px] text-white/30 font-mono">{files.length} files</span>
-          )}
+      {files.length > 0 && (
+        <div className="px-1">
+          <p className="text-[10px] text-white/25">
+            {files.length} file{files.length !== 1 ? 's' : ''} touched — see <span className="text-white/40">Files</span> tab
+          </p>
         </div>
-        {files.length === 0 ? (
-          <p className="text-[11px] text-white/20 px-1">No files read yet</p>
-        ) : (
-          <div className="space-y-0.5">
-            {files.map((fp) => (
-              <div
-                key={fp}
-                className="rounded-md px-2 py-1 text-[11px] text-white/40 truncate hover:bg-white/5 transition-colors"
-                title={fp}
-              >
-                {fp.split('/').pop()}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      )}
     </div>
   )
 }

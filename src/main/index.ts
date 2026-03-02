@@ -114,6 +114,31 @@ ipcMain.handle(
   }
 )
 
+ipcMain.handle('fs:readFile', async (_event, { filePath }: { filePath: string }) => {
+  try {
+    const content = await readFile(filePath, 'utf-8')
+    return { content }
+  } catch (err) {
+    return { error: String(err) }
+  }
+})
+
+ipcMain.handle(
+  'fs:revertFile',
+  async (_event, { filePath, originalContent }: { filePath: string; originalContent: string | null }) => {
+    try {
+      if (originalContent == null) {
+        await rm(filePath, { force: true })
+      } else {
+        await writeFile(filePath, originalContent, 'utf-8')
+      }
+      return { success: true }
+    } catch (err) {
+      return { error: String(err) }
+    }
+  }
+)
+
 ipcMain.handle('skills:list', async (_event, { cwd }: { cwd: string }) => {
   const globalDir = join(homedir(), '.claude', 'commands')
   const projectDir = join(cwd, '.claude', 'commands')

@@ -41,12 +41,14 @@ export default function DiffViewer({
   filePath,
   original,
   modified,
-  height = 360
+  height = 360,
+  renderSideBySide = true
 }: {
   filePath: string
   original: string
   modified: string
   height?: number
+  renderSideBySide?: boolean
 }): React.JSX.Element {
   const themeDefined = useCoideTheme()
   const language = detectLanguage(filePath)
@@ -70,7 +72,7 @@ export default function DiffViewer({
             theme={THEME_NAME}
             options={{
               readOnly: true,
-              renderSideBySide: true,
+              renderSideBySide,
               minimap: { enabled: false },
               scrollBeyondLastLine: false,
               fontSize: 12,

@@ -254,5 +254,13 @@ Electron Renderer Process (React)
 - [x] Image / screenshot drag-and-drop
 - [ ] Settings UI
 - [x] Session search — full-text search across all past sessions to find old conversations
-- [ ] File changelog — per-session list of every file touched, cumulative diff, one-click revert
+- [x] File changelog — per-session list of every file touched, cumulative diff, one-click revert
 - [x] Keyboard shortcuts — Cmd+K clear, Cmd+N new session, Cmd+[/] switch sessions, Escape stop
+
+### Future
+- [ ] Context limit warning — visual alert when approaching token limit
+- [ ] Click-to-edit past messages — re-run or edit any previous user message
+- [ ] Inline file preview — click a filename in chat to open a preview pane
+- [ ] Agent tree enhancements — timeline view, pause/cancel/re-run individual sub-agents
+- [ ] Skill editor UI — create/edit skills without touching files
+- [ ] Hook configuration UI — visualize and edit hooks visually

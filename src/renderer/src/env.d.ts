@@ -30,5 +30,9 @@ interface Window {
     settings: {
       setSkipPermissions: (value: boolean) => Promise<void>
     }
+    fs: {
+      readFile: (filePath: string) => Promise<{ content?: string; error?: string }>
+      revertFile: (filePath: string, originalContent: string | null) => Promise<{ success?: boolean; error?: string }>
+    }
   }
 }

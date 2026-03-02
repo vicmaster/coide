@@ -35,6 +35,12 @@ const api = {
   settings: {
     setSkipPermissions: (value: boolean) =>
       ipcRenderer.invoke('settings:skip-permissions', value)
+  },
+  fs: {
+    readFile: (filePath: string): Promise<{ content?: string; error?: string }> =>
+      ipcRenderer.invoke('fs:readFile', { filePath }),
+    revertFile: (filePath: string, originalContent: string | null): Promise<{ success?: boolean; error?: string }> =>
+      ipcRenderer.invoke('fs:revertFile', { filePath, originalContent })
   }
 }
 
