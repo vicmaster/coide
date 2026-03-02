@@ -212,8 +212,8 @@ export function runClaude(
     abortClaude()
 
     // Use -p (print/non-interactive) for JSON event stream
-    const args = ['-p', prompt, '--output-format', 'stream-json', '--verbose']
-    if (skipPermissions) args.push('--dangerously-skip-permissions')
+    // Always skip CLI-level permissions — coide's own permission dialog is the gate
+    const args = ['-p', prompt, '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions']
     if (sessionId) args.push('--resume', sessionId)
 
     const env = { ...process.env } as Record<string, string>
