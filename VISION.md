@@ -249,7 +249,7 @@ Electron Renderer Process (React)
 - [x] Agent tree panel (live sub-agent hierarchy)
 - [x] Todo / task panel (live updates from Claude)
 - [x] Context / token usage tracker
-- [ ] Desktop notifications
+- [x] Desktop notifications
 - [ ] Image / screenshot drag-and-drop
 - [ ] Settings UI
 - [ ] Session search — full-text search across all past sessions to find old conversations
