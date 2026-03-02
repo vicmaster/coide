@@ -41,7 +41,7 @@ function inputSummary(name: string, input: Record<string, unknown>): string {
   return first != null ? String(first).slice(0, 60) : ''
 }
 
-export default function ToolCallCard({ message }: { message: ToolCallMessage }): React.JSX.Element {
+function ToolCallCardInner({ message }: { message: ToolCallMessage }): React.JSX.Element {
   const isFileOp = message.tool_name === 'Edit' || message.tool_name === 'Write'
   const [expanded, setExpanded] = useState(isFileOp)
   const done = message.result !== undefined
@@ -142,3 +142,6 @@ export default function ToolCallCard({ message }: { message: ToolCallMessage }):
     </div>
   )
 }
+
+const ToolCallCard = React.memo(ToolCallCardInner)
+export default ToolCallCard

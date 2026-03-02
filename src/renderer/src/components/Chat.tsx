@@ -8,7 +8,7 @@ import SlashAutocomplete, { useSlashItems, type AutocompleteItem } from './Slash
 
 type ClaudeEvent =
   | { type: 'tool_start'; tool_id: string; tool_name: string }
-  | { type: 'tool_input'; tool_id: string; input: Record<string, unknown>; originalContent?: string | null }
+  | { type: 'tool_input'; tool_id: string; tool_name?: string; input: Record<string, unknown>; originalContent?: string | null }
   | { type: 'tool_result'; tool_id: string; content: string }
   | { type: 'tool_denied'; tool_id: string; tool_name: string; input: Record<string, unknown>; originalContent?: string | null }
   | { type: 'usage'; input_tokens: number; output_tokens: number; cache_creation_input_tokens: number; cache_read_input_tokens: number }
@@ -41,12 +41,19 @@ export default function Chat({
     window.api.settings.setSkipPermissions(skipPermissions)
   }, [skipPermissions])
 
-  const activeSession = useSessionsStore((state) =>
-    state.sessions.find((s) => s.id === state.activeSessionId)
-  )
-
-  const messages = activeSession?.messages ?? []
-  const cwd = activeSession?.cwd ?? localStorage.getItem('cwd') ?? '/Users/victor/Projects'
+  const activeSessionId = useSessionsStore((state) => state.activeSessionId)
+  const messages = useSessionsStore((state) => {
+    const s = state.sessions.find((s) => s.id === state.activeSessionId)
+    return s?.messages ?? []
+  })
+  const cwd = useSessionsStore((state) => {
+    const s = state.sessions.find((s) => s.id === state.activeSessionId)
+    return s?.cwd ?? null
+  }) ?? localStorage.getItem('cwd') ?? '/Users/victor/Projects'
+  const claudeSessionId = useSessionsStore((state) => {
+    const s = state.sessions.find((s) => s.id === state.activeSessionId)
+    return s?.claudeSessionId ?? null
+  })
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -85,7 +92,7 @@ export default function Chat({
       }
 
       if (event.type === 'tool_input') {
-        const tool_name = pendingToolsRef.current.get(event.tool_id) ?? 'Unknown'
+        const tool_name = event.tool_name ?? pendingToolsRef.current.get(event.tool_id) ?? 'Unknown'
         pendingToolsRef.current.delete(event.tool_id)
         addMessage(sid, {
           id: event.tool_id,
@@ -533,9 +540,9 @@ export default function Chat({
             Send
           </button>
         </div>
-        {activeSession?.claudeSessionId && (
+        {claudeSessionId && (
           <p className="mt-1.5 text-center text-[10px] text-white/15 font-mono">
-            {activeSession.claudeSessionId.slice(0, 8)}…
+            {claudeSessionId.slice(0, 8)}…
           </p>
         )}
       </div>
@@ -552,7 +559,7 @@ export default function Chat({
   )
 }
 
-function MessageRow({ message }: { message: Message }): React.JSX.Element {
+const MessageRow = React.memo(function MessageRow({ message }: { message: Message }): React.JSX.Element {
   if (message.role === 'tool_call') {
     return <ToolCallCard message={message as ToolCallMessage} />
   }
@@ -580,4 +587,4 @@ function MessageRow({ message }: { message: Message }): React.JSX.Element {
       <MarkdownRenderer>{message.text}</MarkdownRenderer>
     </div>
   )
-}
+})

@@ -68,7 +68,7 @@ function CodeBlock({ language, code }: { language: string; code: string }): Reac
   )
 }
 
-export default function MarkdownRenderer({ children }: { children: string }): React.JSX.Element {
+function MarkdownRendererInner({ children }: { children: string }): React.JSX.Element {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -188,3 +188,6 @@ export default function MarkdownRenderer({ children }: { children: string }): Re
     </ReactMarkdown>
   )
 }
+
+const MarkdownRenderer = React.memo(MarkdownRendererInner)
+export default MarkdownRenderer
