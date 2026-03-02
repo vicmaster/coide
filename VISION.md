@@ -254,4 +254,4 @@ Electron Renderer Process (React)
 - [ ] Settings UI
 - [ ] Session search — full-text search across all past sessions to find old conversations
 - [ ] File changelog — per-session list of every file touched, cumulative diff, one-click revert
-- [ ] Keyboard shortcuts — Cmd+K clear, Cmd+N new session, Cmd+[/] switch sessions, Escape stop
+- [x] Keyboard shortcuts — Cmd+K clear, Cmd+N new session, Cmd+[/] switch sessions, Escape stop
