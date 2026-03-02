@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import Sidebar from './components/Sidebar'
 import Chat from './components/Chat'
 import RightPanel from './components/RightPanel'
+import SessionSearch from './components/SessionSearch'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 
 export default function App(): React.JSX.Element {
@@ -23,6 +24,9 @@ export default function App(): React.JSX.Element {
 
       {/* Right Panel */}
       {rightPanelOpen && <RightPanel />}
+
+      {/* Session search modal */}
+      <SessionSearch />
     </div>
   )
 }

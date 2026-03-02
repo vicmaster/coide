@@ -5,6 +5,13 @@ export function useKeyboardShortcuts(): void {
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
       if (e.metaKey) {
+        // Cmd+F — Toggle session search
+        if (e.key === 'f') {
+          e.preventDefault()
+          window.dispatchEvent(new Event('coide:toggle-search'))
+          return
+        }
+
         // Cmd+K — Clear conversation
         if (e.key === 'k') {
           e.preventDefault()

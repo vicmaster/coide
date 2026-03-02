@@ -253,6 +253,6 @@ Electron Renderer Process (React)
 - [x] Desktop notifications
 - [x] Image / screenshot drag-and-drop
 - [ ] Settings UI
-- [ ] Session search — full-text search across all past sessions to find old conversations
+- [x] Session search — full-text search across all past sessions to find old conversations
 - [ ] File changelog — per-session list of every file touched, cumulative diff, one-click revert
 - [x] Keyboard shortcuts — Cmd+K clear, Cmd+N new session, Cmd+[/] switch sessions, Escape stop

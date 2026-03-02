@@ -18,8 +18,18 @@ export default function Sidebar(): React.JSX.Element {
   return (
     <aside className="flex h-full w-56 flex-col bg-[#111111] border-r border-white/[0.06]">
       {/* Title — offset for macOS traffic lights */}
-      <div className="flex items-center px-4 pt-[46px] pb-3">
+      <div className="flex items-center justify-between px-4 pt-[46px] pb-3">
         <span className="text-sm font-semibold tracking-tight text-white/80">coide</span>
+        <button
+          onClick={() => window.dispatchEvent(new Event('coide:toggle-search'))}
+          className="p-1 rounded text-white/25 hover:text-white/60 hover:bg-white/5 transition-colors"
+          title="Search sessions (Cmd+F)"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        </button>
       </div>
 
       {/* Tabs */}
