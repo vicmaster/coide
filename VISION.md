@@ -258,7 +258,7 @@ Electron Renderer Process (React)
 - [x] Keyboard shortcuts — Cmd+K clear, Cmd+N new session, Cmd+[/] switch sessions, Escape stop
 
 ### Future
-- [ ] Context limit warning — visual alert when approaching token limit
+- [x] Context limit warning — visual alert when approaching token limit
 - [x] Click-to-edit past messages — re-run or edit any previous user message
 - [ ] Inline file preview — click a filename in chat to open a preview pane
 - [ ] Agent tree enhancements — timeline view, pause/cancel/re-run individual sub-agents

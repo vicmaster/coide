@@ -70,6 +70,13 @@ export default function Chat({
     const s = state.sessions.find((s) => s.id === state.activeSessionId)
     return s?.claudeSessionId ?? null
   })
+  const usage = useSessionsStore((state) => {
+    const s = state.sessions.find((s) => s.id === state.activeSessionId)
+    return s?.usage ?? null
+  })
+
+  const CONTEXT_LIMIT = 200_000
+  const usagePct = usage ? Math.min(((usage.inputTokens + usage.outputTokens) / CONTEXT_LIMIT) * 100, 100) : 0
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -638,6 +645,29 @@ export default function Chat({
               Stop
             </button>
           )}
+          {usagePct >= 70 && (() => {
+            const total = usage!.inputTokens + usage!.outputTokens
+            const fmt = (n: number): string => n >= 1000 ? Math.round(n / 1000) + 'k' : String(n)
+            const isRed = usagePct >= 90
+            return (
+              <button
+                onClick={() => { if (!rightPanelOpen) onToggleRightPanel() }}
+                title={`Context usage: ${Math.round(usagePct)}%`}
+                className={`rounded-md border px-2 py-0.5 text-[11px] font-mono transition-colors flex items-center gap-1 ${
+                  isRed
+                    ? 'border-red-500/40 bg-red-500/10 text-red-400 animate-pulse'
+                    : 'border-amber-500/40 bg-amber-500/10 text-amber-400'
+                }`}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+                {fmt(total)}/{fmt(CONTEXT_LIMIT)}
+              </button>
+            )
+          })()}
           <button
             onClick={() => updateSettings({ skipPermissions: !skipPermissions })}
             title={skipPermissions ? 'Auto-approve enabled — click to require approval' : 'Click to auto-approve all tools'}
