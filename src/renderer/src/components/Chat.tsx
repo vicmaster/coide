@@ -81,6 +81,11 @@ export default function Chat({
   const CONTEXT_LIMIT = 200_000
   const usagePct = usage ? Math.min(((usage.inputTokens + usage.outputTokens) / CONTEXT_LIMIT) * 100, 100) : 0
 
+  // Scroll to bottom instantly on session switch or initial load
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView()
+  }, [activeSessionId])
+
   // Only auto-scroll when user is near the bottom (not reading history)
   useEffect(() => {
     const el = messagesRef.current
