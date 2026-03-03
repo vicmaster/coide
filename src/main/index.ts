@@ -153,6 +153,38 @@ ipcMain.handle('skills:list', async (_event, { cwd }: { cwd: string }) => {
   return { global, project }
 })
 
+ipcMain.handle(
+  'skills:write',
+  async (
+    _event,
+    { scope, name, content, cwd }: { scope: 'global' | 'project'; name: string; content: string; cwd: string }
+  ) => {
+    try {
+      if (!name || /[/\\\s]|\.\./.test(name)) {
+        return { error: 'Invalid skill name. Use only letters, numbers, hyphens, and underscores.' }
+      }
+      const baseDir =
+        scope === 'global'
+          ? join(homedir(), '.claude', 'skills', name)
+          : join(cwd, '.claude', 'skills', name)
+      await mkdir(baseDir, { recursive: true })
+      await writeFile(join(baseDir, 'SKILL.md'), content, 'utf-8')
+      return { success: true }
+    } catch (err) {
+      return { error: String(err) }
+    }
+  }
+)
+
+ipcMain.handle('skills:delete', async (_event, { filePath }: { filePath: string }) => {
+  try {
+    await rm(join(filePath, '..'), { recursive: true, force: true })
+    return { success: true }
+  } catch (err) {
+    return { error: String(err) }
+  }
+})
+
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.coide')
   app.on('browser-window-created', (_, window) => {

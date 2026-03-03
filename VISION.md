@@ -262,5 +262,5 @@ Electron Renderer Process (React)
 - [x] Click-to-edit past messages — re-run or edit any previous user message
 - [x] Inline file preview — click a filename in chat to open a preview pane
 - [ ] Agent tree enhancements — timeline view, pause/cancel/re-run individual sub-agents
-- [ ] Skill editor UI — create/edit skills without touching files
+- [x] Skill editor UI — create/edit skills without touching files
 - [ ] Hook configuration UI — visualize and edit hooks visually

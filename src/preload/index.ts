@@ -30,7 +30,10 @@ const api = {
     pickFolder: (): Promise<string | null> => ipcRenderer.invoke('dialog:pickFolder')
   },
   skills: {
-    list: (cwd: string) => ipcRenderer.invoke('skills:list', { cwd })
+    list: (cwd: string) => ipcRenderer.invoke('skills:list', { cwd }),
+    write: (scope: string, name: string, content: string, cwd: string) =>
+      ipcRenderer.invoke('skills:write', { scope, name, content, cwd }),
+    delete: (filePath: string) => ipcRenderer.invoke('skills:delete', { filePath })
   },
   settings: {
     sync: (settings: Record<string, unknown>) =>

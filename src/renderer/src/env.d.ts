@@ -26,6 +26,8 @@ interface Window {
     }
     skills: {
       list: (cwd: string) => Promise<{ global: SkillInfo[]; project: SkillInfo[] }>
+      write: (scope: 'global' | 'project', name: string, content: string, cwd: string) => Promise<{ success?: boolean; error?: string }>
+      delete: (filePath: string) => Promise<{ success?: boolean; error?: string }>
     }
     settings: {
       sync: (settings: Record<string, unknown>) => Promise<void>

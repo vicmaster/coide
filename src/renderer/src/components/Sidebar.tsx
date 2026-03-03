@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useSessionsStore } from '../store/sessions'
+import { useSkillEditorStore } from '../store/skillEditor'
 import { BUILT_IN_COMMANDS } from '../data/commands'
 
 type Tab = 'sessions' | 'skills' | 'commands'
@@ -56,7 +57,7 @@ export default function Sidebar(): React.JSX.Element {
         {activeTab === 'commands' && <CommandsList />}
       </div>
 
-      {/* New session */}
+      {/* Footer actions */}
       {activeTab === 'sessions' && (
         <div className="p-2 border-t border-white/[0.06]">
           <button
@@ -64,6 +65,16 @@ export default function Sidebar(): React.JSX.Element {
             className="w-full rounded-md bg-blue-600/90 hover:bg-blue-600 py-1.5 text-xs font-medium text-white transition-colors"
           >
             + New Session
+          </button>
+        </div>
+      )}
+      {activeTab === 'skills' && (
+        <div className="p-2 border-t border-white/[0.06]">
+          <button
+            onClick={() => useSkillEditorStore.getState().openNew()}
+            className="w-full rounded-md bg-blue-600/90 hover:bg-blue-600 py-1.5 text-xs font-medium text-white transition-colors"
+          >
+            + New Skill
           </button>
         </div>
       )}
@@ -137,9 +148,18 @@ function SkillsList(): React.JSX.Element {
     return session?.cwd ?? localStorage.getItem('cwd') ?? '/Users/victor/Projects'
   })
 
-  useEffect(() => {
+  const refresh = useCallback(() => {
     window.api.skills.list(cwd).then(setSkills)
   }, [cwd])
+
+  useEffect(() => {
+    refresh()
+  }, [refresh])
+
+  useEffect(() => {
+    window.addEventListener('coide:skills-changed', refresh)
+    return () => window.removeEventListener('coide:skills-changed', refresh)
+  }, [refresh])
 
   const filter = (list: SkillInfo[]): SkillInfo[] => {
     if (!search.trim()) return list
@@ -165,7 +185,16 @@ function SkillsList(): React.JSX.Element {
           <SectionLabel label="Project" />
           <div className="space-y-1">
             {filteredProject.map((skill) => (
-              <SkillRow key={skill.filePath} skill={skill} onRun={() => setPendingAction({ type: 'send', text: `/${skill.name}` })} />
+              <SkillRow
+                key={skill.filePath}
+                skill={skill}
+                onRun={() => setPendingAction({ type: 'send', text: `/${skill.name}` })}
+                onEdit={() => useSkillEditorStore.getState().openEdit(skill)}
+                onDelete={async () => {
+                  await window.api.skills.delete(skill.filePath)
+                  window.dispatchEvent(new Event('coide:skills-changed'))
+                }}
+              />
             ))}
           </div>
         </div>
@@ -175,7 +204,16 @@ function SkillsList(): React.JSX.Element {
           <SectionLabel label="Global" />
           <div className="space-y-1">
             {filteredGlobal.map((skill) => (
-              <SkillRow key={skill.filePath} skill={skill} onRun={() => setPendingAction({ type: 'send', text: `/${skill.name}` })} />
+              <SkillRow
+                key={skill.filePath}
+                skill={skill}
+                onRun={() => setPendingAction({ type: 'send', text: `/${skill.name}` })}
+                onEdit={() => useSkillEditorStore.getState().openEdit(skill)}
+                onDelete={async () => {
+                  await window.api.skills.delete(skill.filePath)
+                  window.dispatchEvent(new Event('coide:skills-changed'))
+                }}
+              />
             ))}
           </div>
         </div>
@@ -189,17 +227,61 @@ function SkillsList(): React.JSX.Element {
   )
 }
 
-function SkillRow({ skill, onRun }: { skill: SkillInfo; onRun: () => void }): React.JSX.Element {
+function SkillRow({
+  skill,
+  onRun,
+  onEdit,
+  onDelete
+}: {
+  skill: SkillInfo
+  onRun: () => void
+  onEdit: () => void
+  onDelete: () => void
+}): React.JSX.Element {
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
   return (
     <div className="group rounded-md border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.06] px-2.5 py-2 transition-colors">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-white/70">/{skill.name}</span>
-        <button
-          onClick={onRun}
-          className="opacity-0 group-hover:opacity-100 text-[10px] text-blue-400 hover:text-blue-300 transition-all"
-        >
-          Run
-        </button>
+        {confirmDelete ? (
+          <div className="flex items-center gap-1.5 text-[10px]">
+            <span className="text-white/40">Delete?</span>
+            <button
+              onClick={() => { onDelete(); setConfirmDelete(false) }}
+              className="text-red-400 hover:text-red-300 transition-colors"
+            >
+              Yes
+            </button>
+            <button
+              onClick={() => setConfirmDelete(false)}
+              className="text-white/40 hover:text-white/60 transition-colors"
+            >
+              No
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+            <button
+              onClick={onEdit}
+              className="text-[10px] text-white/40 hover:text-white/70 transition-colors"
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="text-[10px] text-white/40 hover:text-red-400 transition-colors"
+            >
+              Del
+            </button>
+            <button
+              onClick={onRun}
+              className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              Run
+            </button>
+          </div>
+        )}
       </div>
       <p className="mt-0.5 text-[10px] text-white/30 truncate">{skill.description}</p>
     </div>
