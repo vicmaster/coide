@@ -259,7 +259,7 @@ Electron Renderer Process (React)
 
 ### Future
 - [ ] Context limit warning — visual alert when approaching token limit
-- [ ] Click-to-edit past messages — re-run or edit any previous user message
+- [x] Click-to-edit past messages — re-run or edit any previous user message
 - [ ] Inline file preview — click a filename in chat to open a preview pane
 - [ ] Agent tree enhancements — timeline view, pause/cancel/re-run individual sub-agents
 - [ ] Skill editor UI — create/edit skills without touching files

@@ -36,6 +36,8 @@ export default function Chat({
   const [stagedImages, setStagedImages] = useState<ImageAttachment[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
+  const [editText, setEditText] = useState('')
   const dragCounterRef = useRef(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -409,6 +411,66 @@ export default function Chat({
     }
   }, [isLoading, stagedImages])
 
+  const editAndResend = useCallback(async (messageId: string, newText: string): Promise<void> => {
+    const sid = useSessionsStore.getState().activeSessionId
+    if (!sid) return
+
+    const session = useSessionsStore.getState().sessions.find((s) => s.id === sid)
+    if (!session) return
+
+    // Collect prior conversation context (messages before the edited one)
+    const msgIndex = session.messages.findIndex((m) => m.id === messageId)
+    const priorMessages = session.messages.slice(0, msgIndex)
+
+    let contextPrefix = ''
+    const contextParts: string[] = []
+    for (const m of priorMessages) {
+      if (m.role === 'user') {
+        contextParts.push(`User: ${(m as TextMessage).text}`)
+      } else if (m.role === 'assistant') {
+        contextParts.push(`Assistant: ${(m as TextMessage).text}`)
+      }
+    }
+    if (contextParts.length > 0) {
+      contextPrefix = `[Previous conversation]\n${contextParts.join('\n')}\n\n`
+    }
+
+    // Preserve images from the original message
+    const originalMsg = session.messages[msgIndex] as TextMessage
+    const images = originalMsg.images ?? []
+
+    // Truncate messages from the edited one onward
+    useSessionsStore.getState().truncateAtMessage(sid, messageId)
+
+    // Build prompt with context + edited text + images
+    let prompt = contextPrefix + newText
+    if (images.length > 0) {
+      const imagePaths = images.map((img) => `[Image: ${img.path}]`).join('\n')
+      prompt = `${prompt}\n\n${imagePaths}`
+    }
+
+    // Add user message and send
+    setIsLoading(true)
+    pendingToolsRef.current.clear()
+    setPermissionQueue([])
+
+    const userMessage: TextMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      text: newText,
+      ...(images.length > 0 ? { images } : {})
+    }
+    useSessionsStore.getState().addMessage(sid, userMessage)
+
+    const updatedSession = useSessionsStore.getState().sessions.find((s) => s.id === sid)!
+    try {
+      await window.api.claude.query(prompt, updatedSession.cwd, updatedSession.claudeSessionId)
+    } catch (err) {
+      useSessionsStore.getState().addMessage(sid, { id: Date.now().toString(), role: 'error', text: String(err) })
+      setIsLoading(false)
+    }
+  }, [])
+
   const handleSend = async (): Promise<void> => {
     await sendMessage(input)
   }
@@ -620,9 +682,65 @@ export default function Chat({
           </div>
         )}
 
-        {messages.map((msg) => (
-          <MessageRow key={msg.id} message={msg} />
-        ))}
+        {messages.map((msg) => {
+          if (editingMessageId === msg.id && msg.role === 'user') {
+            const textMsg = msg as TextMessage
+            return (
+              <div key={msg.id} className="flex justify-end">
+                <div className="max-w-[75%] w-full">
+                  {textMsg.images && textMsg.images.length > 0 && (
+                    <div className="flex gap-2 flex-wrap mb-2 justify-end">
+                      {textMsg.images.map((img, i) => (
+                        <img key={i} src={img.dataUrl} alt="" className="h-20 rounded-lg object-cover max-w-[200px]" />
+                      ))}
+                    </div>
+                  )}
+                  <textarea
+                    autoFocus
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    className="w-full resize-none rounded-2xl bg-blue-600 px-4 py-3 text-white outline-none text-sm leading-relaxed"
+                    rows={Math.max(2, editText.split('\n').length)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setEditingMessageId(null)
+                        setEditText('')
+                      }
+                    }}
+                  />
+                  <div className="flex justify-end gap-2 mt-2">
+                    <button
+                      onClick={() => { setEditingMessageId(null); setEditText('') }}
+                      className="rounded-lg px-3 py-1 text-xs text-white/50 hover:text-white/80 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      disabled={!editText.trim()}
+                      onClick={() => {
+                        const mid = editingMessageId!
+                        const text = editText
+                        setEditingMessageId(null)
+                        setEditText('')
+                        editAndResend(mid, text)
+                      }}
+                      className="rounded-lg bg-blue-500 px-3 py-1 text-xs font-medium text-white hover:bg-blue-400 disabled:opacity-25 transition-colors"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          }
+          return (
+            <MessageRow
+              key={msg.id}
+              message={msg}
+              onEdit={msg.role === 'user' && !isLoading ? (id, text) => { setEditingMessageId(id); setEditText(text) } : undefined}
+            />
+          )
+        })}
 
         {isLoading && (
           <div className="flex justify-start">
@@ -713,7 +831,7 @@ export default function Chat({
   )
 }
 
-const MessageRow = React.memo(function MessageRow({ message }: { message: Message }): React.JSX.Element {
+const MessageRow = React.memo(function MessageRow({ message, onEdit }: { message: Message; onEdit?: (id: string, text: string) => void }): React.JSX.Element {
   if (message.role === 'tool_call') {
     return <ToolCallCard message={message as ToolCallMessage} />
   }
@@ -721,8 +839,20 @@ const MessageRow = React.memo(function MessageRow({ message }: { message: Messag
   if (message.role === 'user') {
     const textMsg = message as TextMessage
     return (
-      <div className="flex justify-end">
-        <div className="max-w-[75%] rounded-2xl bg-blue-600 px-4 py-3 text-white">
+      <div className="flex justify-end group/msg">
+        <div className="relative max-w-[75%] rounded-2xl bg-blue-600 px-4 py-3 text-white">
+          {onEdit && (
+            <button
+              onClick={() => onEdit(textMsg.id, textMsg.text)}
+              className="absolute -left-8 top-2 rounded-md p-1 text-white/0 group-hover/msg:text-white/40 hover:!text-white/70 transition-colors"
+              title="Edit message"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+            </button>
+          )}
           {textMsg.images && textMsg.images.length > 0 && (
             <div className="flex gap-2 flex-wrap mb-2">
               {textMsg.images.map((img, i) => (

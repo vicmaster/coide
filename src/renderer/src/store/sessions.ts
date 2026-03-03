@@ -87,6 +87,7 @@ type SessionsStore = {
   addUsage: (sessionId: string, delta: SessionUsage) => void
   addAgent: (sessionId: string, agent: Agent) => void
   updateAgent: (sessionId: string, toolId: string, updates: Partial<Agent>) => void
+  truncateAtMessage: (sessionId: string, messageId: string) => void
   setPendingAction: (action: PendingAction) => void
   clearPendingAction: () => void
 }
@@ -272,6 +273,24 @@ export const useSessionsStore = create<SessionsStore>()(
               agents: (s.agents ?? []).map((a) =>
                 a.toolId === toolId ? { ...a, ...updates } : a
               )
+            }
+          })
+        }))
+      },
+
+      truncateAtMessage: (sessionId: string, messageId: string) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) => {
+            if (s.id !== sessionId) return s
+            const idx = s.messages.findIndex((m) => m.id === messageId)
+            if (idx === -1) return s
+            return {
+              ...s,
+              messages: s.messages.slice(0, idx),
+              claudeSessionId: null,
+              tasks: [],
+              agents: [],
+              usage: { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 }
             }
           })
         }))
