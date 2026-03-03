@@ -1,5 +1,6 @@
 import React, { useEffect, useCallback } from 'react'
 import { useSettingsStore } from '../store/settings'
+import { useHookEditorStore } from '../store/hookEditor'
 import { DEFAULT_SETTINGS } from '../../../shared/types'
 
 export default function SettingsModal({ onClose }: { onClose: () => void }): React.JSX.Element {
@@ -117,6 +118,19 @@ export default function SettingsModal({ onClose }: { onClose: () => void }): Rea
               </svg>
             </button>
           </div>
+        </div>
+
+        <div className="mb-3">
+          <label className="block text-xs text-white/50 mb-1.5">Hooks</label>
+          <button
+            onClick={() => {
+              onClose()
+              useHookEditorStore.getState().open()
+            }}
+            className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-white/40 hover:text-white/60 hover:bg-white/[0.06] transition-colors"
+          >
+            Configure Hooks...
+          </button>
         </div>
 
         <SettingRow label="Font Size">

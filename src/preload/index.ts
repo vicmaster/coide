@@ -44,6 +44,11 @@ const api = {
       ipcRenderer.invoke('fs:readFile', { filePath }),
     revertFile: (filePath: string, originalContent: string | null): Promise<{ success?: boolean; error?: string }> =>
       ipcRenderer.invoke('fs:revertFile', { filePath, originalContent })
+  },
+  hooks: {
+    read: (scope: string, cwd: string) => ipcRenderer.invoke('hooks:read', { scope, cwd }),
+    write: (scope: string, hooks: unknown, cwd: string) =>
+      ipcRenderer.invoke('hooks:write', { scope, hooks, cwd })
   }
 }
 

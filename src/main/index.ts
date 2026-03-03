@@ -185,6 +185,53 @@ ipcMain.handle('skills:delete', async (_event, { filePath }: { filePath: string 
   }
 })
 
+ipcMain.handle(
+  'hooks:read',
+  async (_event, { scope, cwd }: { scope: 'global' | 'project'; cwd: string }) => {
+    const filePath =
+      scope === 'global'
+        ? join(homedir(), '.claude', 'settings.json')
+        : join(cwd, '.claude', 'settings.json')
+    try {
+      const raw = await readFile(filePath, 'utf-8')
+      const json = JSON.parse(raw)
+      return { hooks: json.hooks ?? {} }
+    } catch {
+      return { hooks: {} }
+    }
+  }
+)
+
+ipcMain.handle(
+  'hooks:write',
+  async (
+    _event,
+    { scope, hooks, cwd }: { scope: 'global' | 'project'; hooks: Record<string, unknown>; cwd: string }
+  ) => {
+    const dir =
+      scope === 'global' ? join(homedir(), '.claude') : join(cwd, '.claude')
+    const filePath = join(dir, 'settings.json')
+    try {
+      await mkdir(dir, { recursive: true })
+      let json: Record<string, unknown> = {}
+      try {
+        json = JSON.parse(await readFile(filePath, 'utf-8'))
+      } catch {
+        // file doesn't exist yet
+      }
+      if (Object.keys(hooks).length === 0) {
+        delete json.hooks
+      } else {
+        json.hooks = hooks
+      }
+      await writeFile(filePath, JSON.stringify(json, null, 2) + '\n', 'utf-8')
+      return { success: true }
+    } catch (err) {
+      return { error: String(err) }
+    }
+  }
+)
+
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.coide')
   app.on('browser-window-created', (_, window) => {

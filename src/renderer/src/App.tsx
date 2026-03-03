@@ -5,6 +5,7 @@ import RightPanel from './components/RightPanel'
 import SessionSearch from './components/SessionSearch'
 import FilePreviewModal from './components/FilePreviewModal'
 import SkillEditorModal from './components/SkillEditorModal'
+import HookEditorModal from './components/HookEditorModal'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 
 export default function App(): React.JSX.Element {
@@ -35,6 +36,9 @@ export default function App(): React.JSX.Element {
 
       {/* Skill editor modal */}
       <SkillEditorModal />
+
+      {/* Hook editor modal */}
+      <HookEditorModal />
     </div>
   )
 }

@@ -36,5 +36,9 @@ interface Window {
       readFile: (filePath: string) => Promise<{ content?: string; error?: string }>
       revertFile: (filePath: string, originalContent: string | null) => Promise<{ success?: boolean; error?: string }>
     }
+    hooks: {
+      read: (scope: 'global' | 'project', cwd: string) => Promise<{ hooks: Record<string, unknown> }>
+      write: (scope: 'global' | 'project', hooks: Record<string, unknown>, cwd: string) => Promise<{ success?: boolean; error?: string }>
+    }
   }
 }
