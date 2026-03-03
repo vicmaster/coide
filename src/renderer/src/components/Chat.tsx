@@ -38,6 +38,7 @@ export default function Chat({
   const [stagedImages, setStagedImages] = useState<ImageAttachment[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   const dragCounterRef = useRef(0)
@@ -618,6 +619,23 @@ export default function Chat({
     }
   }
 
+  const copyConversation = useCallback(() => {
+    const parts: string[] = []
+    for (const msg of messages) {
+      if (msg.role === 'user') parts.push(`**User:** ${(msg as TextMessage).text}`)
+      else if (msg.role === 'assistant') parts.push(`**Assistant:** ${(msg as TextMessage).text}`)
+      else if (msg.role === 'tool_call') {
+        const tc = msg as ToolCallMessage
+        const inp = tc.input as Record<string, unknown>
+        const summary = inp.command ?? inp.file_path ?? inp.pattern ?? ''
+        parts.push(`> **Tool:** \`${tc.tool_name}\`${summary ? ` — ${summary}` : ''}`)
+      }
+    }
+    navigator.clipboard.writeText(parts.join('\n\n'))
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }, [messages])
+
   const currentPermission = permissionQueue[0] ?? null
 
   return (
@@ -712,6 +730,24 @@ export default function Chat({
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
             </svg>
           </button>
+          {messages.length > 0 && (
+            <button
+              onClick={copyConversation}
+              title="Copy conversation as markdown"
+              className={`rounded-md px-2 py-0.5 transition-colors ${copied ? 'text-green-400' : 'text-white/25 hover:text-white/50'}`}
+            >
+              {copied ? (
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              ) : (
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+              )}
+            </button>
+          )}
           <button
             onClick={onToggleRightPanel}
             className={`rounded-md px-2 py-0.5 text-[11px] transition-colors ${
@@ -895,6 +931,9 @@ export default function Chat({
 }
 
 const MessageRow = React.memo(function MessageRow({ message, onEdit }: { message: Message; onEdit?: (id: string, text: string) => void }): React.JSX.Element {
+  const [copied, setCopied] = useState(false)
+  const contentRef = useRef<HTMLDivElement>(null)
+
   if (message.role === 'tool_call') {
     return <ToolCallCard message={message as ToolCallMessage} />
   }
@@ -942,9 +981,41 @@ const MessageRow = React.memo(function MessageRow({ message, onEdit }: { message
     )
   }
 
+  const copyText = (): void => {
+    const el = contentRef.current
+    const plain = el?.innerText ?? message.text
+    const html = el?.innerHTML ?? message.text
+    navigator.clipboard.write([
+      new ClipboardItem({
+        'text/plain': new Blob([plain], { type: 'text/plain' }),
+        'text/html': new Blob([html], { type: 'text/html' })
+      })
+    ])
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   return (
-    <div className="max-w-[85%] rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white/90">
-      <MarkdownRenderer>{message.text}</MarkdownRenderer>
+    <div className="group/msg relative max-w-[85%] rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white/90">
+      <button
+        onClick={copyText}
+        className={`absolute -right-8 top-2 rounded-md p-1 transition-colors ${copied ? 'text-green-400' : 'text-white/0 group-hover/msg:text-white/40 hover:!text-white/70'}`}
+        title="Copy response"
+      >
+        {copied ? (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        ) : (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+        )}
+      </button>
+      <div ref={contentRef}>
+        <MarkdownRenderer>{message.text}</MarkdownRenderer>
+      </div>
     </div>
   )
 })
