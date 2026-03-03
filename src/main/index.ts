@@ -13,13 +13,16 @@ async function scanSkillsDir(dir: string, scope: 'global' | 'project'): Promise<
     const entries = await readdir(dir, { withFileTypes: true })
     const skills: SkillInfo[] = []
     for (const entry of entries) {
-      if (!entry.isFile() || !entry.name.endsWith('.md')) continue
-      const filePath = join(dir, entry.name)
-      const content = await readFile(filePath, 'utf-8')
-      const firstLine = content.split('\n').find((l) => l.trim()) ?? ''
-      const description = firstLine.replace(/^#+\s*/, '').trim()
-      const name = entry.name.replace(/\.md$/, '')
-      skills.push({ name, description, scope, filePath })
+      if (!entry.isDirectory()) continue
+      const filePath = join(dir, entry.name, 'SKILL.md')
+      try {
+        const content = await readFile(filePath, 'utf-8')
+        const firstLine = content.split('\n').find((l) => l.trim()) ?? ''
+        const description = firstLine.replace(/^#+\s*/, '').trim()
+        skills.push({ name: entry.name, description, scope, filePath })
+      } catch {
+        // No SKILL.md in this folder, skip
+      }
     }
     return skills
   } catch {
@@ -141,8 +144,8 @@ ipcMain.handle(
 )
 
 ipcMain.handle('skills:list', async (_event, { cwd }: { cwd: string }) => {
-  const globalDir = join(homedir(), '.claude', 'commands')
-  const projectDir = join(cwd, '.claude', 'commands')
+  const globalDir = join(homedir(), '.claude', 'skills')
+  const projectDir = join(cwd, '.claude', 'skills')
   const [global, project] = await Promise.all([
     scanSkillsDir(globalDir, 'global'),
     scanSkillsDir(projectDir, 'project')
