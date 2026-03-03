@@ -28,6 +28,8 @@ export default function Chat({
   const [isLoading, setIsLoading] = useState(false)
   const [permissionQueue, setPermissionQueue] = useState<PermissionRequest[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
+  const messagesRef = useRef<HTMLDivElement>(null)
+  const [showJumpBottom, setShowJumpBottom] = useState(false)
   const cleanupRef = useRef<(() => void) | null>(null)
   const permCleanupRef = useRef<(() => void) | null>(null)
   // Tracks tool_start before tool_input arrives (contains name before input is parsed)
@@ -78,9 +80,27 @@ export default function Chat({
   const CONTEXT_LIMIT = 200_000
   const usagePct = usage ? Math.min(((usage.inputTokens + usage.outputTokens) / CONTEXT_LIMIT) * 100, 100) : 0
 
+  // Only auto-scroll when user is near the bottom (not reading history)
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const el = messagesRef.current
+    if (!el) return
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    if (distanceFromBottom < 150) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
   }, [messages])
+
+  // Track scroll position to show/hide "jump to bottom" button
+  useEffect(() => {
+    const el = messagesRef.current
+    if (!el) return
+    const onScroll = (): void => {
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+      setShowJumpBottom(distanceFromBottom > 300)
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [])
 
   const handlePickFolder = async (): Promise<void> => {
     const folder = await window.api.dialog.pickFolder()
@@ -704,7 +724,7 @@ export default function Chat({
       </div>
 
       {/* Messages */}
-      <div className={`flex-1 overflow-y-auto px-6 py-4 space-y-4 ${fontSize === 'small' ? 'text-[13px]' : fontSize === 'large' ? 'text-[17px]' : 'text-[15px]'}`}>
+      <div ref={messagesRef} className={`flex-1 overflow-y-auto px-6 py-4 space-y-4 relative ${fontSize === 'small' ? 'text-[13px]' : fontSize === 'large' ? 'text-[17px]' : 'text-[15px]'}`}>
         {messages.length === 0 && !isLoading && (
           <div className="flex h-full flex-col items-center justify-center gap-3">
             <p className="text-[32px] font-semibold tracking-tight text-white/[0.07]">coide</p>
@@ -790,6 +810,19 @@ export default function Chat({
 
         <div ref={bottomRef} />
       </div>
+
+      {/* Jump to bottom */}
+      {showJumpBottom && (
+        <button
+          onClick={() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' })}
+          className="absolute left-1/2 -translate-x-1/2 bottom-[90px] z-10 rounded-full bg-white/[0.1] border border-white/[0.1] px-3 py-1.5 text-[11px] text-white/50 hover:text-white/80 hover:bg-white/[0.15] transition-all backdrop-blur-sm shadow-lg flex items-center gap-1.5"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+          Jump to bottom
+        </button>
+      )}
 
       {/* Input */}
       <div className="border-t border-white/[0.06] p-3 relative">
