@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar'
 import Chat from './components/Chat'
 import RightPanel from './components/RightPanel'
 import SessionSearch from './components/SessionSearch'
+import FilePreviewModal from './components/FilePreviewModal'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 
 export default function App(): React.JSX.Element {
@@ -27,6 +28,9 @@ export default function App(): React.JSX.Element {
 
       {/* Session search modal */}
       <SessionSearch />
+
+      {/* File preview modal */}
+      <FilePreviewModal />
     </div>
   )
 }

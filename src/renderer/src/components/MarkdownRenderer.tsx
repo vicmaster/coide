@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { getSingletonHighlighter, createJavaScriptRegexEngine } from 'shiki'
+import { useFilePreviewStore } from '../store/filePreview'
 
 const THEME = 'github-dark-dimmed'
 const LANGS = [
@@ -68,6 +69,13 @@ function CodeBlock({ language, code }: { language: string; code: string }): Reac
   )
 }
 
+// Matches file paths: must contain /, end with .ext, no spaces
+const FILE_PATH_RE = /^\.{0,2}\/\S+\.\w+$/
+
+function isFilePath(text: string): boolean {
+  return FILE_PATH_RE.test(text)
+}
+
 function MarkdownRendererInner({ children }: { children: string }): React.JSX.Element {
   return (
     <ReactMarkdown
@@ -83,6 +91,18 @@ function MarkdownRendererInner({ children }: { children: string }): React.JSX.El
           const isBlock = !!className || code.includes('\n')
 
           if (!isBlock) {
+            const text = String(children)
+            if (isFilePath(text)) {
+              return (
+                <code
+                  className="rounded bg-white/[0.08] px-1.5 py-0.5 text-[0.85em] font-mono text-blue-400/70 hover:text-blue-400 cursor-pointer transition-colors"
+                  onClick={() => useFilePreviewStore.getState().open(text)}
+                  {...props}
+                >
+                  {children}
+                </code>
+              )
+            }
             return (
               <code
                 className="rounded bg-white/[0.08] px-1.5 py-0.5 text-[0.85em] font-mono text-white/80"

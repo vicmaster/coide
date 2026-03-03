@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import type { ToolCallMessage } from '../store/sessions'
 import DiffViewer from './DiffViewer'
 import { buildDiffFromToolInput } from '../utils/diff'
+import { useFilePreviewStore } from '../store/filePreview'
 
 const TOOL_ICONS: Record<string, string> = {
   Bash: '$',
@@ -41,12 +42,15 @@ function inputSummary(name: string, input: Record<string, unknown>): string {
   return first != null ? String(first).slice(0, 60) : ''
 }
 
+const FILE_TOOLS = new Set(['Read', 'Edit', 'Write'])
+
 function ToolCallCardInner({ message }: { message: ToolCallMessage }): React.JSX.Element {
   const isFileOp = message.tool_name === 'Edit' || message.tool_name === 'Write'
   const [expanded, setExpanded] = useState(isFileOp)
   const done = message.result !== undefined
   const denied = message.denied === true
   const summary = inputSummary(message.tool_name, message.input)
+  const hasFilePath = FILE_TOOLS.has(message.tool_name) && !!summary
 
   const diff = isFileOp
     ? buildDiffFromToolInput(message.tool_name, message.input, message.originalContent)
@@ -93,7 +97,19 @@ function ToolCallCardInner({ message }: { message: ToolCallMessage }): React.JSX
 
         {/* Summary */}
         {summary && !denied && (
-          <span className="text-white/25 font-mono truncate min-w-0">{summary}</span>
+          hasFilePath ? (
+            <span
+              className="text-blue-400/60 hover:text-blue-400 font-mono truncate min-w-0 cursor-pointer transition-colors"
+              onClick={(e) => {
+                e.stopPropagation()
+                useFilePreviewStore.getState().open(summary)
+              }}
+            >
+              {summary}
+            </span>
+          ) : (
+            <span className="text-white/25 font-mono truncate min-w-0">{summary}</span>
+          )
         )}
 
         {/* Expand toggle */}
