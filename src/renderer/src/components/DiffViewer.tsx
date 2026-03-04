@@ -6,6 +6,12 @@ import { detectLanguage } from '../utils/diff'
 // Use local monaco-editor instead of CDN (which may not load in Electron)
 loader.config({ monaco })
 
+// Disable Monaco's built-in workers (we only use it for diffs, not editing)
+// This prevents the "ts.worker.js does not exist" warning from Vite
+self.MonacoEnvironment = {
+  getWorker: () => new Worker(URL.createObjectURL(new Blob([''], { type: 'text/javascript' })))
+}
+
 const THEME_NAME = 'coide-dark'
 
 function useCoideTheme(): boolean {
