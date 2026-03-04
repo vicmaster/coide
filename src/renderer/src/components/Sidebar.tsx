@@ -24,7 +24,7 @@ export default function Sidebar(): React.JSX.Element {
         <button
           onClick={() => window.dispatchEvent(new Event('coide:toggle-search'))}
           className="p-1 rounded text-white/25 hover:text-white/60 hover:bg-white/5 transition-colors"
-          title="Search sessions (Cmd+F)"
+          title="Search sessions (⇧⌘F)"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8" />

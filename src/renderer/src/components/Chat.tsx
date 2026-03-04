@@ -6,6 +6,9 @@ import ToolCallCard from './ToolCallCard'
 import PermissionDialog, { type PermissionRequest } from './PermissionDialog'
 import SlashAutocomplete, { useSlashItems, type AutocompleteItem } from './SlashAutocomplete'
 import SettingsModal from './SettingsModal'
+import InSessionSearchBar from './InSessionSearchBar'
+import { findMatches } from '../utils/inSessionSearch'
+import { useHighlightMatches } from '../hooks/useHighlightMatches'
 
 type ClaudeEvent =
   | { type: 'tool_start'; tool_id: string; tool_name: string }
@@ -41,6 +44,9 @@ export default function Chat({
   const [copied, setCopied] = useState(false)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeMatchIndex, setActiveMatchIndex] = useState(0)
   const dragCounterRef = useRef(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -107,6 +113,44 @@ export default function Chat({
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => el.removeEventListener('scroll', onScroll)
   }, [])
+
+  // In-session search: toggle, close on session switch, highlight matches
+  useEffect(() => {
+    const toggle = (): void => setSearchOpen((o) => !o)
+    window.addEventListener('coide:toggle-insession-search', toggle)
+    return () => window.removeEventListener('coide:toggle-insession-search', toggle)
+  }, [])
+
+  useEffect(() => {
+    setSearchOpen(false)
+    setSearchQuery('')
+    setActiveMatchIndex(0)
+  }, [activeSessionId])
+
+  const searchMatches = searchOpen ? findMatches(messages, searchQuery) : []
+  const searchMatchCount = searchMatches.length
+
+  useEffect(() => {
+    setActiveMatchIndex(0)
+  }, [searchQuery])
+
+  const handleSearchNext = useCallback(() => {
+    if (searchMatchCount === 0) return
+    setActiveMatchIndex((i) => (i + 1) % searchMatchCount)
+  }, [searchMatchCount])
+
+  const handleSearchPrev = useCallback(() => {
+    if (searchMatchCount === 0) return
+    setActiveMatchIndex((i) => (i - 1 + searchMatchCount) % searchMatchCount)
+  }, [searchMatchCount])
+
+  const handleSearchClose = useCallback(() => {
+    setSearchOpen(false)
+    setSearchQuery('')
+    setActiveMatchIndex(0)
+  }, [])
+
+  useHighlightMatches(messagesRef, searchOpen ? searchQuery : '', activeMatchIndex)
 
   const handlePickFolder = async (): Promise<void> => {
     const folder = await window.api.dialog.pickFolder()
@@ -737,6 +781,18 @@ export default function Chat({
           </button>
           {messages.length > 0 && (
             <button
+              onClick={() => setSearchOpen((o) => !o)}
+              title="Find in conversation (⌘F)"
+              className={`rounded-md px-2 py-0.5 transition-colors ${searchOpen ? 'text-white/50' : 'text-white/25 hover:text-white/50'}`}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </button>
+          )}
+          {messages.length > 0 && (
+            <button
               onClick={copyConversation}
               title="Copy conversation as markdown"
               className={`rounded-md px-2 py-0.5 transition-colors ${copied ? 'text-green-400' : 'text-white/25 hover:text-white/50'}`}
@@ -764,6 +820,19 @@ export default function Chat({
         </div>
       </div>
 
+      {/* In-session search bar */}
+      {searchOpen && (
+        <InSessionSearchBar
+          query={searchQuery}
+          onQueryChange={setSearchQuery}
+          matchCount={searchMatchCount}
+          activeIndex={activeMatchIndex}
+          onNext={handleSearchNext}
+          onPrev={handleSearchPrev}
+          onClose={handleSearchClose}
+        />
+      )}
+
       {/* Messages */}
       <div ref={messagesRef} className={`flex-1 overflow-y-auto px-6 py-4 space-y-4 relative ${fontSize === 'small' ? 'text-[13px]' : fontSize === 'large' ? 'text-[17px]' : 'text-[15px]'}`}>
         {messages.length === 0 && !isLoading && (
@@ -777,7 +846,7 @@ export default function Chat({
           if (editingMessageId === msg.id && msg.role === 'user') {
             const textMsg = msg as TextMessage
             return (
-              <div key={msg.id} className="flex justify-end">
+              <div key={msg.id} data-message-id={msg.id} className="flex justify-end">
                 <div className="max-w-[75%] w-full">
                   {textMsg.images && textMsg.images.length > 0 && (
                     <div className="flex gap-2 flex-wrap mb-2 justify-end">
@@ -825,11 +894,12 @@ export default function Chat({
             )
           }
           return (
-            <MessageRow
-              key={msg.id}
-              message={msg}
-              onEdit={msg.role === 'user' && !isLoading ? (id, text) => { setEditingMessageId(id); setEditText(text) } : undefined}
-            />
+            <div key={msg.id} data-message-id={msg.id}>
+              <MessageRow
+                message={msg}
+                onEdit={msg.role === 'user' && !isLoading ? (id, text) => { setEditingMessageId(id); setEditText(text) } : undefined}
+              />
+            </div>
           )
         })}
 

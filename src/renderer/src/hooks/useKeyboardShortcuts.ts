@@ -5,8 +5,15 @@ export function useKeyboardShortcuts(): void {
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
       if (e.metaKey) {
-        // Cmd+F — Toggle session search
-        if (e.key === 'f') {
+        // Cmd+F — Toggle in-session search (find in conversation)
+        if (e.key === 'f' && !e.shiftKey) {
+          e.preventDefault()
+          window.dispatchEvent(new Event('coide:toggle-insession-search'))
+          return
+        }
+
+        // Cmd+Shift+F — Toggle session search (cross-session)
+        if (e.key === 'f' && e.shiftKey) {
           e.preventDefault()
           window.dispatchEvent(new Event('coide:toggle-search'))
           return

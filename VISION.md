@@ -266,4 +266,4 @@ Electron Renderer Process (React)
 - [x] Hook configuration UI — visualize and edit hooks visually
 - [x] Copy conversation as ChatGPT format — export messages as shareable markdown
 - [x] Jump to bottom button — floating pill when scrolled up, smart auto-scroll that doesn't interrupt reading
-- [ ] In-session search — find text in current session with match highlighting
+- [x] In-session search — find text in current session with match highlighting

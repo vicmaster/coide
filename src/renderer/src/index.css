@@ -52,3 +52,16 @@ button, input, textarea, a, [role="button"] {
 .monaco-editor .monaco-scrollable-element {
   background-color: #111111 !important;
 }
+
+/* In-session search highlights */
+mark.coide-search-highlight {
+  background: rgba(250, 204, 21, 0.3);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+mark.coide-search-highlight-active {
+  background: rgba(250, 204, 21, 0.6);
+  box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.4);
+}
