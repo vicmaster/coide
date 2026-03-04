@@ -235,6 +235,7 @@ Electron Renderer Process (React)
 - [x] Breakdown: input tokens, output tokens, cache stats (shown when > 0)
 - [x] Files in Context: derived from Read/Edit/Write/Glob/Grep tool calls, deduplicated
 - [x] Usage and files cleared on `/clear`, persisted with session via Zustand
+- [x] MCP Servers tab — reads global `~/.claude/settings.json` and project `.mcp.json`, shows server cards with scope badges
 
 ---
 
@@ -267,3 +268,4 @@ Electron Renderer Process (React)
 - [x] Copy conversation as ChatGPT format — export messages as shareable markdown
 - [x] Jump to bottom button — floating pill when scrolled up, smart auto-scroll that doesn't interrupt reading
 - [x] In-session search — find text in current session with match highlighting
+- [x] MCP servers panel — read-only view of active MCP servers (global + project) in right panel

@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react'
 import { useSessionsStore, type Task, type Agent, type ToolCallMessage } from '../store/sessions'
 import FileChangelog from './FileChangelog'
 
-type Tab = 'agents' | 'todo' | 'context' | 'files'
+type Tab = 'agents' | 'todo' | 'context' | 'files' | 'mcp'
 
 export default function RightPanel(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<Tab>('agents')
@@ -12,7 +12,7 @@ export default function RightPanel(): React.JSX.Element {
       {/* Header — matches sidebar and chat header height */}
       <div className="flex items-end px-3 pt-[46px] pb-2.5 border-b border-white/[0.06]">
         <div className="flex gap-0.5">
-          {(['agents', 'todo', 'context', 'files'] as Tab[]).map((tab) => (
+          {(['agents', 'todo', 'context', 'files', 'mcp'] as Tab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -22,7 +22,7 @@ export default function RightPanel(): React.JSX.Element {
                   : 'text-white/30 hover:text-white/55 hover:bg-white/5'
               }`}
             >
-              {tab}
+              {tab === 'mcp' ? 'MCP' : tab}
             </button>
           ))}
         </div>
@@ -34,6 +34,7 @@ export default function RightPanel(): React.JSX.Element {
         {activeTab === 'todo' && <TodoList />}
         {activeTab === 'context' && <ContextTracker />}
         {activeTab === 'files' && <FileChangelog />}
+        {activeTab === 'mcp' && <McpPanel />}
       </div>
     </aside>
   )
@@ -414,6 +415,70 @@ function ContextTracker(): React.JSX.Element {
           </p>
         </div>
       )}
+    </div>
+  )
+}
+
+type McpServer = { name: string; command?: string; args?: string[]; url?: string; scope: 'global' | 'project' }
+
+function McpPanel(): React.JSX.Element {
+  const [servers, setServers] = useState<McpServer[]>([])
+  const [loading, setLoading] = useState(true)
+  const cwd = useSessionsStore((s) => s.sessions.find((sess) => sess.id === s.activeSessionId)?.cwd ?? '')
+
+  useEffect(() => {
+    if (!cwd) { setLoading(false); return }
+    window.api.mcp.list(cwd).then((result: McpServer[]) => {
+      setServers(result)
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  }, [cwd])
+
+  if (loading) {
+    return (
+      <div>
+        <SectionLabel label="MCP Servers" />
+        <p className="text-[11px] text-white/20 text-center mt-4">Loading...</p>
+      </div>
+    )
+  }
+
+  if (servers.length === 0) {
+    return (
+      <div>
+        <SectionLabel label="MCP Servers" />
+        <p className="text-[11px] text-white/20 text-center mt-4">No MCP servers configured</p>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <SectionLabel label="MCP Servers" />
+      <div className="space-y-1.5">
+        {servers.map((server) => (
+          <div
+            key={`${server.scope}-${server.name}`}
+            className="rounded-lg border border-white/[0.06] bg-white/[0.03] p-2.5"
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs text-white/60 font-medium truncate">{server.name}</span>
+              <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                server.scope === 'global'
+                  ? 'bg-blue-500/15 text-blue-400/70'
+                  : 'bg-green-500/15 text-green-400/70'
+              }`}>
+                {server.scope}
+              </span>
+            </div>
+            <p className="text-[10px] text-white/25 font-mono truncate">
+              {server.url
+                ? server.url
+                : [server.command, ...(server.args ?? [])].join(' ')}
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

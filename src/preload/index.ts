@@ -45,6 +45,9 @@ const api = {
     revertFile: (filePath: string, originalContent: string | null): Promise<{ success?: boolean; error?: string }> =>
       ipcRenderer.invoke('fs:revertFile', { filePath, originalContent })
   },
+  mcp: {
+    list: (cwd: string) => ipcRenderer.invoke('mcp:list', { cwd })
+  },
   hooks: {
     read: (scope: string, cwd: string) => ipcRenderer.invoke('hooks:read', { scope, cwd }),
     write: (scope: string, hooks: unknown, cwd: string) =>

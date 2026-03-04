@@ -186,6 +186,37 @@ ipcMain.handle('skills:delete', async (_event, { filePath }: { filePath: string 
   }
 })
 
+ipcMain.handle('mcp:list', async (_event, { cwd }: { cwd: string }) => {
+  type McpEntry = { name: string; command?: string; args?: string[]; url?: string; scope: 'global' | 'project' }
+  const results: McpEntry[] = []
+
+  // Global: ~/.claude/settings.json → mcpServers
+  try {
+    const raw = await readFile(join(homedir(), '.claude', 'settings.json'), 'utf-8')
+    const json = JSON.parse(raw)
+    const servers = json.mcpServers ?? {}
+    for (const [name, cfg] of Object.entries(servers) as [string, Record<string, unknown>][]) {
+      results.push({ name, command: cfg.command as string | undefined, args: cfg.args as string[] | undefined, url: cfg.url as string | undefined, scope: 'global' })
+    }
+  } catch {
+    // no global settings
+  }
+
+  // Project: <cwd>/.mcp.json → mcpServers
+  try {
+    const raw = await readFile(join(cwd, '.mcp.json'), 'utf-8')
+    const json = JSON.parse(raw)
+    const servers = json.mcpServers ?? {}
+    for (const [name, cfg] of Object.entries(servers) as [string, Record<string, unknown>][]) {
+      results.push({ name, command: cfg.command as string | undefined, args: cfg.args as string[] | undefined, url: cfg.url as string | undefined, scope: 'project' })
+    }
+  } catch {
+    // no project mcp config
+  }
+
+  return results
+})
+
 ipcMain.handle(
   'hooks:read',
   async (_event, { scope, cwd }: { scope: 'global' | 'project'; cwd: string }) => {
