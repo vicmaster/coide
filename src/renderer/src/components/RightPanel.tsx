@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { useSessionsStore, type Task, type Agent, type ToolCallMessage } from '../store/sessions'
 import FileChangelog from './FileChangelog'
 
@@ -48,6 +48,7 @@ function SectionLabel({ label }: { label: string }): React.JSX.Element {
 }
 
 function AgentTree(): React.JSX.Element {
+  const [viewMode, setViewMode] = useState<'list' | 'timeline'>('list')
   const agents = useSessionsStore((state) => {
     const session = state.sessions.find((s) => s.id === state.activeSessionId)
     return session?.agents ?? []
@@ -63,21 +64,43 @@ function AgentTree(): React.JSX.Element {
       {total > 0 ? (
         <div className="flex items-center justify-between px-1 mb-2">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-white/20">Agent Tree</p>
-          <span className="text-[10px] text-white/30 font-mono">{doneCount}/{total} done</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-white/30 font-mono">{doneCount}/{total} done</span>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-0.5 rounded ${viewMode === 'list' ? 'text-white/50' : 'text-white/20 hover:text-white/40'}`}
+              title="List view"
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 3h10M1 6h10M1 9h10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+            </button>
+            <button
+              onClick={() => setViewMode('timeline')}
+              className={`p-0.5 rounded ${viewMode === 'timeline' ? 'text-white/50' : 'text-white/20 hover:text-white/40'}`}
+              title="Timeline view"
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="2" width="6" height="2" rx="0.5" fill="currentColor"/><rect x="3" y="5" width="8" height="2" rx="0.5" fill="currentColor"/><rect x="2" y="8" width="5" height="2" rx="0.5" fill="currentColor"/></svg>
+            </button>
+          </div>
         </div>
       ) : (
         <SectionLabel label="Agent Tree" />
       )}
-      <AgentNodeRow name="Orchestrator" status={orchestratorStatus} depth={0} />
-      {agents.map((agent) => (
-        <AgentNodeRow
-          key={agent.toolId}
-          name={agent.name}
-          status={agent.status}
-          depth={1}
-          meta={agent}
-        />
-      ))}
+      {viewMode === 'list' ? (
+        <>
+          <AgentNodeRow name="Orchestrator" status={orchestratorStatus} depth={0} />
+          {agents.map((agent) => (
+            <AgentNodeRow
+              key={agent.toolId}
+              name={agent.name}
+              status={agent.status}
+              depth={1}
+              meta={agent}
+            />
+          ))}
+        </>
+      ) : (
+        <TimelineView agents={agents} />
+      )}
       {total === 0 && (
         <p className="mt-4 text-[11px] text-white/20 text-center">
           Agents appear here during a session
@@ -119,12 +142,12 @@ function AgentNodeRow({
 
   return (
     <div
-      className="flex items-start gap-2 rounded-md px-2 py-1.5 hover:bg-white/5 transition-colors"
+      className="group flex items-start gap-2 rounded-md px-2 py-1.5 hover:bg-white/5 transition-colors"
       style={{ paddingLeft: `${depth * 14 + 8}px` }}
     >
       {depth > 0 && <span className="text-[10px] text-white/15 mt-0.5">└</span>}
       <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 mt-1 ${statusColors[status]}`} />
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <span className="text-xs text-white/50">{name}</span>
         {meta?.subagentType && (
           <span className="ml-1.5 text-[10px] text-white/20">{meta.subagentType}</span>
@@ -133,6 +156,88 @@ function AgentNodeRow({
           <p className="text-[10px] text-white/20 mt-0.5">{metaParts.join(' · ')}</p>
         )}
       </div>
+      {status === 'running' && meta && (
+        <button
+          onClick={() => window.api.claude.abort()}
+          className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 text-white/30 hover:text-red-400 transition-all flex-shrink-0 mt-0.5"
+          title="Cancel (stops entire session)"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+        </button>
+      )}
+    </div>
+  )
+}
+
+function TimelineView({ agents }: { agents: Agent[] }): React.JSX.Element {
+  const [tick, setTick] = useState(0)
+
+  const hasRunning = agents.some((a) => a.status === 'running')
+
+  useEffect(() => {
+    if (!hasRunning) return
+    const id = setInterval(() => setTick((t) => t + 1), 500)
+    return () => clearInterval(id)
+  }, [hasRunning])
+
+  const now = Date.now()
+  const timelineStart = Math.min(...agents.map((a) => a.startedAt))
+  const timelineEnd = Math.max(
+    ...agents.map((a) => {
+      if (a.status === 'running') return now
+      return a.startedAt + (a.durationMs ?? 0)
+    })
+  )
+  const totalSpan = Math.max(timelineEnd - timelineStart, 1)
+
+  // suppress unused var warning — tick drives re-render
+  void tick
+
+  return (
+    <div className="space-y-1">
+      {agents.map((agent) => {
+        const start = agent.startedAt - timelineStart
+        const duration =
+          agent.status === 'running' ? now - agent.startedAt : (agent.durationMs ?? 0)
+        const leftPct = (start / totalSpan) * 100
+        const widthPct = Math.max((duration / totalSpan) * 100, 2)
+
+        const barColor =
+          agent.status === 'running'
+            ? 'bg-blue-400/70'
+            : agent.status === 'failed'
+              ? 'bg-red-400/70'
+              : 'bg-green-400/70'
+
+        const metaParts: string[] = []
+        if (duration > 0) metaParts.push(formatDuration(duration))
+        if (agent.totalTokens != null)
+          metaParts.push(`${(agent.totalTokens / 1000).toFixed(1)}k tok`)
+
+        return (
+          <div key={agent.toolId} className="group flex items-center gap-1.5">
+            <span className="text-[10px] text-white/40 w-[72px] truncate flex-shrink-0" title={agent.name}>
+              {agent.name}
+            </span>
+            <div className="flex-1 relative h-4">
+              <div
+                className={`absolute top-0.5 h-3 rounded-sm ${barColor} ${agent.status === 'running' ? 'animate-pulse' : ''}`}
+                style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
+                title={metaParts.join(' · ') || agent.name}
+              />
+            </div>
+            {agent.status === 'running' && (
+              <button
+                onClick={() => window.api.claude.abort()}
+                className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 text-white/30 hover:text-red-400 transition-all flex-shrink-0"
+                title="Cancel (stops entire session)"
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+              </button>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }

@@ -242,7 +242,7 @@ export default function Chat({
         }
 
         // Sub-agent spawned via Task tool
-        if (tool_name === 'Task') {
+        if (tool_name === 'Agent' || tool_name === 'Task') {
           const inp = event.input as Record<string, unknown>
           addAgent(sid, {
             toolId: event.tool_id,

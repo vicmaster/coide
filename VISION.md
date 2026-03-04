@@ -261,7 +261,7 @@ Electron Renderer Process (React)
 - [x] Context limit warning — visual alert when approaching token limit
 - [x] Click-to-edit past messages — re-run or edit any previous user message
 - [x] Inline file preview — click a filename in chat to open a preview pane
-- [ ] Agent tree enhancements — timeline view, pause/cancel/re-run individual sub-agents
+- [x] Agent tree enhancements — timeline view, pause/cancel/re-run individual sub-agents
 - [x] Skill editor UI — create/edit skills without touching files
 - [x] Hook configuration UI — visualize and edit hooks visually
 - [x] Copy conversation as ChatGPT format — export messages as shareable markdown
