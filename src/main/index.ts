@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog, nativeImage } from 'electron'
 import { join } from 'path'
 import { readdir, readFile, mkdir, writeFile, rm } from 'fs/promises'
 import { homedir, tmpdir } from 'os'
@@ -42,6 +42,7 @@ function createWindow(): void {
     show: false,
     autoHideMenuBar: true,
     titleBarStyle: 'hiddenInset',
+    icon: join(__dirname, '../../resources/icon.png'),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
@@ -234,6 +235,10 @@ ipcMain.handle(
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.coide')
+  if (process.platform === 'darwin') {
+    const icon = nativeImage.createFromPath(join(__dirname, '../../resources/icon.png'))
+    app.dock.setIcon(icon)
+  }
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
