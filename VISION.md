@@ -246,6 +246,7 @@ Electron Renderer Process (React)
 - [x] Tool call cards (collapsible, shows bash runs / file reads / writes)
 - [x] Skip-permissions toggle (auto-approve all tools, persisted setting)
 - [x] Visual diff viewer with accept / reject
+- [x] Error detection — Warp-style error highlighting for Bash failures with "Fix this" / "Explain error" actions
 
 ### Later
 - [x] Agent tree panel (live sub-agent hierarchy)

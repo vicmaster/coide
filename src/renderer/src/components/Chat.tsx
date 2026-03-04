@@ -897,6 +897,7 @@ export default function Chat({
             <div key={msg.id} data-message-id={msg.id}>
               <MessageRow
                 message={msg}
+                isLoading={isLoading}
                 onEdit={msg.role === 'user' && !isLoading ? (id, text) => { setEditingMessageId(id); setEditText(text) } : undefined}
               />
             </div>
@@ -1005,12 +1006,12 @@ export default function Chat({
   )
 }
 
-const MessageRow = React.memo(function MessageRow({ message, onEdit }: { message: Message; onEdit?: (id: string, text: string) => void }): React.JSX.Element {
+const MessageRow = React.memo(function MessageRow({ message, isLoading, onEdit }: { message: Message; isLoading?: boolean; onEdit?: (id: string, text: string) => void }): React.JSX.Element {
   const [copied, setCopied] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
 
   if (message.role === 'tool_call') {
-    return <ToolCallCard message={message as ToolCallMessage} />
+    return <ToolCallCard message={message as ToolCallMessage} isLoading={isLoading} />
   }
 
   if (message.role === 'user') {

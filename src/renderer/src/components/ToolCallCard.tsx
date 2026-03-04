@@ -1,8 +1,10 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import type { ToolCallMessage } from '../store/sessions'
+import { useSessionsStore } from '../store/sessions'
 import DiffViewer from './DiffViewer'
 import { buildDiffFromToolInput } from '../utils/diff'
 import { useFilePreviewStore } from '../store/filePreview'
+import { detectError, type DetectedError } from '../utils/errorDetection'
 
 const TOOL_ICONS: Record<string, string> = {
   Bash: '$',
@@ -42,9 +44,37 @@ function inputSummary(name: string, input: Record<string, unknown>): string {
   return first != null ? String(first).slice(0, 60) : ''
 }
 
+function truncateResult(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text
+  return text.slice(0, maxLen) + '\n... (truncated)'
+}
+
+function handleFixThis(message: ToolCallMessage): void {
+  const command =
+    message.tool_name === 'Bash' ? String(message.input.command ?? '').split('\n')[0] : ''
+
+  const prompt = command
+    ? `The command \`${command}\` failed with this error:\n\n\`\`\`\n${truncateResult(message.result!, 500)}\n\`\`\`\n\nPlease fix this error.`
+    : `The ${message.tool_name} tool failed with this error:\n\n\`\`\`\n${truncateResult(message.result!, 500)}\n\`\`\`\n\nPlease fix this error.`
+
+  useSessionsStore.getState().setPendingAction({ type: 'send', text: prompt })
+}
+
+function handleExplainError(message: ToolCallMessage): void {
+  const prompt = `Explain this error in simple terms:\n\n\`\`\`\n${truncateResult(message.result!, 500)}\n\`\`\`\n\nWhat went wrong and what are possible fixes?`
+
+  useSessionsStore.getState().setPendingAction({ type: 'send', text: prompt })
+}
+
 const FILE_TOOLS = new Set(['Read', 'Edit', 'Write'])
 
-function ToolCallCardInner({ message }: { message: ToolCallMessage }): React.JSX.Element {
+function ToolCallCardInner({
+  message,
+  isLoading
+}: {
+  message: ToolCallMessage
+  isLoading?: boolean
+}): React.JSX.Element {
   const isFileOp = message.tool_name === 'Edit' || message.tool_name === 'Write'
   const [expanded, setExpanded] = useState(isFileOp)
   const done = message.result !== undefined
@@ -56,14 +86,36 @@ function ToolCallCardInner({ message }: { message: ToolCallMessage }): React.JSX
     ? buildDiffFromToolInput(message.tool_name, message.input, message.originalContent)
     : null
 
+  const error: DetectedError | null = useMemo(
+    () => (done && !denied && message.result ? detectError(message.tool_name, message.result) : null),
+    [done, denied, message.result, message.tool_name]
+  )
+
+  // Auto-expand on error
+  useEffect(() => {
+    if (error) setExpanded(true)
+  }, [error !== null])
+
   const dotClass = denied
     ? 'bg-red-500/60'
-    : done
-      ? 'bg-green-500/60'
-      : 'bg-yellow-400/70 animate-pulse'
+    : error?.severity === 'error'
+      ? 'bg-red-400/70'
+      : error?.severity === 'warning'
+        ? 'bg-orange-400/70'
+        : done
+          ? 'bg-green-500/60'
+          : 'bg-yellow-400/70 animate-pulse'
+
+  const borderClass = denied
+    ? 'border-red-500/[0.12] bg-red-500/[0.03]'
+    : error?.severity === 'error'
+      ? 'border-red-400/[0.15] bg-red-500/[0.04]'
+      : error?.severity === 'warning'
+        ? 'border-orange-400/[0.12] bg-orange-500/[0.03]'
+        : 'border-white/[0.07] bg-white/[0.025]'
 
   return (
-    <div className={`my-1 rounded-lg border overflow-hidden text-xs ${denied ? 'border-red-500/[0.12] bg-red-500/[0.03]' : 'border-white/[0.07] bg-white/[0.025]'}`}>
+    <div className={`my-1 rounded-lg border overflow-hidden text-xs ${borderClass}`}>
       {/* Header row */}
       <button
         onClick={() => setExpanded((v) => !v)}
@@ -84,7 +136,9 @@ function ToolCallCardInner({ message }: { message: ToolCallMessage }): React.JSX
 
         {/* Status labels for file ops */}
         {isFileOp && denied && (
-          <span className="text-[10px] text-red-400/50 flex-shrink-0">rejected — file not modified</span>
+          <span className="text-[10px] text-red-400/50 flex-shrink-0">
+            rejected — file not modified
+          </span>
         )}
         {isFileOp && done && !denied && (
           <span className="text-[10px] text-green-400/40 flex-shrink-0">file updated</span>
@@ -95,8 +149,19 @@ function ToolCallCardInner({ message }: { message: ToolCallMessage }): React.JSX
           <span className="text-[10px] text-red-400/50 flex-shrink-0">denied</span>
         )}
 
+        {/* Error summary badge */}
+        {error && (
+          <span
+            className={`text-[10px] flex-shrink-0 ${
+              error.severity === 'error' ? 'text-red-400/70' : 'text-orange-400/60'
+            }`}
+          >
+            {error.summary}
+          </span>
+        )}
+
         {/* Summary */}
-        {summary && !denied && (
+        {summary && !denied && !error && (
           hasFilePath ? (
             <span
               className="text-blue-400/60 hover:text-blue-400 font-mono truncate min-w-0 cursor-pointer transition-colors"
@@ -145,6 +210,26 @@ function ToolCallCardInner({ message }: { message: ToolCallMessage }): React.JSX
               <pre className="text-[11px] text-white/50 font-mono overflow-x-auto whitespace-pre-wrap break-words leading-relaxed max-h-48 overflow-y-auto">
                 {message.result || '(empty)'}
               </pre>
+            </div>
+          )}
+
+          {/* Error action buttons */}
+          {done && !denied && error && (
+            <div className="px-3 py-2 border-t border-white/[0.05] flex gap-2">
+              <button
+                disabled={isLoading}
+                onClick={() => handleFixThis(message)}
+                className="text-[11px] px-2.5 py-1 rounded bg-red-500/10 text-red-400/80 hover:bg-red-500/20 hover:text-red-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Fix this
+              </button>
+              <button
+                disabled={isLoading}
+                onClick={() => handleExplainError(message)}
+                className="text-[11px] px-2.5 py-1 rounded bg-white/[0.05] text-white/40 hover:bg-white/[0.08] hover:text-white/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Explain error
+              </button>
             </div>
           )}
 
