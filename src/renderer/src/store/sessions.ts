@@ -310,6 +310,7 @@ export const useSessionsStore = create<SessionsStore>()(
         sessions: state.sessions,
         activeSessionId: state.activeSessionId
       }),
+      skipHydration: true,
       merge: (persisted, current) => {
         const stored = persisted as Partial<SessionsStore> | undefined
         const sessions = (stored?.sessions ?? current.sessions).map((s) => ({
@@ -319,7 +320,7 @@ export const useSessionsStore = create<SessionsStore>()(
           usage: s.usage ?? { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 }
         }))
         return { ...current, ...stored, sessions }
-      }
+      },
     }
   )
 )

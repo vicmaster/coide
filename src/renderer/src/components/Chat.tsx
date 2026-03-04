@@ -9,6 +9,9 @@ import SettingsModal from './SettingsModal'
 import InSessionSearchBar from './InSessionSearchBar'
 import { findMatches } from '../utils/inSessionSearch'
 import { useHighlightMatches } from '../hooks/useHighlightMatches'
+import type { Message } from '../store/sessions'
+
+const EMPTY_MESSAGES: Message[] = []
 
 type ClaudeEvent =
   | { type: 'tool_start'; tool_id: string; tool_name: string }
@@ -54,6 +57,11 @@ export default function Chat({
   const updateSettings = useSettingsStore((s) => s.updateSettings)
   const fontSize = useSettingsStore((s) => s.fontSize)
   const defaultCwd = useSettingsStore((s) => s.defaultCwd)
+  const [homedir, setHomedir] = useState('')
+
+  useEffect(() => {
+    window.api.system.homedir().then(setHomedir)
+  }, [])
 
   // Sync all settings to main process on mount and whenever any setting changes
   useEffect(() => {
@@ -67,22 +75,13 @@ export default function Chat({
   }, [])
 
   const activeSessionId = useSessionsStore((state) => state.activeSessionId)
-  const messages = useSessionsStore((state) => {
-    const s = state.sessions.find((s) => s.id === state.activeSessionId)
-    return s?.messages ?? []
-  })
-  const cwd = useSessionsStore((state) => {
-    const s = state.sessions.find((s) => s.id === state.activeSessionId)
-    return s?.cwd ?? null
-  }) ?? localStorage.getItem('cwd') ?? defaultCwd
-  const claudeSessionId = useSessionsStore((state) => {
-    const s = state.sessions.find((s) => s.id === state.activeSessionId)
-    return s?.claudeSessionId ?? null
-  })
-  const usage = useSessionsStore((state) => {
-    const s = state.sessions.find((s) => s.id === state.activeSessionId)
-    return s?.usage ?? null
-  })
+  const activeSession = useSessionsStore((state) =>
+    state.sessions.find((s) => s.id === state.activeSessionId) ?? null
+  )
+  const messages = activeSession?.messages ?? EMPTY_MESSAGES
+  const cwd = activeSession?.cwd ?? localStorage.getItem('cwd') ?? (defaultCwd || homedir)
+  const claudeSessionId = activeSession?.claudeSessionId ?? null
+  const usage = activeSession?.usage ?? null
 
   const CONTEXT_LIMIT = 200_000
   const usagePct = usage ? Math.min(((usage.inputTokens + usage.outputTokens) / CONTEXT_LIMIT) * 100, 100) : 0

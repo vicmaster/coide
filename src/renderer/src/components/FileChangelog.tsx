@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useCallback, memo } from 'react'
-import { useSessionsStore } from '../store/sessions'
+import { useSessionsStore, type Message } from '../store/sessions'
 import { buildFileChangelog, type FileChangelogEntry, type FileStatus } from '../utils/changelog'
 import DiffViewer from './DiffViewer'
 
+const EMPTY_MESSAGES: Message[] = []
 const STATUS_BADGE: Record<FileStatus | 'reverted' | 'deleted', { label: string; className: string }> = {
   created: { label: 'new', className: 'bg-green-500/20 text-green-400' },
   modified: { label: 'modified', className: 'bg-blue-500/20 text-blue-400' },
@@ -14,7 +15,7 @@ const STATUS_BADGE: Record<FileStatus | 'reverted' | 'deleted', { label: string;
 export default function FileChangelog(): React.JSX.Element {
   const messages = useSessionsStore((state) => {
     const session = state.sessions.find((s) => s.id === state.activeSessionId)
-    return session?.messages ?? []
+    return session?.messages ?? EMPTY_MESSAGES
   })
 
   const entries = useMemo(() => buildFileChangelog(messages), [messages])

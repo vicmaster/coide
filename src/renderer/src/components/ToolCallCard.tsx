@@ -94,7 +94,7 @@ function ToolCallCardInner({
   // Auto-expand on error
   useEffect(() => {
     if (error) setExpanded(true)
-  }, [error !== null])
+  }, [error])
 
   const dotClass = denied
     ? 'bg-red-500/60'

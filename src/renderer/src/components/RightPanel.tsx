@@ -1,6 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react'
-import { useSessionsStore, type Task, type Agent, type ToolCallMessage } from '../store/sessions'
+import { useSessionsStore, type Task, type Agent, type ToolCallMessage, type SessionUsage, type Message } from '../store/sessions'
 import FileChangelog from './FileChangelog'
+
+const EMPTY_AGENTS: Agent[] = []
+const EMPTY_TASKS: Task[] = []
+const EMPTY_MESSAGES: Message[] = []
+const EMPTY_USAGE: SessionUsage = { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 }
 
 type Tab = 'agents' | 'todo' | 'context' | 'files' | 'mcp'
 
@@ -52,7 +57,7 @@ function AgentTree(): React.JSX.Element {
   const [viewMode, setViewMode] = useState<'list' | 'timeline'>('list')
   const agents = useSessionsStore((state) => {
     const session = state.sessions.find((s) => s.id === state.activeSessionId)
-    return session?.agents ?? []
+    return session?.agents ?? EMPTY_AGENTS
   })
 
   const doneCount = agents.filter((a) => a.status === 'done').length
@@ -246,7 +251,7 @@ function TimelineView({ agents }: { agents: Agent[] }): React.JSX.Element {
 function TodoList(): React.JSX.Element {
   const tasks = useSessionsStore((state) => {
     const session = state.sessions.find((s) => s.id === state.activeSessionId)
-    return session?.tasks ?? []
+    return session?.tasks ?? EMPTY_TASKS
   })
 
   const completed = tasks.filter((t) => t.status === 'completed').length
@@ -342,12 +347,12 @@ const FILE_TOOL_NAMES = new Set(['Read', 'Edit', 'Write', 'Glob', 'Grep'])
 function ContextTracker(): React.JSX.Element {
   const usage = useSessionsStore((state) => {
     const session = state.sessions.find((s) => s.id === state.activeSessionId)
-    return session?.usage ?? { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 }
+    return session?.usage ?? EMPTY_USAGE
   })
 
   const messages = useSessionsStore((state) => {
     const session = state.sessions.find((s) => s.id === state.activeSessionId)
-    return session?.messages ?? []
+    return session?.messages ?? EMPTY_MESSAGES
   })
 
   const total = usage.inputTokens + usage.outputTokens

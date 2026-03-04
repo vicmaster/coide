@@ -19,7 +19,7 @@ export const useSettingsStore = create<SettingsStore>()(
       merge: (persisted, current) => ({
         ...current,
         ...(persisted as Partial<SettingsStore>)
-      })
+      }),
     }
   )
 )

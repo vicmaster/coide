@@ -14,8 +14,8 @@ export const DEFAULT_SETTINGS: CoideSettings = {
   skipPermissions: false,
   notifications: true,
   systemPrompt: '',
-  claudeBinaryPath: '/Users/victor/.local/bin/claude',
-  defaultCwd: '/Users/victor/Projects',
+  claudeBinaryPath: 'claude',
+  defaultCwd: '',
   fontSize: 'medium',
   effort: ''
 }

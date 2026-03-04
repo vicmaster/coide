@@ -45,6 +45,9 @@ const api = {
     revertFile: (filePath: string, originalContent: string | null): Promise<{ success?: boolean; error?: string }> =>
       ipcRenderer.invoke('fs:revertFile', { filePath, originalContent })
   },
+  system: {
+    homedir: (): Promise<string> => ipcRenderer.invoke('system:homedir')
+  },
   mcp: {
     list: (cwd: string) => ipcRenderer.invoke('mcp:list', { cwd })
   },

@@ -11,6 +11,13 @@
     "preview": "electron-vite preview",
     "package": "npm run build && electron-builder"
   },
+  "build": {
+    "appId": "com.coide",
+    "productName": "Coide",
+    "mac": {
+      "icon": "resources/icon.icns"
+    }
+  },
   "dependencies": {
     "@anthropic-ai/claude-code": "latest",
     "@electron-toolkit/preload": "^3.0.2",

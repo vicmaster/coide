@@ -51,6 +51,7 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow!.show()
+    // DevTools: Cmd+Option+I in dev mode
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -185,6 +186,8 @@ ipcMain.handle('skills:delete', async (_event, { filePath }: { filePath: string 
     return { error: String(err) }
   }
 })
+
+ipcMain.handle('system:homedir', () => homedir())
 
 ipcMain.handle('mcp:list', async (_event, { cwd }: { cwd: string }) => {
   type McpEntry = { name: string; command?: string; args?: string[]; url?: string; scope: 'global' | 'project' }
