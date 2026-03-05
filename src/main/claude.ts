@@ -1,5 +1,7 @@
 import { BrowserWindow, Notification } from 'electron'
 import { appendFileSync, writeFileSync, readFileSync, unlinkSync, existsSync } from 'fs'
+import { homedir } from 'os'
+import { join } from 'path'
 import { type CoideSettings, DEFAULT_SETTINGS } from '../shared/types'
 // Use eval('require') to bypass vite/rollup bundling for native modules
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -13,6 +15,28 @@ function log(msg: string): void {
 }
 
 try { writeFileSync(LOG, '') } catch {}
+
+function resolveClaudeBinary(configured: string): string {
+  // If user set an absolute path, use it directly
+  if (configured && configured.startsWith('/')) return configured
+
+  // macOS GUI apps don't inherit shell PATH, so check common install locations
+  const candidates = [
+    join(homedir(), '.local', 'bin', 'claude'),
+    join(homedir(), '.npm-global', 'bin', 'claude'),
+    '/usr/local/bin/claude',
+    '/opt/homebrew/bin/claude'
+  ]
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      log(`Resolved claude binary: ${candidate}`)
+      return candidate
+    }
+  }
+
+  // Fallback to bare name (relies on PATH)
+  return configured || 'claude'
+}
 
 let notificationsEnabled = true
 
@@ -217,7 +241,7 @@ export function runClaude(
 
     const skipPermissions = settings.skipPermissions
     notificationsEnabled = settings.notifications
-    const claudeBin = settings.claudeBinaryPath || DEFAULT_SETTINGS.claudeBinaryPath
+    const claudeBin = resolveClaudeBinary(settings.claudeBinaryPath)
 
     // Use -p (print/non-interactive) for JSON event stream
     // Always skip CLI-level permissions — coide's own permission dialog is the gate
