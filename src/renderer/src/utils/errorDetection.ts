@@ -58,17 +58,37 @@ const ERROR_PATTERNS: Pattern[] = [
   { regex: /deprecated/im, summary: 'Deprecation warning', severity: 'warning' }
 ]
 
+// Lines matching these patterns are noise, not real errors/warnings
+const FALSE_POSITIVE_PATTERNS: RegExp[] = [
+  /^Ignoring\s+\S+\s+because its extensions are not built/i,
+  /^Source locally installed gems is ignoring/i,
+  /gem pristine/i,
+  /^WARNING:\s+You don't have .* in your PATH/i,
+  /^rbenv: .* is not installed/i,
+  /^nvm: .* is not yet installed/i
+]
+
+function stripFalsePositives(text: string): string {
+  return text
+    .split('\n')
+    .filter((line) => !FALSE_POSITIVE_PATTERNS.some((p) => p.test(line.trim())))
+    .join('\n')
+}
+
 export function detectError(toolName: string, result: string): DetectedError | null {
   if (toolName !== 'Bash') return null
   if (!result || result.length < 5) return null
 
+  const cleaned = stripFalsePositives(result)
+  if (cleaned.trim().length < 5) return null
+
   for (const pattern of ERROR_PATTERNS) {
-    const match = result.match(pattern.regex)
+    const match = cleaned.match(pattern.regex)
     if (match) {
       const summary = typeof pattern.summary === 'function' ? pattern.summary(match) : pattern.summary
 
       // Extract the matched line and surrounding context
-      const lines = result.split('\n')
+      const lines = cleaned.split('\n')
       const matchIdx = lines.findIndex((l) => pattern.regex.test(l))
       const matchedLines =
         matchIdx >= 0 ? lines.slice(Math.max(0, matchIdx), matchIdx + 3).filter(Boolean) : []
