@@ -12,7 +12,7 @@ export default function Sidebar(): React.JSX.Element {
   const handleNewSession = (): void => {
     const store = useSessionsStore.getState()
     const currentSession = store.sessions.find((s) => s.id === store.activeSessionId)
-    const cwd = currentSession?.cwd ?? localStorage.getItem('cwd') ?? '/Users/victor/Projects'
+    const cwd = currentSession?.cwd ?? localStorage.getItem('cwd') ?? ''
     createSession(cwd)
   }
 
@@ -94,7 +94,7 @@ export default function Sidebar(): React.JSX.Element {
               name = name.toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'imported-skill'
               const store = useSessionsStore.getState()
               const session = store.sessions.find((s) => s.id === store.activeSessionId)
-              const cwd = session?.cwd ?? localStorage.getItem('cwd') ?? '/Users/victor/Projects'
+              const cwd = session?.cwd ?? localStorage.getItem('cwd') ?? ''
               await window.api.skills.write('project', name, content, cwd)
               window.dispatchEvent(new Event('coide:skills-changed'))
             }}
@@ -171,7 +171,7 @@ function SkillsList(): React.JSX.Element {
 
   const cwd = useSessionsStore((state) => {
     const session = state.sessions.find((s) => s.id === state.activeSessionId)
-    return session?.cwd ?? localStorage.getItem('cwd') ?? '/Users/victor/Projects'
+    return session?.cwd ?? localStorage.getItem('cwd') ?? ''
   })
 
   const refresh = useCallback(() => {

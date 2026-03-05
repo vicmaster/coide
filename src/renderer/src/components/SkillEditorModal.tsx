@@ -48,7 +48,7 @@ export default function SkillEditorModal(): React.JSX.Element | null {
 
   const cwd = useSessionsStore((s) => {
     const session = s.sessions.find((sess) => sess.id === s.activeSessionId)
-    return session?.cwd ?? localStorage.getItem('cwd') ?? '/Users/victor/Projects'
+    return session?.cwd ?? localStorage.getItem('cwd') ?? ''
   })
 
   // Reset state when modal opens

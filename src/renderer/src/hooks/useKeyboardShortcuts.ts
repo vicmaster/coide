@@ -32,7 +32,7 @@ export function useKeyboardShortcuts(): void {
           e.preventDefault()
           const store = useSessionsStore.getState()
           const currentSession = store.sessions.find((s) => s.id === store.activeSessionId)
-          const cwd = currentSession?.cwd ?? localStorage.getItem('cwd') ?? '/Users/victor/Projects'
+          const cwd = currentSession?.cwd ?? localStorage.getItem('cwd') ?? ''
           store.createSession(cwd)
           return
         }

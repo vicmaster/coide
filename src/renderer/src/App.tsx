@@ -6,6 +6,7 @@ import SessionSearch from './components/SessionSearch'
 import FilePreviewModal from './components/FilePreviewModal'
 import SkillEditorModal from './components/SkillEditorModal'
 import HookEditorModal from './components/HookEditorModal'
+import WelcomeModal from './components/WelcomeModal'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useSessionsStore } from './store/sessions'
 
@@ -44,6 +45,9 @@ export default function App(): React.JSX.Element {
 
       {/* Hook editor modal */}
       <HookEditorModal />
+
+      {/* Welcome modal — first-run onboarding */}
+      <WelcomeModal />
     </div>
   )
 }
