@@ -27,7 +27,10 @@ const api = {
       ipcRenderer.invoke('claude:save-image', { base64, mediaType })
   },
   dialog: {
-    pickFolder: (): Promise<string | null> => ipcRenderer.invoke('dialog:pickFolder')
+    pickFolder: (): Promise<string | null> => ipcRenderer.invoke('dialog:pickFolder'),
+    pickFile: (): Promise<string | null> => ipcRenderer.invoke('dialog:pickFile'),
+    saveFile: (defaultName: string, content: string): Promise<{ success?: boolean; canceled?: boolean; error?: string }> =>
+      ipcRenderer.invoke('dialog:saveFile', { defaultName, content })
   },
   skills: {
     list: (cwd: string) => ipcRenderer.invoke('skills:list', { cwd }),

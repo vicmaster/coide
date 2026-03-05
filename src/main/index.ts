@@ -100,6 +100,34 @@ ipcMain.handle('dialog:pickFolder', async () => {
   return result.canceled ? null : result.filePaths[0]
 })
 
+ipcMain.handle('dialog:pickFile', async () => {
+  if (!mainWindow) return null
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    filters: [{ name: 'Markdown', extensions: ['md'] }],
+    defaultPath: app.getPath('home')
+  })
+  return result.canceled ? null : result.filePaths[0]
+})
+
+ipcMain.handle(
+  'dialog:saveFile',
+  async (_event, { defaultName, content }: { defaultName: string; content: string }) => {
+    if (!mainWindow) return { error: 'No window' }
+    const result = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: defaultName,
+      filters: [{ name: 'Markdown', extensions: ['md'] }]
+    })
+    if (result.canceled || !result.filePath) return { canceled: true }
+    try {
+      await writeFile(result.filePath, content, 'utf-8')
+      return { success: true }
+    } catch (err) {
+      return { error: String(err) }
+    }
+  }
+)
+
 const IMAGES_DIR = join(tmpdir(), 'coide-images')
 const EXT_MAP: Record<string, string> = {
   'image/png': 'png',

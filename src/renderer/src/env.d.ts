@@ -23,6 +23,14 @@ interface Window {
     }
     dialog: {
       pickFolder: () => Promise<string | null>
+      pickFile: () => Promise<string | null>
+      saveFile: (defaultName: string, content: string) => Promise<{ success?: boolean; canceled?: boolean; error?: string }>
+    }
+    system: {
+      homedir: () => Promise<string>
+    }
+    mcp: {
+      list: (cwd: string) => Promise<unknown[]>
     }
     skills: {
       list: (cwd: string) => Promise<{ global: SkillInfo[]; project: SkillInfo[] }>

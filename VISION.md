@@ -265,6 +265,7 @@ Electron Renderer Process (React)
 - [x] Inline file preview — click a filename in chat to open a preview pane
 - [x] Agent tree enhancements — timeline view, pause/cancel/re-run individual sub-agents
 - [x] Skill editor UI — create/edit skills without touching files
+- [x] Skill import/export — pick .md from disk or save skill to chosen location
 - [x] Hook configuration UI — visualize and edit hooks visually
 - [x] Copy conversation as ChatGPT format — export messages as shareable markdown
 - [x] Jump to bottom button — floating pill when scrolled up, smart auto-scroll that doesn't interrupt reading

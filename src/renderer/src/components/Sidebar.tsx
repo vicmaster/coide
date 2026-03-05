@@ -69,12 +69,38 @@ export default function Sidebar(): React.JSX.Element {
         </div>
       )}
       {activeTab === 'skills' && (
-        <div className="p-2 border-t border-white/[0.06]">
+        <div className="p-2 border-t border-white/[0.06] flex gap-1.5">
           <button
             onClick={() => useSkillEditorStore.getState().openNew()}
-            className="w-full rounded-md bg-blue-600/90 hover:bg-blue-600 py-1.5 text-xs font-medium text-white transition-colors"
+            className="flex-1 rounded-md bg-blue-600/90 hover:bg-blue-600 py-1.5 text-xs font-medium text-white transition-colors"
           >
-            + New Skill
+            + New
+          </button>
+          <button
+            onClick={async () => {
+              const filePath = await window.api.dialog.pickFile()
+              if (!filePath) return
+              const { content, error } = await window.api.fs.readFile(filePath)
+              if (error || !content) return
+              // Derive skill name: if filename is SKILL.md use parent folder, otherwise strip .md
+              const parts = filePath.split('/')
+              const fileName = parts[parts.length - 1]
+              let name: string
+              if (fileName.toLowerCase() === 'skill.md') {
+                name = parts[parts.length - 2] ?? 'imported-skill'
+              } else {
+                name = fileName.replace(/\.md$/i, '')
+              }
+              name = name.toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'imported-skill'
+              const store = useSessionsStore.getState()
+              const session = store.sessions.find((s) => s.id === store.activeSessionId)
+              const cwd = session?.cwd ?? localStorage.getItem('cwd') ?? '/Users/victor/Projects'
+              await window.api.skills.write('project', name, content, cwd)
+              window.dispatchEvent(new Event('coide:skills-changed'))
+            }}
+            className="flex-1 rounded-md border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] py-1.5 text-xs font-medium text-white/60 hover:text-white/80 transition-colors"
+          >
+            Import
           </button>
         </div>
       )}
@@ -194,6 +220,11 @@ function SkillsList(): React.JSX.Element {
                   await window.api.skills.delete(skill.filePath)
                   window.dispatchEvent(new Event('coide:skills-changed'))
                 }}
+                onExport={async () => {
+                  const { content, error } = await window.api.fs.readFile(skill.filePath)
+                  if (error || !content) return
+                  await window.api.dialog.saveFile(`${skill.name}.md`, content)
+                }}
               />
             ))}
           </div>
@@ -213,6 +244,11 @@ function SkillsList(): React.JSX.Element {
                   await window.api.skills.delete(skill.filePath)
                   window.dispatchEvent(new Event('coide:skills-changed'))
                 }}
+                onExport={async () => {
+                  const { content, error } = await window.api.fs.readFile(skill.filePath)
+                  if (error || !content) return
+                  await window.api.dialog.saveFile(`${skill.name}.md`, content)
+                }}
               />
             ))}
           </div>
@@ -231,12 +267,14 @@ function SkillRow({
   skill,
   onRun,
   onEdit,
-  onDelete
+  onDelete,
+  onExport
 }: {
   skill: SkillInfo
   onRun: () => void
   onEdit: () => void
   onDelete: () => void
+  onExport: () => void
 }): React.JSX.Element {
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -267,6 +305,12 @@ function SkillRow({
               className="text-[10px] text-white/40 hover:text-white/70 transition-colors"
             >
               Edit
+            </button>
+            <button
+              onClick={onExport}
+              className="text-[10px] text-white/40 hover:text-white/70 transition-colors"
+            >
+              Exp
             </button>
             <button
               onClick={() => setConfirmDelete(true)}
