@@ -82,21 +82,40 @@ export default function Sidebar(): React.JSX.Element {
               if (!filePath) return
               const { content, error } = await window.api.fs.readFile(filePath)
               if (error || !content) return
-              // Derive skill name: if filename is SKILL.md use parent folder, otherwise strip .md
-              const parts = filePath.split('/')
-              const fileName = parts[parts.length - 1]
-              let name: string
-              if (fileName.toLowerCase() === 'skill.md') {
-                name = parts[parts.length - 2] ?? 'imported-skill'
-              } else {
-                name = fileName.replace(/\.md$/i, '')
+              // Extract name from frontmatter if present, otherwise derive from filename
+              const fmMatch = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/)
+              let name: string | null = null
+              if (fmMatch) {
+                const nameMatch = fmMatch[1].match(/^name:\s*(.+)$/m)
+                if (nameMatch) name = nameMatch[1].trim()
+              }
+              if (!name) {
+                const parts = filePath.split('/')
+                const fileName = parts[parts.length - 1]
+                if (fileName.toLowerCase() === 'skill.md') {
+                  name = parts[parts.length - 2] ?? 'imported-skill'
+                } else {
+                  name = fileName.replace(/\.md$/i, '')
+                }
               }
               name = name.toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'imported-skill'
-              const store = useSessionsStore.getState()
-              const session = store.sessions.find((s) => s.id === store.activeSessionId)
-              const cwd = session?.cwd ?? localStorage.getItem('cwd') ?? ''
-              await window.api.skills.write('project', name, content, cwd)
-              window.dispatchEvent(new Event('coide:skills-changed'))
+              // If no frontmatter, open editor so user can add description
+              if (!fmMatch) {
+                const store = useSessionsStore.getState()
+                const session = store.sessions.find((s) => s.id === store.activeSessionId)
+                const cwd = session?.cwd ?? localStorage.getItem('cwd') ?? ''
+                // Write the file first so the editor can load it
+                await window.api.skills.write('project', name, content, cwd)
+                window.dispatchEvent(new Event('coide:skills-changed'))
+                const projectDir = cwd + '/.claude/skills/' + name + '/SKILL.md'
+                useSkillEditorStore.getState().openEdit({ name, scope: 'project', filePath: projectDir })
+              } else {
+                const store = useSessionsStore.getState()
+                const session = store.sessions.find((s) => s.id === store.activeSessionId)
+                const cwd = session?.cwd ?? localStorage.getItem('cwd') ?? ''
+                await window.api.skills.write('project', name, content, cwd)
+                window.dispatchEvent(new Event('coide:skills-changed'))
+              }
             }}
             className="flex-1 rounded-md border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] py-1.5 text-xs font-medium text-white/60 hover:text-white/80 transition-colors"
           >

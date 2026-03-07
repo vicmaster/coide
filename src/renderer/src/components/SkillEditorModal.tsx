@@ -35,18 +35,27 @@ function useCoideTheme(): boolean {
 
 const TEMPLATE = '# Skill Name\n\nInstructions for Claude when this skill is invoked...\n'
 
-function parseFrontmatter(raw: string): { description: string; body: string } {
+function parseFrontmatter(raw: string): { description: string; extraFields: string[]; body: string } {
   const match = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/)
-  if (!match) return { description: '', body: raw }
+  if (!match) return { description: '', extraFields: [], body: raw }
   const yaml = match[1]
   const body = match[2]
   const descMatch = yaml.match(/^description:\s*(.+)$/m)
-  return { description: descMatch ? descMatch[1].trim() : '', body }
+  const extraFields = yaml
+    .split('\n')
+    .filter((l) => l.trim() && !l.match(/^(name|description):\s/))
+  return { description: descMatch ? descMatch[1].trim() : '', extraFields, body }
 }
 
-function buildFrontmatter(skillName: string, description: string, body: string): string {
+function buildFrontmatter(
+  skillName: string,
+  description: string,
+  extraFields: string[],
+  body: string
+): string {
   const lines = ['---', `name: ${skillName}`]
   if (description.trim()) lines.push(`description: ${description.trim()}`)
+  lines.push(...extraFields)
   lines.push('---', '')
   return lines.join('\n') + body
 }
@@ -57,6 +66,7 @@ export default function SkillEditorModal(): React.JSX.Element | null {
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [extraFields, setExtraFields] = useState<string[]>([])
   const [scope, setScope] = useState<'global' | 'project'>('project')
   const [content, setContent] = useState(TEMPLATE)
   const [error, setError] = useState<string | null>(null)
@@ -77,6 +87,7 @@ export default function SkillEditorModal(): React.JSX.Element | null {
     if (mode === 'create') {
       setName('')
       setDescription('')
+      setExtraFields([])
       setScope(skillScope)
       setContent(TEMPLATE)
     } else {
@@ -93,6 +104,7 @@ export default function SkillEditorModal(): React.JSX.Element | null {
               const raw = res.content ?? ''
               const parsed = parseFrontmatter(raw)
               setDescription(parsed.description)
+              setExtraFields(parsed.extraFields)
               setContent(parsed.body)
             }
           })
@@ -133,7 +145,7 @@ export default function SkillEditorModal(): React.JSX.Element | null {
 
     setSaving(true)
     setError(null)
-    const fullContent = buildFrontmatter(trimmedName, description, content)
+    const fullContent = buildFrontmatter(trimmedName, description, extraFields, content)
     const result = await window.api.skills.write(scope, trimmedName, fullContent, cwd)
     setSaving(false)
 
