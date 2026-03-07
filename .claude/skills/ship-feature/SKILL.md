@@ -1,3 +1,10 @@
+---
+name: ship-feature
+description: Commit all changes, mark the feature done in VISION.md, and push to origin
+disable-model-invocation: true
+argument-hint: [feature-description]
+---
+
 # Ship Feature
 
 Wrap up a completed feature: commit all changes, mark it done in VISION.md, and push.

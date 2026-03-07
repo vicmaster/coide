@@ -33,13 +33,30 @@ function useCoideTheme(): boolean {
   return defined
 }
 
-const TEMPLATE = '# Skill Name\n\nDescribe what this skill does...\n'
+const TEMPLATE = '# Skill Name\n\nInstructions for Claude when this skill is invoked...\n'
+
+function parseFrontmatter(raw: string): { description: string; body: string } {
+  const match = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/)
+  if (!match) return { description: '', body: raw }
+  const yaml = match[1]
+  const body = match[2]
+  const descMatch = yaml.match(/^description:\s*(.+)$/m)
+  return { description: descMatch ? descMatch[1].trim() : '', body }
+}
+
+function buildFrontmatter(skillName: string, description: string, body: string): string {
+  const lines = ['---', `name: ${skillName}`]
+  if (description.trim()) lines.push(`description: ${description.trim()}`)
+  lines.push('---', '')
+  return lines.join('\n') + body
+}
 
 export default function SkillEditorModal(): React.JSX.Element | null {
   const { isOpen, mode, skillName, skillScope, filePath, close } = useSkillEditorStore()
   const themeDefined = useCoideTheme()
 
   const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
   const [scope, setScope] = useState<'global' | 'project'>('project')
   const [content, setContent] = useState(TEMPLATE)
   const [error, setError] = useState<string | null>(null)
@@ -59,6 +76,7 @@ export default function SkillEditorModal(): React.JSX.Element | null {
 
     if (mode === 'create') {
       setName('')
+      setDescription('')
       setScope(skillScope)
       setContent(TEMPLATE)
     } else {
@@ -69,8 +87,14 @@ export default function SkillEditorModal(): React.JSX.Element | null {
         window.api.fs
           .readFile(filePath)
           .then((res) => {
-            if (res.error) setError(res.error)
-            else setContent(res.content ?? '')
+            if (res.error) {
+              setError(res.error)
+            } else {
+              const raw = res.content ?? ''
+              const parsed = parseFrontmatter(raw)
+              setDescription(parsed.description)
+              setContent(parsed.body)
+            }
           })
           .catch((err: Error) => setError(err.message))
           .finally(() => setLoading(false))
@@ -109,7 +133,8 @@ export default function SkillEditorModal(): React.JSX.Element | null {
 
     setSaving(true)
     setError(null)
-    const result = await window.api.skills.write(scope, trimmedName, content, cwd)
+    const fullContent = buildFrontmatter(trimmedName, description, content)
+    const result = await window.api.skills.write(scope, trimmedName, fullContent, cwd)
     setSaving(false)
 
     if (result.error) {
@@ -167,6 +192,20 @@ export default function SkillEditorModal(): React.JSX.Element | null {
                 autoFocus
               />
             </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-[10px] uppercase tracking-widest text-white/30 mb-1.5">
+              Description
+            </label>
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What this skill does and when to use it"
+              className="w-full rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-1.5 text-sm text-white/80 placeholder-white/20 outline-none focus:border-white/[0.15]"
+            />
           </div>
 
           {/* Scope selector — create mode only */}
