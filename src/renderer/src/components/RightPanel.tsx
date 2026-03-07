@@ -164,7 +164,7 @@ function AgentNodeRow({
       </div>
       {status === 'running' && meta && (
         <button
-          onClick={() => window.api.claude.abort()}
+          onClick={() => window.api.claude.abort(useSessionsStore.getState().activeSessionId ?? undefined)}
           className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 text-white/30 hover:text-red-400 transition-all flex-shrink-0 mt-0.5"
           title="Cancel (stops entire session)"
         >
@@ -234,7 +234,7 @@ function TimelineView({ agents }: { agents: Agent[] }): React.JSX.Element {
             </div>
             {agent.status === 'running' && (
               <button
-                onClick={() => window.api.claude.abort()}
+                onClick={() => window.api.claude.abort(useSessionsStore.getState().activeSessionId ?? undefined)}
                 className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 text-white/30 hover:text-red-400 transition-all flex-shrink-0"
                 title="Cancel (stops entire session)"
               >

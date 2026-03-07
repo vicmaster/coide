@@ -62,9 +62,9 @@ export function useKeyboardShortcuts(): void {
         }
       }
 
-      // Escape — Abort running Claude process
+      // Escape — Abort running Claude process for the active session
       if (e.key === 'Escape' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
-        window.api.claude.abort()
+        window.api.claude.abort(useSessionsStore.getState().activeSessionId ?? undefined)
       }
     }
 

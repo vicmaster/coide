@@ -61,45 +61,62 @@ function stripAnsi(str: string): string {
 // Tools that require explicit user approval before running
 const PERMISSION_REQUIRED = new Set(['Bash', 'Edit', 'Write'])
 
-// Module-level state
-let activePty: pty.IPty | null = null
-let activeWin: BrowserWindow | null = null
-
+// Per-session PTY state
 type PendingPermission = {
   tool_id: string
   tool_name: string
   input: Record<string, unknown>
   originalContent?: string | null
 }
-let pendingPermissions: PendingPermission[] = []
-let waitingForPermission = false
-let pendingEventBuffer: Record<string, unknown>[] = []
 
-export function abortClaude(): void {
-  if (activePty) {
-    try { activePty.kill('SIGTERM') } catch {}
-    activePty = null
-  }
-  pendingPermissions = []
-  waitingForPermission = false
-  pendingEventBuffer = []
+type PtySession = {
+  pty: pty.IPty
+  win: BrowserWindow
+  coideSessionId: string
+  pendingPermissions: PendingPermission[]
+  waitingForPermission: boolean
+  pendingEventBuffer: Record<string, unknown>[]
+  settled: boolean
 }
 
-export function respondPermission(approved: boolean): void {
-  if (!activeWin) return
-  const win = activeWin
+const ptySessions = new Map<string, PtySession>()
 
-  const toolInfo = pendingPermissions.shift()
+export function abortClaude(coideSessionId?: string): void {
+  if (coideSessionId) {
+    const session = ptySessions.get(coideSessionId)
+    if (session) {
+      try { session.pty.kill('SIGTERM') } catch {}
+      ptySessions.delete(coideSessionId)
+    }
+  } else {
+    // Kill all sessions (app shutdown)
+    for (const [id, session] of ptySessions) {
+      try { session.pty.kill('SIGTERM') } catch {}
+      ptySessions.delete(id)
+    }
+  }
+}
+
+export function respondPermission(approved: boolean, coideSessionId?: string): void {
+  if (!coideSessionId) return
+  const sess = ptySessions.get(coideSessionId)
+  if (!sess) return
+  const win = sess.win
+
+  const toolInfo = sess.pendingPermissions.shift()
   if (!toolInfo) return
 
+  const tag = { coideSessionId }
+
   if (approved) {
-    // Show tool card for the approved tool
     win.webContents.send('claude:event', {
+      ...tag,
       type: 'tool_start',
       tool_id: toolInfo.tool_id,
       tool_name: toolInfo.tool_name
     })
     win.webContents.send('claude:event', {
+      ...tag,
       type: 'tool_input',
       tool_id: toolInfo.tool_id,
       tool_name: toolInfo.tool_name,
@@ -107,33 +124,31 @@ export function respondPermission(approved: boolean): void {
       originalContent: toolInfo.originalContent
     })
 
-    // If more tools are queued, stay in waiting state — renderer will show next dialog
-    if (pendingPermissions.length > 0) return
+    if (sess.pendingPermissions.length > 0) return
 
-    // All tools approved — flush buffered events
-    waitingForPermission = false
-    const buffered = pendingEventBuffer.slice()
-    pendingEventBuffer = []
+    sess.waitingForPermission = false
+    const buffered = sess.pendingEventBuffer.slice()
+    sess.pendingEventBuffer = []
     for (const raw of buffered) {
-      handleEvent(raw, win)
+      handleEvent(raw, win, coideSessionId)
     }
   } else {
-    // Revert file changes for Edit/Write tools (they already executed in -p mode)
     revertFileChange(toolInfo)
-    for (const remaining of pendingPermissions) {
+    for (const remaining of sess.pendingPermissions) {
       revertFileChange(remaining)
     }
 
-    // Deny the current tool and all remaining pending tools
     win.webContents.send('claude:event', {
+      ...tag,
       type: 'tool_denied',
       tool_id: toolInfo.tool_id,
       tool_name: toolInfo.tool_name,
       input: toolInfo.input,
       originalContent: toolInfo.originalContent
     })
-    for (const remaining of pendingPermissions) {
+    for (const remaining of sess.pendingPermissions) {
       win.webContents.send('claude:event', {
+        ...tag,
         type: 'tool_denied',
         tool_id: remaining.tool_id,
         tool_name: remaining.tool_name,
@@ -141,16 +156,14 @@ export function respondPermission(approved: boolean): void {
         originalContent: remaining.originalContent
       })
     }
-    win.webContents.send('claude:event', { type: 'stream_end' })
+    win.webContents.send('claude:event', { ...tag, type: 'stream_end' })
 
-    pendingPermissions = []
-    pendingEventBuffer = []
-    waitingForPermission = false
+    sess.pendingPermissions = []
+    sess.pendingEventBuffer = []
+    sess.waitingForPermission = false
 
-    if (activePty) {
-      try { activePty.kill('SIGTERM') } catch {}
-      activePty = null
-    }
+    try { sess.pty.kill('SIGTERM') } catch {}
+    ptySessions.delete(coideSessionId)
   }
 }
 
@@ -187,8 +200,9 @@ function revertFileChange(toolInfo: PendingPermission): void {
   }
 }
 
-function handleEvent(raw: Record<string, unknown>, win: BrowserWindow): void {
+function handleEvent(raw: Record<string, unknown>, win: BrowserWindow, coideSessionId: string): void {
   const type = raw.type as string
+  const tag = { coideSessionId }
 
   if (type === 'user') {
     const content = (raw.message as Record<string, unknown>)?.content as Array<Record<string, unknown>>
@@ -200,6 +214,7 @@ function handleEvent(raw: Record<string, unknown>, win: BrowserWindow): void {
           ? (block.content as Array<Record<string, unknown>>).map((c) => c.text ?? '').join('')
           : (block.content as string) ?? ''
         win.webContents.send('claude:event', {
+          ...tag,
           type: 'tool_result',
           tool_id: block.tool_use_id,
           content: resultContent
@@ -210,12 +225,13 @@ function handleEvent(raw: Record<string, unknown>, win: BrowserWindow): void {
 
   if (type === 'result') {
     win.webContents.send('claude:event', {
+      ...tag,
       type: 'result',
       result: raw.result ?? '',
       session_id: raw.session_id ?? null,
       is_error: raw.is_error ?? false
     })
-    win.webContents.send('claude:event', { type: 'stream_end' })
+    win.webContents.send('claude:event', { ...tag, type: 'stream_end' })
 
     if (raw.is_error) {
       const errText = String(raw.result ?? 'Something went wrong').slice(0, 80)
@@ -233,18 +249,17 @@ export function runClaude(
   prompt: string,
   cwd: string,
   sessionId: string | null,
+  coideSessionId: string,
   win: BrowserWindow,
   settings: CoideSettings
 ): Promise<string | null> {
   return new Promise((resolve, reject) => {
-    abortClaude()
+    // No longer kills other sessions — each runs independently
 
     const skipPermissions = settings.skipPermissions
     notificationsEnabled = settings.notifications
     const claudeBin = resolveClaudeBinary(settings.claudeBinaryPath)
 
-    // Use -p (print/non-interactive) for JSON event stream
-    // Always skip CLI-level permissions — coide's own permission dialog is the gate
     const args = ['-p', prompt, '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions']
     if (sessionId) args.push('--resume', sessionId)
     if (settings.model) args.push('--model', settings.model)
@@ -255,7 +270,7 @@ export function runClaude(
     delete env['CLAUDECODE']
     delete env['CLAUDE_CODE_SESSION_ID']
 
-    log(`Spawning PTY: ${claudeBin} ${args.filter(a => a !== prompt).join(' ')}`)
+    log(`Spawning PTY [${coideSessionId.slice(0, 8)}]: ${claudeBin} ${args.filter(a => a !== prompt).join(' ')}`)
     log(`CWD: ${cwd}`)
 
     const ptyProc = pty.spawn(claudeBin, args, {
@@ -266,18 +281,28 @@ export function runClaude(
       env
     })
 
-    activePty = ptyProc
-    activeWin = win
+    const tag = { coideSessionId }
+
+    const sess: PtySession = {
+      pty: ptyProc,
+      win,
+      coideSessionId,
+      pendingPermissions: [],
+      waitingForPermission: false,
+      pendingEventBuffer: [],
+      settled: false
+    }
+    ptySessions.set(coideSessionId, sess)
 
     let lineBuffer = ''
-    let settled = false
 
     function settle(fn: () => void): void {
-      if (settled) return
-      settled = true
+      if (sess.settled) return
+      sess.settled = true
       fn()
       setTimeout(() => {
         try { ptyProc.kill('SIGTERM') } catch {}
+        ptySessions.delete(coideSessionId)
       }, 200)
     }
 
@@ -291,19 +316,18 @@ export function runClaude(
         if (!trimmed) continue
         try {
           const raw = JSON.parse(trimmed)
-          log(`Event: ${JSON.stringify(raw).slice(0, 200)}`)
+          log(`Event [${coideSessionId.slice(0, 8)}]: ${JSON.stringify(raw).slice(0, 200)}`)
 
-          // Always settle the promise when result arrives
           if (raw.type === 'result') {
             settle(() => resolve((raw.session_id as string) ?? null))
           }
 
-          // Forward usage data from every assistant event (before tool logic which may `continue`)
           if (raw.type === 'assistant') {
             const msg = raw.message as Record<string, unknown> | undefined
             const usage = msg?.usage as Record<string, number> | undefined
             if (usage) {
               win.webContents.send('claude:event', {
+                ...tag,
                 type: 'usage',
                 input_tokens: usage.input_tokens ?? 0,
                 output_tokens: usage.output_tokens ?? 0,
@@ -313,8 +337,7 @@ export function runClaude(
             }
           }
 
-          // Detect tool_use in assistant events (only when not already waiting)
-          if (raw.type === 'assistant' && !waitingForPermission) {
+          if (raw.type === 'assistant' && !sess.waitingForPermission) {
             const content = (raw.message as Record<string, unknown>)?.content as Array<Record<string, unknown>>
             if (Array.isArray(content)) {
               const toolBlocks = content.filter((b) => b.type === 'tool_use')
@@ -323,16 +346,13 @@ export function runClaude(
 
                 if (needsPermission) {
                   if (skipPermissions) {
-                    // Auto-approve all tools — show cards immediately, no dialog
                     for (const block of toolBlocks) {
                       const toolInput = (block.input ?? {}) as Record<string, unknown>
                       const originalContent = captureOriginalContent(block.name as string, toolInput)
-                      win.webContents.send('claude:event', { type: 'tool_start', tool_id: block.id as string, tool_name: block.name as string })
-                      win.webContents.send('claude:event', { type: 'tool_input', tool_id: block.id as string, tool_name: block.name as string, input: toolInput, originalContent })
+                      win.webContents.send('claude:event', { ...tag, type: 'tool_start', tool_id: block.id as string, tool_name: block.name as string })
+                      win.webContents.send('claude:event', { ...tag, type: 'tool_input', tool_id: block.id as string, tool_name: block.name as string, input: toolInput, originalContent })
                     }
-                    // Fall through to normal event processing (no buffering)
                   } else {
-                    // Show dialog for dangerous tools; auto-approve safe ones immediately
                     for (const block of toolBlocks) {
                       const toolInput = (block.input ?? {}) as Record<string, unknown>
                       const toolInfo: PendingPermission = {
@@ -342,35 +362,31 @@ export function runClaude(
                         originalContent: captureOriginalContent(block.name as string, toolInput)
                       }
                       if (PERMISSION_REQUIRED.has(block.name as string)) {
-                        pendingPermissions.push(toolInfo)
-                        win.webContents.send('claude:permission', toolInfo)
+                        sess.pendingPermissions.push(toolInfo)
+                        win.webContents.send('claude:permission', { ...toolInfo, coideSessionId })
                         notify(win, 'Permission Needed', `Claude wants to use ${block.name as string}`)
                       } else {
-                        // Safe tool: show card immediately without asking
-                        win.webContents.send('claude:event', { type: 'tool_start', tool_id: toolInfo.tool_id, tool_name: toolInfo.tool_name })
-                        win.webContents.send('claude:event', { type: 'tool_input', tool_id: toolInfo.tool_id, tool_name: toolInfo.tool_name, input: toolInfo.input })
+                        win.webContents.send('claude:event', { ...tag, type: 'tool_start', tool_id: toolInfo.tool_id, tool_name: toolInfo.tool_name })
+                        win.webContents.send('claude:event', { ...tag, type: 'tool_input', tool_id: toolInfo.tool_id, tool_name: toolInfo.tool_name, input: toolInfo.input })
                       }
                     }
-                    waitingForPermission = true
-                    continue // Buffer subsequent events until user responds
+                    sess.waitingForPermission = true
+                    continue
                   }
                 } else {
-                  // All tools are safe — auto-approve, show tool cards immediately
                   for (const block of toolBlocks) {
-                    win.webContents.send('claude:event', { type: 'tool_start', tool_id: block.id as string, tool_name: block.name as string })
-                    win.webContents.send('claude:event', { type: 'tool_input', tool_id: block.id as string, tool_name: block.name as string, input: (block.input ?? {}) as Record<string, unknown> })
+                    win.webContents.send('claude:event', { ...tag, type: 'tool_start', tool_id: block.id as string, tool_name: block.name as string })
+                    win.webContents.send('claude:event', { ...tag, type: 'tool_input', tool_id: block.id as string, tool_name: block.name as string, input: (block.input ?? {}) as Record<string, unknown> })
                   }
-                  // Fall through to normal event processing (no buffering)
                 }
               }
             }
           }
 
-          // Buffer events while waiting for permission; otherwise handle immediately
-          if (waitingForPermission) {
-            pendingEventBuffer.push(raw)
+          if (sess.waitingForPermission) {
+            sess.pendingEventBuffer.push(raw)
           } else {
-            handleEvent(raw, win)
+            handleEvent(raw, win, coideSessionId)
           }
         } catch {
           log(`Non-JSON line: ${trimmed.slice(0, 120)}`)
@@ -379,28 +395,29 @@ export function runClaude(
     })
 
     ptyProc.onExit(({ exitCode }) => {
-      activePty = null
-      log(`PTY exited with code: ${exitCode}`)
+      log(`PTY [${coideSessionId.slice(0, 8)}] exited with code: ${exitCode}`)
 
       if (lineBuffer.trim()) {
         try {
           const raw = JSON.parse(lineBuffer.trim())
           if (raw.type === 'result') settle(() => resolve((raw.session_id as string) ?? null))
-          if (waitingForPermission) {
-            pendingEventBuffer.push(raw)
+          if (sess.waitingForPermission) {
+            sess.pendingEventBuffer.push(raw)
           } else {
-            handleEvent(raw, win)
+            handleEvent(raw, win, coideSessionId)
           }
         } catch {}
         lineBuffer = ''
       }
 
-      if (!settled) {
+      if (!sess.settled) {
         const errMsg = `Claude exited with code ${exitCode}`
-        win.webContents.send('claude:event', { type: 'error', result: errMsg })
-        win.webContents.send('claude:event', { type: 'stream_end' })
+        win.webContents.send('claude:event', { ...tag, type: 'error', result: errMsg })
+        win.webContents.send('claude:event', { ...tag, type: 'stream_end' })
         settle(() => reject(new Error(errMsg)))
       }
+
+      ptySessions.delete(coideSessionId)
     })
   })
 }

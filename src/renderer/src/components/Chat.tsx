@@ -13,7 +13,9 @@ import type { Message } from '../store/sessions'
 
 const EMPTY_MESSAGES: Message[] = []
 
-type ClaudeEvent =
+type ClaudeEventBase = { coideSessionId?: string }
+
+type ClaudeEvent = ClaudeEventBase & (
   | { type: 'tool_start'; tool_id: string; tool_name: string }
   | { type: 'tool_input'; tool_id: string; tool_name?: string; input: Record<string, unknown>; originalContent?: string | null }
   | { type: 'tool_result'; tool_id: string; content: string }
@@ -22,6 +24,7 @@ type ClaudeEvent =
   | { type: 'result'; result: string; session_id: string; is_error: boolean }
   | { type: 'error'; result: string }
   | { type: 'stream_end' }
+)
 
 export default function Chat({
   onToggleRightPanel,
@@ -31,8 +34,8 @@ export default function Chat({
   rightPanelOpen: boolean
 }): React.JSX.Element {
   const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [permissionQueue, setPermissionQueue] = useState<PermissionRequest[]>([])
+  const [loadingSessions, setLoadingSessions] = useState<Set<string>>(new Set())
+  const [permissionQueue, setPermissionQueue] = useState<(PermissionRequest & { coideSessionId?: string })[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
   const messagesRef = useRef<HTMLDivElement>(null)
   const [showJumpBottom, setShowJumpBottom] = useState(false)
@@ -83,6 +86,7 @@ export default function Chat({
   const claudeSessionId = activeSession?.claudeSessionId ?? null
   const usage = activeSession?.usage ?? null
 
+  const isLoading = activeSessionId ? loadingSessions.has(activeSessionId) : false
   const CONTEXT_LIMIT = 200_000
   const usagePct = usage ? Math.min(((usage.inputTokens + usage.outputTokens) / CONTEXT_LIMIT) * 100, 100) : 0
 
@@ -165,8 +169,10 @@ export default function Chat({
 
     const cleanup = window.api.claude.onEvent((raw: unknown) => {
       const event = raw as ClaudeEvent
-      const { activeSessionId: sid, addMessage, updateClaudeSessionId, updateToolResult, addTask, updateTask, setTasks, removeTask, setTaskId, addAgent, updateAgent, addUsage } =
+      const { addMessage, updateClaudeSessionId, updateToolResult, addTask, updateTask, setTasks, removeTask, setTaskId, addAgent, updateAgent, addUsage } =
         useSessionsStore.getState()
+      // Route events to the session identified by coideSessionId tag
+      const sid = event.coideSessionId ?? useSessionsStore.getState().activeSessionId
       if (!sid) return
 
       if (event.type === 'usage') {
@@ -297,14 +303,14 @@ export default function Chat({
         if (event.result) {
           addMessage(sid, { id: Date.now().toString(), role, text: event.result })
         }
-        setIsLoading(false)
-        setPermissionQueue([])
+        setLoadingSessions((prev) => { const next = new Set(prev); next.delete(sid); return next })
+        setPermissionQueue((q) => q.filter((p) => p.coideSessionId !== sid))
       }
 
       if (event.type === 'error' && event.result) {
         addMessage(sid, { id: Date.now().toString(), role: 'error', text: event.result })
-        setIsLoading(false)
-        setPermissionQueue([])
+        setLoadingSessions((prev) => { const next = new Set(prev); next.delete(sid); return next })
+        setPermissionQueue((q) => q.filter((p) => p.coideSessionId !== sid))
         // Mark any still-running agents as failed
         const errSession = useSessionsStore.getState().sessions.find((s) => s.id === sid)
         errSession?.agents?.filter((a) => a.status === 'running').forEach((a) => {
@@ -313,8 +319,8 @@ export default function Chat({
       }
 
       if (event.type === 'stream_end') {
-        setIsLoading(false)
-        setPermissionQueue([])
+        setLoadingSessions((prev) => { const next = new Set(prev); next.delete(sid); return next })
+        setPermissionQueue((q) => q.filter((p) => p.coideSessionId !== sid))
         // Mark any still-running agents as failed
         const endSession = useSessionsStore.getState().sessions.find((s) => s.id === sid)
         endSession?.agents?.filter((a) => a.status === 'running').forEach((a) => {
@@ -324,10 +330,10 @@ export default function Chat({
     })
 
     const permCleanup = window.api.claude.onPermission((raw: unknown) => {
-      const perm = raw as PermissionRequest
+      const perm = raw as PermissionRequest & { coideSessionId?: string }
       // Safety net: if skip-permissions is on, auto-approve instead of showing dialog
       if (useSettingsStore.getState().skipPermissions) {
-        window.api.claude.respondPermission(true)
+        window.api.claude.respondPermission(true, perm.coideSessionId)
         return
       }
       setPermissionQueue((q) => [...q, perm])
@@ -418,12 +424,14 @@ export default function Chat({
   }, [])
 
   const handlePermissionRespond = (approved: boolean): void => {
+    const current = permissionQueue[0]
     setPermissionQueue((q) => q.slice(1))
-    window.api.claude.respondPermission(approved)
+    window.api.claude.respondPermission(approved, current?.coideSessionId)
   }
 
   const sendMessage = useCallback(async (text: string): Promise<void> => {
-    if ((!text.trim() && stagedImages.length === 0) || isLoading) return
+    const currentActiveId = useSessionsStore.getState().activeSessionId
+    if ((!text.trim() && stagedImages.length === 0) || (currentActiveId && loadingSessions.has(currentActiveId))) return
 
     let prompt = text.trim()
 
@@ -451,15 +459,15 @@ export default function Chat({
 
     setInput('')
     setStagedImages([])
-    setIsLoading(true)
     pendingToolsRef.current.clear()
-    setPermissionQueue([])
 
     let sid = useSessionsStore.getState().activeSessionId
     if (!sid) {
       const defaultCwd = localStorage.getItem('cwd') ?? defaultCwd
       sid = useSessionsStore.getState().createSession(defaultCwd)
     }
+
+    setLoadingSessions((prev) => new Set(prev).add(sid!))
 
     // Append image paths to prompt so Claude CLI picks them up
     if (images.length > 0) {
@@ -478,14 +486,14 @@ export default function Chat({
     const session = useSessionsStore.getState().sessions.find((s) => s.id === sid)!
 
     try {
-      await window.api.claude.query(prompt, session.cwd, session.claudeSessionId)
+      await window.api.claude.query(prompt, session.cwd, session.claudeSessionId, sid)
     } catch (err) {
       useSessionsStore
         .getState()
         .addMessage(sid, { id: Date.now().toString(), role: 'error', text: String(err) })
-      setIsLoading(false)
+      setLoadingSessions((prev) => { const next = new Set(prev); next.delete(sid!); return next })
     }
-  }, [isLoading, stagedImages])
+  }, [loadingSessions, stagedImages])
 
   const editAndResend = useCallback(async (messageId: string, newText: string): Promise<void> => {
     const sid = useSessionsStore.getState().activeSessionId
@@ -526,9 +534,8 @@ export default function Chat({
     }
 
     // Add user message and send
-    setIsLoading(true)
+    setLoadingSessions((prev) => new Set(prev).add(sid))
     pendingToolsRef.current.clear()
-    setPermissionQueue([])
 
     const userMessage: TextMessage = {
       id: Date.now().toString(),
@@ -540,10 +547,10 @@ export default function Chat({
 
     const updatedSession = useSessionsStore.getState().sessions.find((s) => s.id === sid)!
     try {
-      await window.api.claude.query(prompt, updatedSession.cwd, updatedSession.claudeSessionId)
+      await window.api.claude.query(prompt, updatedSession.cwd, updatedSession.claudeSessionId, sid)
     } catch (err) {
       useSessionsStore.getState().addMessage(sid, { id: Date.now().toString(), role: 'error', text: String(err) })
-      setIsLoading(false)
+      setLoadingSessions((prev) => { const next = new Set(prev); next.delete(sid); return next })
     }
   }, [])
 
@@ -684,7 +691,8 @@ export default function Chat({
     setTimeout(() => setCopied(false), 2000)
   }, [messages])
 
-  const currentPermission = permissionQueue[0] ?? null
+  // Only show permission dialogs for the currently viewed session
+  const currentPermission = permissionQueue.find((p) => p.coideSessionId === activeSessionId) ?? null
 
   return (
     <div
@@ -725,7 +733,7 @@ export default function Chat({
         <div className="flex items-center gap-2">
           {isLoading && (
             <button
-              onClick={() => { window.api.claude.abort(); setPermissionQueue([]) }}
+              onClick={() => { window.api.claude.abort(activeSessionId ?? undefined); setPermissionQueue((q) => q.filter((p) => p.coideSessionId !== activeSessionId)) }}
               className="rounded-md border border-red-500/20 px-2 py-0.5 text-[11px] text-red-400/80 hover:bg-red-500/10 transition-colors"
             >
               Stop

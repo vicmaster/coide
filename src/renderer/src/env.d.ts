@@ -13,12 +13,13 @@ interface Window {
       query: (
         prompt: string,
         cwd: string,
-        sessionId: string | null
+        sessionId: string | null,
+        coideSessionId: string
       ) => Promise<{ sessionId: string | null } | { error: string }>
       onEvent: (callback: (event: unknown) => void) => () => void
       onPermission: (callback: (permission: unknown) => void) => () => void
-      respondPermission: (approved: boolean) => void
-      abort: () => void
+      respondPermission: (approved: boolean, coideSessionId?: string) => void
+      abort: (coideSessionId?: string) => void
       saveImage: (base64: string, mediaType: string) => Promise<string>
     }
     dialog: {

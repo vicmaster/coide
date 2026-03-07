@@ -3,8 +3,8 @@ import { electronAPI } from '@electron-toolkit/preload'
 
 const api = {
   claude: {
-    query: (prompt: string, cwd: string, sessionId: string | null) =>
-      ipcRenderer.invoke('claude:query', { prompt, cwd, sessionId }),
+    query: (prompt: string, cwd: string, sessionId: string | null, coideSessionId: string) =>
+      ipcRenderer.invoke('claude:query', { prompt, cwd, sessionId, coideSessionId }),
 
     onEvent: (callback: (event: unknown) => void) => {
       const handler = (_e: Electron.IpcRendererEvent, data: unknown): void => callback(data)
@@ -18,10 +18,10 @@ const api = {
       return () => ipcRenderer.removeListener('claude:permission', handler)
     },
 
-    respondPermission: (approved: boolean) =>
-      ipcRenderer.invoke('claude:permission-response', approved),
+    respondPermission: (approved: boolean, coideSessionId?: string) =>
+      ipcRenderer.invoke('claude:permission-response', { approved, coideSessionId }),
 
-    abort: () => ipcRenderer.invoke('claude:abort'),
+    abort: (coideSessionId?: string) => ipcRenderer.invoke('claude:abort', coideSessionId),
 
     saveImage: (base64: string, mediaType: string): Promise<string> =>
       ipcRenderer.invoke('claude:save-image', { base64, mediaType })

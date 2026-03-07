@@ -8,6 +8,15 @@ import { type CoideSettings, DEFAULT_SETTINGS } from '../shared/types'
 
 type SkillInfo = { name: string; description: string; scope: 'global' | 'project'; filePath: string }
 
+function parseSkillFrontmatter(content: string): { description: string; body: string } {
+  const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/)
+  if (!match) return { description: '', body: content }
+  const yaml = match[1]
+  const body = match[2]
+  const descMatch = yaml.match(/^description:\s*(.+)$/m)
+  return { description: descMatch ? descMatch[1].trim() : '', body }
+}
+
 async function scanSkillsDir(dir: string, scope: 'global' | 'project'): Promise<SkillInfo[]> {
   try {
     const entries = await readdir(dir, { withFileTypes: true })
@@ -17,8 +26,11 @@ async function scanSkillsDir(dir: string, scope: 'global' | 'project'): Promise<
       const filePath = join(dir, entry.name, 'SKILL.md')
       try {
         const content = await readFile(filePath, 'utf-8')
-        const firstLine = content.split('\n').find((l) => l.trim()) ?? ''
-        const description = firstLine.replace(/^#+\s*/, '').trim()
+        const { description: fmDescription, body } = parseSkillFrontmatter(content)
+        // Use frontmatter description, or fall back to first heading/line in body
+        const description =
+          fmDescription ||
+          (body.split('\n').find((l) => l.trim()) ?? '').replace(/^#+\s*/, '').trim()
         skills.push({ name: entry.name, description, scope, filePath })
       } catch {
         // No SKILL.md in this folder, skip
@@ -68,10 +80,10 @@ function createWindow(): void {
 
 ipcMain.handle(
   'claude:query',
-  async (_event, { prompt, cwd, sessionId }: { prompt: string; cwd: string; sessionId: string | null }) => {
+  async (_event, { prompt, cwd, sessionId, coideSessionId }: { prompt: string; cwd: string; sessionId: string | null; coideSessionId: string }) => {
     if (!mainWindow) return null
     try {
-      const newSessionId = await runClaude(prompt, cwd, sessionId, mainWindow, currentSettings)
+      const newSessionId = await runClaude(prompt, cwd, sessionId, coideSessionId, mainWindow, currentSettings)
       return { sessionId: newSessionId }
     } catch (err) {
       return { error: String(err) }
@@ -79,12 +91,12 @@ ipcMain.handle(
   }
 )
 
-ipcMain.handle('claude:abort', () => {
-  abortClaude()
+ipcMain.handle('claude:abort', (_event, coideSessionId?: string) => {
+  abortClaude(coideSessionId)
 })
 
-ipcMain.handle('claude:permission-response', (_event, approved: boolean) => {
-  respondPermission(approved)
+ipcMain.handle('claude:permission-response', (_event, { approved, coideSessionId }: { approved: boolean; coideSessionId?: string }) => {
+  respondPermission(approved, coideSessionId)
 })
 
 ipcMain.handle('settings:sync', (_event, settings: Partial<CoideSettings>) => {
