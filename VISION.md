@@ -271,3 +271,4 @@ Electron Renderer Process (React)
 - [x] Jump to bottom button — floating pill when scrolled up, smart auto-scroll that doesn't interrupt reading
 - [x] In-session search — find text in current session with match highlighting
 - [x] MCP servers panel — read-only view of active MCP servers (global + project) in right panel
+- [x] Integrated terminal — xterm.js-based terminal panel with multi-tab support, resizable, Cmd+J toggle

@@ -28,10 +28,14 @@ type ClaudeEvent = ClaudeEventBase & (
 
 export default function Chat({
   onToggleRightPanel,
-  rightPanelOpen
+  rightPanelOpen,
+  onToggleTerminal,
+  terminalOpen
 }: {
   onToggleRightPanel: () => void
   rightPanelOpen: boolean
+  onToggleTerminal?: () => void
+  terminalOpen?: boolean
 }): React.JSX.Element {
   const [input, setInput] = useState('')
   const [loadingSessions, setLoadingSessions] = useState<Set<string>>(new Set())
@@ -814,6 +818,20 @@ export default function Chat({
                   <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                 </svg>
               )}
+            </button>
+          )}
+          {onToggleTerminal && (
+            <button
+              onClick={onToggleTerminal}
+              title="Toggle terminal (⌘J)"
+              className={`rounded-md px-2 py-0.5 transition-colors ${
+                terminalOpen ? 'text-white/50 hover:text-white/70' : 'text-white/25 hover:text-white/50'
+              }`}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="4 17 10 11 4 5" />
+                <line x1="12" y1="19" x2="20" y2="19" />
+              </svg>
             </button>
           )}
           <button

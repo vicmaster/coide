@@ -58,6 +58,26 @@ const api = {
     read: (scope: string, cwd: string) => ipcRenderer.invoke('hooks:read', { scope, cwd }),
     write: (scope: string, hooks: unknown, cwd: string) =>
       ipcRenderer.invoke('hooks:write', { scope, hooks, cwd })
+  },
+  terminal: {
+    spawn: (id: string, cwd: string): Promise<{ pid: number }> =>
+      ipcRenderer.invoke('terminal:spawn', { id, cwd }),
+    write: (id: string, data: string) =>
+      ipcRenderer.invoke('terminal:write', { id, data }),
+    resize: (id: string, cols: number, rows: number) =>
+      ipcRenderer.invoke('terminal:resize', { id, cols, rows }),
+    kill: (id: string) =>
+      ipcRenderer.invoke('terminal:kill', { id }),
+    onData: (callback: (event: { id: string; data: string }) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: { id: string; data: string }): void => callback(data)
+      ipcRenderer.on('terminal:data', handler)
+      return () => ipcRenderer.removeListener('terminal:data', handler)
+    },
+    onExit: (callback: (event: { id: string; exitCode: number }) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: { id: string; exitCode: number }): void => callback(data)
+      ipcRenderer.on('terminal:exit', handler)
+      return () => ipcRenderer.removeListener('terminal:exit', handler)
+    }
   }
 }
 

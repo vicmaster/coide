@@ -4,6 +4,7 @@ import { readdir, readFile, mkdir, writeFile, rm } from 'fs/promises'
 import { homedir, tmpdir } from 'os'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { runClaude, abortClaude, respondPermission } from './claude'
+import { spawnTerminal, writeTerminal, resizeTerminal, killTerminal, killAllTerminals } from './terminal'
 import { type CoideSettings, DEFAULT_SETTINGS } from '../shared/types'
 
 type SkillInfo = { name: string; description: string; scope: 'global' | 'project'; filePath: string }
@@ -307,6 +308,27 @@ ipcMain.handle(
   }
 )
 
+// Terminal IPC handlers
+ipcMain.handle(
+  'terminal:spawn',
+  (_event, { id, cwd }: { id: string; cwd: string }) => {
+    if (!mainWindow) return { error: 'No window' }
+    return spawnTerminal(id, cwd, mainWindow)
+  }
+)
+
+ipcMain.handle('terminal:write', (_event, { id, data }: { id: string; data: string }) => {
+  writeTerminal(id, data)
+})
+
+ipcMain.handle('terminal:resize', (_event, { id, cols, rows }: { id: string; cols: number; rows: number }) => {
+  resizeTerminal(id, cols, rows)
+})
+
+ipcMain.handle('terminal:kill', (_event, { id }: { id: string }) => {
+  killTerminal(id)
+})
+
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.coide')
   if (process.platform === 'darwin') {
@@ -323,6 +345,7 @@ app.whenReady().then(() => {
 })
 
 app.on('will-quit', () => {
+  killAllTerminals()
   rm(IMAGES_DIR, { recursive: true, force: true }).catch(() => {})
 })
 
