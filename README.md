@@ -33,6 +33,12 @@ Built with Electron, React, and TypeScript. Talks to Claude through `node-pty`, 
 - Skills browser — run Claude Code skills directly
 - Commands panel — built-in commands and slash autocomplete
 
+**Integrated Terminal**
+- Full terminal emulator (xterm.js) — run builds, tests, servers, interactive programs
+- Multi-tab support with create/close
+- Resizable panel with drag handle
+- Toggle with Cmd+J or header button
+
 **Other**
 - Image/screenshot drag-and-drop
 - In-session search with match highlighting
@@ -91,6 +97,7 @@ Electron Renderer Process (React)
 | Shell | Electron 35, electron-vite, node-pty |
 | UI | React 19, TypeScript, Tailwind CSS v3 |
 | Editor | Monaco Editor (diffs) |
+| Terminal | xterm.js |
 | Markdown | react-markdown, shiki |
 | State | Zustand with persist middleware |
 
