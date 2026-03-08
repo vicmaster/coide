@@ -355,6 +355,7 @@ export default function Chat({
     }
   }, [subscribeToEvents])
 
+
   const SUPPORTED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
 
   const processImageFile = useCallback(async (file: File): Promise<void> => {
@@ -844,6 +845,7 @@ export default function Chat({
           </button>
         </div>
       </div>
+
 
       {/* In-session search bar */}
       {searchOpen && (

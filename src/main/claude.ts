@@ -6,6 +6,7 @@ import { type CoideSettings, DEFAULT_SETTINGS } from '../shared/types'
 // Use eval('require') to bypass vite/rollup bundling for native modules
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const pty = (eval('require') as NodeRequire)('node-pty') as typeof import('node-pty')
+import { execFile } from 'child_process'
 
 const LOG = '/tmp/coide-debug.log'
 
@@ -40,20 +41,44 @@ function resolveClaudeBinary(configured: string): string {
 
 let notificationsEnabled = true
 
+// Keep a reference to prevent garbage collection from destroying notifications before they fire
+let activeNotification: Notification | null = null
+
+function notifyViaOsascript(title: string, body: string): void {
+  // Use AppleScript to trigger a native macOS notification — works in all builds, no signing required
+  const script = `display notification ${JSON.stringify(body)} with title ${JSON.stringify(title)}`
+  execFile('osascript', ['-e', script], (err) => {
+    if (err) log(`osascript notification error: ${err}`)
+  })
+}
+
 function notify(win: BrowserWindow, title: string, body: string): void {
   if (!notificationsEnabled) return
   if (win.isDestroyed()) return
-  // Use BrowserWindow.getFocusedWindow() — more reliable than win.isFocused() on macOS
-  // when the user switches apps via Cmd+Tab
-  const focused = BrowserWindow.getFocusedWindow()
-  if (focused?.id === win.id) return
-  const n = new Notification({ title, body })
-  n.on('click', () => {
+
+  const isFocused = BrowserWindow.getFocusedWindow()?.id === win.id
+
+  // Only do OS-level notifications when app is in background
+  if (!isFocused) {
     app.dock?.bounce?.('informational')
-    win.show()
-    win.focus()
-  })
-  n.show()
+
+    // Try Electron's native Notification (works in dev and properly signed builds)
+    if (Notification.isSupported()) {
+      try {
+        activeNotification = new Notification({ title, body })
+        activeNotification.on('click', () => {
+          win.show()
+          win.focus()
+        })
+        activeNotification.show()
+      } catch {
+        // fall through to osascript fallback
+      }
+    }
+
+    // Also fire osascript — Electron's Notification silently fails in unsigned builds
+    notifyViaOsascript(title, body)
+  }
 }
 
 function stripAnsi(str: string): string {

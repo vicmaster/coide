@@ -14,8 +14,19 @@
   "build": {
     "appId": "com.coide",
     "productName": "Coide",
+    "extraResources": [
+      {
+        "from": "resources/icon.png",
+        "to": "icon.png"
+      }
+    ],
     "mac": {
-      "icon": "resources/icon.icns"
+      "icon": "resources/icon.icns",
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extendInfo": {
+        "NSUserNotificationAlertStyle": "alert"
+      }
     }
   },
   "dependencies": {

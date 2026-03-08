@@ -21,6 +21,7 @@ const api = {
     respondPermission: (approved: boolean, coideSessionId?: string) =>
       ipcRenderer.invoke('claude:permission-response', { approved, coideSessionId }),
 
+
     abort: (coideSessionId?: string) => ipcRenderer.invoke('claude:abort', coideSessionId),
 
     saveImage: (base64: string, mediaType: string): Promise<string> =>
