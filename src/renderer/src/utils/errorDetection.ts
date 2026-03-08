@@ -68,6 +68,19 @@ const FALSE_POSITIVE_PATTERNS: RegExp[] = [
   /^nvm: .* is not yet installed/i
 ]
 
+// Patterns indicating the command succeeded overall — suppress warnings when these match
+const SUCCESS_PATTERNS: RegExp[] = [
+  /0 failures/i,
+  /0 failed/i,
+  /Tests:\s+\d+ passed,\s+\d+ total/i,
+  /All \d+ tests? passed/i,
+  /BUILD SUCCESSFUL/i,
+  /Build succeeded/i,
+  /Compiled successfully/i,
+  /Exit code:?\s*0\b/i,
+  /\bpassed\b.*\b0 failed\b/i
+]
+
 function stripFalsePositives(text: string): string {
   return text
     .split('\n')
@@ -82,9 +95,15 @@ export function detectError(toolName: string, result: string): DetectedError | n
   const cleaned = stripFalsePositives(result)
   if (cleaned.trim().length < 5) return null
 
+  // Check if the output indicates overall success
+  const isOverallSuccess = SUCCESS_PATTERNS.some((p) => p.test(cleaned))
+
   for (const pattern of ERROR_PATTERNS) {
     const match = cleaned.match(pattern.regex)
     if (match) {
+      // Skip warnings when the command succeeded overall
+      if (pattern.severity === 'warning' && isOverallSuccess) continue
+
       const summary = typeof pattern.summary === 'function' ? pattern.summary(match) : pattern.summary
 
       // Extract the matched line and surrounding context
