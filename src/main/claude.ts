@@ -1,4 +1,4 @@
-import { BrowserWindow, Notification } from 'electron'
+import { app, BrowserWindow, Notification } from 'electron'
 import { appendFileSync, writeFileSync, readFileSync, unlinkSync, existsSync } from 'fs'
 import { homedir } from 'os'
 import { join } from 'path'
@@ -42,9 +42,14 @@ let notificationsEnabled = true
 
 function notify(win: BrowserWindow, title: string, body: string): void {
   if (!notificationsEnabled) return
-  if (win.isDestroyed() || win.isFocused()) return
+  if (win.isDestroyed()) return
+  // Use BrowserWindow.getFocusedWindow() — more reliable than win.isFocused() on macOS
+  // when the user switches apps via Cmd+Tab
+  const focused = BrowserWindow.getFocusedWindow()
+  if (focused?.id === win.id) return
   const n = new Notification({ title, body })
   n.on('click', () => {
+    app.dock?.bounce?.('informational')
     win.show()
     win.focus()
   })
