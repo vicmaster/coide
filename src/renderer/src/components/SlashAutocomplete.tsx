@@ -12,9 +12,14 @@ export function useSlashItems(query: string, cwd: string): AutocompleteItem[] {
   const [skills, setSkills] = useState<SkillInfo[]>([])
 
   useEffect(() => {
-    window.api.skills.list(cwd).then((result) => {
-      setSkills([...result.project, ...result.global])
-    })
+    const refresh = (): void => {
+      window.api.skills.list(cwd).then((result) => {
+        setSkills([...result.project, ...result.global])
+      })
+    }
+    refresh()
+    window.addEventListener('coide:skills-changed', refresh)
+    return () => window.removeEventListener('coide:skills-changed', refresh)
   }, [cwd])
 
   const q = query.toLowerCase()
