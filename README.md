@@ -41,6 +41,7 @@ Built with Electron, React, and TypeScript. Talks to Claude through `node-pty`, 
 
 **Other**
 - Image/screenshot drag-and-drop
+- File attachments — drag & drop or file picker for PDF, DOCX, XLSX, PPTX, CSV, and text files with automatic text extraction
 - In-session search with match highlighting
 - Jump-to-bottom with smart auto-scroll
 - Desktop notifications
