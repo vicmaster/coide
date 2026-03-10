@@ -293,7 +293,17 @@ export function runClaude(
     const args = ['-p', prompt, '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions']
     if (sessionId) args.push('--resume', sessionId)
     if (settings.model) args.push('--model', settings.model)
-    if (settings.systemPrompt) args.push('--append-system-prompt', settings.systemPrompt)
+    const coideSystemPrompt = [
+      'You are running inside coide, a desktop GUI for Claude Code.',
+      'Tool call results are NOT shown inline — they are hidden inside collapsible cards the user may not open.',
+      'You MUST always include relevant output (file contents, command results, directory listings, etc.) directly in your text response.',
+      'Never say "here it is" or "see above" without actually showing the content in your message.',
+      `The current working directory is: ${cwd}. When the user says "your directory" or "this directory", they mean this path.`
+    ].join(' ')
+    const fullSystemPrompt = settings.systemPrompt
+      ? `${coideSystemPrompt}\n\n${settings.systemPrompt}`
+      : coideSystemPrompt
+    args.push('--append-system-prompt', fullSystemPrompt)
     if (settings.effort) args.push('--effort', settings.effort)
 
     const env = { ...process.env } as Record<string, string>
