@@ -1136,10 +1136,12 @@ export default function Chat({
             value={input}
             onChange={(e) => {
               setInput(e.target.value)
-              // Auto-resize: reset height to measure scrollHeight, then clamp
+              // Auto-resize in next frame to avoid layout thrashing
               const el = e.target
-              el.style.height = 'auto'
-              el.style.height = Math.min(el.scrollHeight, 300) + 'px'
+              requestAnimationFrame(() => {
+                el.style.height = 'auto'
+                el.style.height = Math.min(el.scrollHeight, 300) + 'px'
+              })
             }}
             onKeyDown={handleKeyDown}
             placeholder="Message Claude…"

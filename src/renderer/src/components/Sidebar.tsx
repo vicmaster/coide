@@ -16,6 +16,11 @@ export default function Sidebar(): React.JSX.Element {
     createSession(cwd)
   }
 
+  const handleNewSessionInFolder = async (): Promise<void> => {
+    const folder = await window.api.dialog.pickFolder()
+    if (folder) createSession(folder)
+  }
+
   return (
     <aside className="flex h-full w-56 flex-col bg-[#111111] border-r border-white/[0.06]">
       {/* Title — offset for macOS traffic lights */}
@@ -60,12 +65,23 @@ export default function Sidebar(): React.JSX.Element {
       {/* Footer actions */}
       {activeTab === 'sessions' && (
         <div className="p-2 border-t border-white/[0.06]">
-          <button
-            onClick={handleNewSession}
-            className="w-full rounded-md bg-blue-600/90 hover:bg-blue-600 py-1.5 text-xs font-medium text-white transition-colors"
-          >
-            + New Session
-          </button>
+          <div className="flex">
+            <button
+              onClick={handleNewSession}
+              className="flex-1 rounded-l-md bg-blue-600/90 hover:bg-blue-600 py-1.5 text-xs font-medium text-white transition-colors"
+            >
+              + New Session
+            </button>
+            <button
+              onClick={handleNewSessionInFolder}
+              className="rounded-r-md bg-blue-600/90 hover:bg-blue-600 px-2 py-1.5 text-xs text-white border-l border-blue-500/50 transition-colors"
+              title="New session in different folder"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+              </svg>
+            </button>
+          </div>
         </div>
       )}
       {activeTab === 'skills' && (
