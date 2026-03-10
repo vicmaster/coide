@@ -3,11 +3,22 @@ import { persist } from 'zustand/middleware'
 
 export type ImageAttachment = { path: string; mediaType: string; dataUrl: string }
 
+export type FileAttachment = {
+  id: string
+  name: string
+  path: string
+  size: number
+  category: 'image' | 'document' | 'text'
+  extractedText?: string
+  dataUrl?: string // only for images (preview)
+}
+
 export type TextMessage = {
   id: string
   role: 'user' | 'assistant' | 'error'
   text: string
   images?: ImageAttachment[]
+  files?: FileAttachment[]
 }
 
 export type ToolCallMessage = {

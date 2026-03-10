@@ -5,6 +5,7 @@ import { homedir, tmpdir } from 'os'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { runClaude, abortClaude, respondPermission } from './claude'
 import { spawnTerminal, writeTerminal, resizeTerminal, killTerminal, killAllTerminals } from './terminal'
+import { processFile, FILES_DIR } from './fileExtractor'
 import { type CoideSettings, DEFAULT_SETTINGS } from '../shared/types'
 
 type SkillInfo = { name: string; description: string; scope: 'global' | 'project'; filePath: string }
@@ -230,6 +231,49 @@ ipcMain.handle('skills:delete', async (_event, { filePath }: { filePath: string 
 
 ipcMain.handle('system:homedir', () => homedir())
 
+ipcMain.handle('claude:save-temp-file', async (_event, { base64, name }: { base64: string; name: string }) => {
+  try {
+    await mkdir(FILES_DIR, { recursive: true })
+    const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${name}`
+    const filePath = join(FILES_DIR, filename)
+    await writeFile(filePath, Buffer.from(base64, 'base64'))
+    return filePath
+  } catch {
+    return null
+  }
+})
+
+ipcMain.handle('claude:process-file', async (_event, { filePath }: { filePath: string }) => {
+  try {
+    return await processFile(filePath)
+  } catch (err) {
+    return { error: String((err as Error).message || err) }
+  }
+})
+
+ipcMain.handle('dialog:pickFiles', async () => {
+  if (!mainWindow) return null
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile', 'multiSelections'],
+    filters: [
+      { name: 'All Supported', extensions: [
+        'pdf', 'docx', 'doc', 'xlsx', 'xls', 'pptx', 'ppt', 'csv', 'txt',
+        'md', 'json', 'yaml', 'yml', 'xml', 'html', 'htm',
+        'log', 'env', 'toml', 'ini', 'cfg',
+        'sh', 'py', 'js', 'ts', 'jsx', 'tsx', 'rb', 'go', 'rs', 'java',
+        'c', 'cpp', 'h', 'hpp', 'css', 'scss', 'sql',
+        'png', 'jpg', 'jpeg', 'gif', 'webp'
+      ]},
+      { name: 'Documents', extensions: ['pdf', 'docx', 'doc', 'xlsx', 'xls', 'pptx', 'ppt', 'csv', 'txt'] },
+      { name: 'Code', extensions: ['py', 'js', 'ts', 'jsx', 'tsx', 'rb', 'go', 'rs', 'java', 'c', 'cpp', 'css', 'sql'] },
+      { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] },
+      { name: 'All Files', extensions: ['*'] }
+    ],
+    defaultPath: app.getPath('home')
+  })
+  return result.canceled ? null : result.filePaths
+})
+
 ipcMain.handle('mcp:list', async (_event, { cwd }: { cwd: string }) => {
   type McpEntry = { name: string; command?: string; args?: string[]; url?: string; scope: 'global' | 'project' }
   const results: McpEntry[] = []
@@ -347,6 +391,7 @@ app.whenReady().then(() => {
 app.on('will-quit', () => {
   killAllTerminals()
   rm(IMAGES_DIR, { recursive: true, force: true }).catch(() => {})
+  rm(FILES_DIR, { recursive: true, force: true }).catch(() => {})
 })
 
 app.on('window-all-closed', () => {

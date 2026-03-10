@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { useSessionsStore, type Message, type TextMessage, type ToolCallMessage, type ImageAttachment, type TaskStatus, type AgentStatus } from '../store/sessions'
+import { useSessionsStore, type Message, type TextMessage, type ToolCallMessage, type ImageAttachment, type FileAttachment, type TaskStatus, type AgentStatus } from '../store/sessions'
 import { useSettingsStore } from '../store/settings'
 import MarkdownRenderer from './MarkdownRenderer'
 import ToolCallCard from './ToolCallCard'
@@ -49,6 +49,8 @@ export default function Chat({
   const pendingToolsRef = useRef<Map<string, string>>(new Map())
   const [acSelectedIndex, setAcSelectedIndex] = useState(0)
   const [stagedImages, setStagedImages] = useState<ImageAttachment[]>([])
+  const [stagedFiles, setStagedFiles] = useState<FileAttachment[]>([])
+  const [fileError, setFileError] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -379,6 +381,81 @@ export default function Chat({
     setStagedImages((prev) => [...prev, { path, mediaType: file.type, dataUrl }])
   }, [])
 
+  const processAttachedFile = useCallback(async (file: File) => {
+    setFileError(null)
+    try {
+      // For images, use the existing image pipeline
+      if (SUPPORTED_TYPES.includes(file.type)) {
+        await processImageFile(file)
+        return
+      }
+      // Electron exposes file.path on dropped files (requires sandbox: false)
+      let filePath = (file as File & { path?: string }).path
+      if (!filePath) {
+        // Fallback: save the file to a temp location via main process
+        const buffer = await file.arrayBuffer()
+        const bytes = new Uint8Array(buffer)
+        // Convert in chunks to avoid "Maximum call stack size exceeded" for large files
+        let binary = ''
+        const chunkSize = 8192
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+          binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+        }
+        const base64 = btoa(binary)
+        const tempPath = await window.api.claude.saveTempFile(base64, file.name)
+        if (!tempPath) {
+          setFileError('Could not read file path')
+          return
+        }
+        filePath = tempPath
+      }
+      const result = await window.api.claude.processFile(filePath)
+      if (result.error) {
+        setFileError(result.error)
+        setTimeout(() => setFileError(null), 5000)
+        return
+      }
+      if (result.category === 'image') {
+        // Process as image for preview
+        const dataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.readAsDataURL(file)
+        })
+        const base64 = dataUrl.split(',')[1]
+        const path = await window.api.claude.saveImage(base64, file.type)
+        setStagedImages((prev) => [...prev, { path, mediaType: file.type, dataUrl }])
+      } else {
+        setStagedFiles((prev) => [...prev, result as FileAttachment])
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to attach file'
+      setFileError(message)
+      setTimeout(() => setFileError(null), 5000)
+    }
+  }, [processImageFile])
+
+  const pickFiles = useCallback(async () => {
+    setFileError(null)
+    const paths = await window.api.dialog.pickFiles()
+    if (!paths) return
+    for (const filePath of paths) {
+      const result = await window.api.claude.processFile(filePath)
+      if (result.error) {
+        setFileError(result.error)
+        setTimeout(() => setFileError(null), 5000)
+        return
+      }
+      // Images from the file picker get the path — Claude CLI can read them directly
+      // All files (including images) go into stagedFiles with their extracted info
+      setStagedFiles((prev) => [...prev, result as FileAttachment])
+    }
+  }, [])
+
+  const removeFile = useCallback((id: string) => {
+    setStagedFiles((prev) => prev.filter((f) => f.id !== id))
+  }, [])
+
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -409,9 +486,9 @@ export default function Chat({
     setIsDragging(false)
     const files = Array.from(e.dataTransfer.files)
     for (const file of files) {
-      await processImageFile(file)
+      await processAttachedFile(file)
     }
-  }, [processImageFile])
+  }, [processAttachedFile])
 
   // Paste handler for images
   useEffect(() => {
@@ -443,7 +520,7 @@ export default function Chat({
 
   const sendMessage = useCallback(async (text: string): Promise<void> => {
     const currentActiveId = useSessionsStore.getState().activeSessionId
-    if ((!text.trim() && stagedImages.length === 0) || (currentActiveId && loadingSessions.has(currentActiveId))) return
+    if ((!text.trim() && stagedImages.length === 0 && stagedFiles.length === 0) || (currentActiveId && loadingSessions.has(currentActiveId))) return
 
     let prompt = text.trim()
 
@@ -466,11 +543,13 @@ export default function Chat({
       }
     }
 
-    // Capture staged images before clearing
+    // Capture staged attachments before clearing
     const images = [...stagedImages]
+    const files = [...stagedFiles]
 
     setInput('')
     setStagedImages([])
+    setStagedFiles([])
     pendingToolsRef.current.clear()
 
     let sid = useSessionsStore.getState().activeSessionId
@@ -487,11 +566,27 @@ export default function Chat({
       prompt = `${prompt}\n\n${imagePaths}`
     }
 
+    // Append file contents wrapped in tags (or as image paths for image files)
+    if (files.length > 0) {
+      const imageFiles = files.filter((f) => f.category === 'image')
+      if (imageFiles.length > 0) {
+        const imgPaths = imageFiles.map((f) => `[Image: ${f.path}]`).join('\n')
+        prompt = `${prompt}\n\n${imgPaths}`
+      }
+      const fileParts = files
+        .filter((f) => f.category !== 'image' && f.extractedText)
+        .map((f) => `<attached_file name="${f.name}">\n${f.extractedText}\n</attached_file>`)
+      if (fileParts.length > 0) {
+        prompt = `${prompt}\n\n${fileParts.join('\n\n')}`
+      }
+    }
+
     const userMessage: TextMessage = {
       id: Date.now().toString(),
       role: 'user',
       text: text.trim(),
-      ...(images.length > 0 ? { images } : {})
+      ...(images.length > 0 ? { images } : {}),
+      ...(files.length > 0 ? { files: files.map(({ extractedText: _, ...f }) => f) } : {})
     }
     useSessionsStore.getState().addMessage(sid, userMessage)
 
@@ -505,7 +600,7 @@ export default function Chat({
         .addMessage(sid, { id: Date.now().toString(), role: 'error', text: String(err) })
       setLoadingSessions((prev) => { const next = new Set(prev); next.delete(sid!); return next })
     }
-  }, [loadingSessions, stagedImages])
+  }, [loadingSessions, stagedImages, stagedFiles])
 
   const editAndResend = useCallback(async (messageId: string, newText: string): Promise<void> => {
     const sid = useSessionsStore.getState().activeSessionId
@@ -719,11 +814,14 @@ export default function Chat({
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-blue-400/50 bg-blue-500/10 px-12 py-10">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-              <circle cx="8.5" cy="8.5" r="1.5" />
-              <polyline points="21 15 16 10 5 21" />
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="12" y1="18" x2="12" y2="12" />
+              <line x1="9" y1="15" x2="12" y2="12" />
+              <line x1="15" y1="15" x2="12" y2="12" />
             </svg>
-            <p className="text-sm font-medium text-blue-300">Drop image here</p>
+            <p className="text-sm font-medium text-blue-300">Drop files here</p>
+            <p className="text-[11px] text-blue-400/50">Images, PDFs, documents, code files, and more</p>
           </div>
         </div>
       )}
@@ -980,10 +1078,18 @@ export default function Chat({
             onHover={setAcSelectedIndex}
           />
         )}
-        {stagedImages.length > 0 && (
+        {/* File error toast */}
+        {fileError && (
+          <div className="mb-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-[12px] text-red-400 flex items-center justify-between">
+            <span>{fileError}</span>
+            <button onClick={() => setFileError(null)} className="text-red-400/50 hover:text-red-400 ml-2">×</button>
+          </div>
+        )}
+        {/* Staged attachments */}
+        {(stagedImages.length > 0 || stagedFiles.length > 0) && (
           <div className="flex gap-2 mb-2 flex-wrap">
             {stagedImages.map((img, i) => (
-              <div key={i} className="relative group">
+              <div key={`img-${i}`} className="relative group">
                 <img
                   src={img.dataUrl}
                   alt=""
@@ -997,9 +1103,34 @@ export default function Chat({
                 </button>
               </div>
             ))}
+            {stagedFiles.map((file) => (
+              <div key={file.id} className="relative group flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5">
+                <span className="text-[10px] text-white/30 font-mono uppercase">{file.name.split('.').pop()}</span>
+                <span className="text-[12px] text-white/60 max-w-[120px] truncate">{file.name}</span>
+                <span className="text-[10px] text-white/20">{file.size < 1024 ? `${file.size}B` : file.size < 1024 * 1024 ? `${(file.size / 1024).toFixed(0)}KB` : `${(file.size / 1024 / 1024).toFixed(1)}MB`}</span>
+                <button
+                  onClick={() => removeFile(file.id)}
+                  className="text-white/20 hover:text-red-400 transition-colors"
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+            ))}
           </div>
         )}
         <div className="flex items-end gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 focus-within:border-white/[0.15] transition-colors">
+          <button
+            onClick={pickFiles}
+            disabled={isLoading}
+            title="Attach files"
+            className="flex-shrink-0 text-white/25 hover:text-white/50 transition-colors disabled:opacity-25 pb-0.5"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+            </svg>
+          </button>
           <textarea
             ref={textareaRef}
             value={input}
@@ -1019,7 +1150,7 @@ export default function Chat({
           />
           <button
             onClick={handleSend}
-            disabled={(!input.trim() && stagedImages.length === 0) || isLoading}
+            disabled={(!input.trim() && stagedImages.length === 0 && stagedFiles.length === 0) || isLoading}
             className="flex-shrink-0 rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-25"
           >
             Send
@@ -1080,6 +1211,19 @@ const MessageRow = React.memo(function MessageRow({ message, isLoading, onEdit }
                   alt=""
                   className="h-20 rounded-lg object-cover max-w-[200px]"
                 />
+              ))}
+            </div>
+          )}
+          {textMsg.files && textMsg.files.length > 0 && (
+            <div className="flex gap-1.5 flex-wrap mb-2">
+              {textMsg.files.map((file) => (
+                <span key={file.id} className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-0.5 text-[11px]">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-60">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                  {file.name}
+                </span>
               ))}
             </div>
           )}

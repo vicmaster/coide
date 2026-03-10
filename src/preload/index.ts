@@ -25,11 +25,18 @@ const api = {
     abort: (coideSessionId?: string) => ipcRenderer.invoke('claude:abort', coideSessionId),
 
     saveImage: (base64: string, mediaType: string): Promise<string> =>
-      ipcRenderer.invoke('claude:save-image', { base64, mediaType })
+      ipcRenderer.invoke('claude:save-image', { base64, mediaType }),
+
+    processFile: (filePath: string) =>
+      ipcRenderer.invoke('claude:process-file', { filePath }),
+
+    saveTempFile: (base64: string, name: string): Promise<string | null> =>
+      ipcRenderer.invoke('claude:save-temp-file', { base64, name })
   },
   dialog: {
     pickFolder: (): Promise<string | null> => ipcRenderer.invoke('dialog:pickFolder'),
     pickFile: (): Promise<string | null> => ipcRenderer.invoke('dialog:pickFile'),
+    pickFiles: (): Promise<string[] | null> => ipcRenderer.invoke('dialog:pickFiles'),
     saveFile: (defaultName: string, content: string): Promise<{ success?: boolean; canceled?: boolean; error?: string }> =>
       ipcRenderer.invoke('dialog:saveFile', { defaultName, content })
   },

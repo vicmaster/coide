@@ -254,6 +254,7 @@ Electron Renderer Process (React)
 - [x] Context / token usage tracker
 - [x] Desktop notifications
 - [x] Image / screenshot drag-and-drop
+- [x] File attachments — drag & drop or file picker for PDF, DOCX, XLSX, PPTX, CSV, and text files with automatic text extraction
 - [x] Settings UI
 - [x] Session search — full-text search across all past sessions to find old conversations
 - [x] File changelog — per-session list of every file touched, cumulative diff, one-click revert
