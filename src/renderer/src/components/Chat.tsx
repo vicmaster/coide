@@ -134,6 +134,13 @@ export default function Chat({
     setActiveMatchIndex(0)
   }, [activeSessionId])
 
+  // Reset textarea height when input is cleared
+  useEffect(() => {
+    if (!input && textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+    }
+  }, [input])
+
   const searchMatches = searchOpen ? findMatches(messages, searchQuery) : []
   const searchMatchCount = searchMatches.length
 
@@ -996,13 +1003,19 @@ export default function Chat({
           <textarea
             ref={textareaRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              setInput(e.target.value)
+              // Auto-resize: reset height to measure scrollHeight, then clamp
+              const el = e.target
+              el.style.height = 'auto'
+              el.style.height = Math.min(el.scrollHeight, 300) + 'px'
+            }}
             onKeyDown={handleKeyDown}
             placeholder="Message Claude…"
             rows={1}
             disabled={isLoading}
             className="flex-1 resize-none bg-transparent text-sm text-white/90 placeholder-white/20 outline-none disabled:opacity-40 leading-relaxed"
-            style={{ maxHeight: '140px' }}
+            style={{ maxHeight: '300px', overflow: 'auto' }}
           />
           <button
             onClick={handleSend}
