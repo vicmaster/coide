@@ -14,6 +14,28 @@
   "build": {
     "appId": "com.coide",
     "productName": "Coide",
+    "compression": "normal",
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/node-pty/**/*.node",
+      "node_modules/node-pty/build/**"
+    ],
+    "files": [
+      "out/**/*",
+      "node_modules/**/*",
+      "!node_modules/**/{README,CHANGELOG,readme,changelog}*",
+      "!node_modules/**/{test,tests,__tests__,spec,specs}/**",
+      "!node_modules/**/*.{md,ts,map,flow}",
+      "!node_modules/**/{.eslintrc,.prettierrc,.babelrc}*",
+      "!node_modules/**/LICENSE*",
+      "!**/.claude/**",
+      "!README.md",
+      "!VISION.md",
+      "!electron-vite.config.ts",
+      "!tsconfig*",
+      "!src/**",
+      "!node_modules/@napi-rs/**"
+    ],
     "extraResources": [
       {
         "from": "resources/icon.png",
@@ -22,6 +44,7 @@
     ],
     "mac": {
       "icon": "resources/icon.icns",
+      "electronLanguages": ["en"],
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
       "extendInfo": {
@@ -30,7 +53,6 @@
     }
   },
   "dependencies": {
-    "@anthropic-ai/claude-code": "latest",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "@xterm/addon-fit": "^0.11.0",

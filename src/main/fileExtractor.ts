@@ -5,13 +5,15 @@ import { readFile, stat, copyFile, mkdir } from 'fs/promises'
 import { join, extname, basename } from 'path'
 import { tmpdir } from 'os'
 
-// Use eval('require') to bypass rollup bundling for these packages
+// Lazy-load heavy deps to avoid startup crashes (pdf-parse needs DOMMatrix polyfill)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const { PDFParse } = (eval('require') as NodeRequire)('pdf-parse') as any
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mammoth = (eval('require') as NodeRequire)('mammoth') as any
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const XLSX = (eval('require') as NodeRequire)('xlsx') as any
+const lazy = <T>(mod: string): (() => T) => {
+  let cached: T | undefined
+  return () => (cached ??= (eval('require') as NodeRequire)(mod) as T)
+}
+const getPdfParse = lazy<{ PDFParse: any }>('pdf-parse')
+const getMammoth = lazy<any>('mammoth')
+const getXLSX = lazy<any>('xlsx')
 
 const FILES_DIR = join(tmpdir(), 'coide-files')
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
@@ -61,6 +63,7 @@ function truncateText(text: string, maxLen: number): string {
 
 async function extractPdf(filePath: string): Promise<string> {
   const buffer = await readFile(filePath)
+  const { PDFParse } = getPdfParse()
   const parser = new PDFParse({ data: buffer })
   await parser.load()
   const result = await parser.getText()
@@ -72,11 +75,12 @@ async function extractPdf(filePath: string): Promise<string> {
 }
 
 async function extractDocx(filePath: string): Promise<string> {
-  const result = await mammoth.extractRawText({ path: filePath })
+  const result = await getMammoth().extractRawText({ path: filePath })
   return result.value || ''
 }
 
 async function extractSpreadsheet(filePath: string): Promise<string> {
+  const XLSX = getXLSX()
   const workbook = XLSX.readFile(filePath)
   const parts: string[] = []
   for (const sheetName of workbook.SheetNames) {
