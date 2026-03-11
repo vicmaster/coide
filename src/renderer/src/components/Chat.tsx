@@ -974,11 +974,42 @@ export default function Chat({
           </div>
         )}
 
-        {messages.map((msg) => {
+        {messages.map((msg, idx) => {
+          // Date separator
+          let dateSeparator: React.ReactNode = null
+          if (msg.timestamp) {
+            const msgDate = new Date(msg.timestamp)
+            const prevMsg = idx > 0 ? messages[idx - 1] : null
+            const prevDate = prevMsg?.timestamp ? new Date(prevMsg.timestamp) : null
+            const showSeparator = !prevDate ||
+              msgDate.toDateString() !== prevDate.toDateString()
+            if (showSeparator) {
+              const today = new Date()
+              const yesterday = new Date(today)
+              yesterday.setDate(yesterday.getDate() - 1)
+              let label: string
+              if (msgDate.toDateString() === today.toDateString()) {
+                label = 'Today'
+              } else if (msgDate.toDateString() === yesterday.toDateString()) {
+                label = 'Yesterday'
+              } else {
+                label = msgDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
+              }
+              dateSeparator = (
+                <div className="flex items-center gap-3 py-2">
+                  <div className="flex-1 h-px bg-white/[0.06]" />
+                  <span className="text-[10px] font-medium text-white/25 uppercase tracking-wider">{label}</span>
+                  <div className="flex-1 h-px bg-white/[0.06]" />
+                </div>
+              )
+            }
+          }
           if (editingMessageId === msg.id && msg.role === 'user') {
             const textMsg = msg as TextMessage
             return (
-              <div key={msg.id} data-message-id={msg.id} className="flex justify-end">
+              <React.Fragment key={msg.id}>
+              {dateSeparator}
+              <div data-message-id={msg.id} className="flex justify-end">
                 <div className="max-w-[75%] w-full">
                   {textMsg.images && textMsg.images.length > 0 && (
                     <div className="flex gap-2 flex-wrap mb-2 justify-end">
@@ -1023,16 +1054,20 @@ export default function Chat({
                   </div>
                 </div>
               </div>
+              </React.Fragment>
             )
           }
           return (
-            <div key={msg.id} data-message-id={msg.id}>
+            <React.Fragment key={msg.id}>
+            {dateSeparator}
+            <div data-message-id={msg.id}>
               <MessageRow
                 message={msg}
                 isLoading={isLoading}
                 onEdit={msg.role === 'user' && !isLoading ? (id, text) => { setEditingMessageId(id); setEditText(text) } : undefined}
               />
             </div>
+            </React.Fragment>
           )
         })}
 

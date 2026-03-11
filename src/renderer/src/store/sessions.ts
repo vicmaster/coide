@@ -17,6 +17,7 @@ export type TextMessage = {
   id: string
   role: 'user' | 'assistant' | 'error'
   text: string
+  timestamp?: number
   images?: ImageAttachment[]
   files?: FileAttachment[]
 }
@@ -30,6 +31,7 @@ export type ToolCallMessage = {
   result?: string
   denied?: boolean
   originalContent?: string | null
+  timestamp?: number
 }
 
 export type Message = TextMessage | ToolCallMessage
@@ -135,10 +137,11 @@ export const useSessionsStore = create<SessionsStore>()(
         set((state) => ({
           sessions: state.sessions.map((s) => {
             if (s.id !== sessionId) return s
-            const messages = [...s.messages, message]
+            const stamped = message.timestamp ? message : { ...message, timestamp: Date.now() }
+            const messages = [...s.messages, stamped]
             const title =
-              s.title === 'New session' && message.role === 'user'
-                ? (message as TextMessage).text.slice(0, 40)
+              s.title === 'New session' && stamped.role === 'user'
+                ? (stamped as TextMessage).text.slice(0, 40)
                 : s.title
             return { ...s, messages, title }
           })
