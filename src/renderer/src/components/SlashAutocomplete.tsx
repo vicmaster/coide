@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { BUILT_IN_COMMANDS } from '../data/commands'
 
 export type AutocompleteItem = {
@@ -11,16 +11,23 @@ export type AutocompleteItem = {
 export function useSlashItems(query: string, cwd: string): AutocompleteItem[] {
   const [skills, setSkills] = useState<SkillInfo[]>([])
 
+  const refresh = useCallback((): void => {
+    window.api.skills.list(cwd).then((result) => {
+      setSkills([...result.project, ...result.global])
+    })
+  }, [cwd])
+
+  // Re-fetch skills each time the autocomplete opens (query becomes non-empty)
+  // so newly created skills appear without needing a restart
   useEffect(() => {
-    const refresh = (): void => {
-      window.api.skills.list(cwd).then((result) => {
-        setSkills([...result.project, ...result.global])
-      })
-    }
+    if (query) refresh()
+  }, [query !== '', refresh]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     refresh()
     window.addEventListener('coide:skills-changed', refresh)
     return () => window.removeEventListener('coide:skills-changed', refresh)
-  }, [cwd])
+  }, [refresh])
 
   const q = query.toLowerCase()
 
