@@ -274,3 +274,20 @@ Electron Renderer Process (React)
 - [x] MCP servers panel — read-only view of active MCP servers (global + project) in right panel
 - [x] Integrated terminal — xterm.js-based terminal panel with multi-tab support, resizable, Cmd+J toggle
 - [x] Inline chat date separators — Slack-style day dividers (Today/Yesterday/date) between messages from different days
+
+### Copycat — Features from Claude Code CLI
+- [ ] Plan mode toggle — button to enter/exit plan mode (auto-accept edits, strategic planning before execution)
+- [ ] Effort level selector — UI toggle (low/medium/high) mapping to CLI `--effort` flag
+- [ ] Model switching — dropdown to switch between Opus/Sonnet/Haiku mid-session via `--model` flag
+- [ ] Status line — bottom bar showing current model, token usage, estimated cost, and session ID
+- [ ] @-mentions — autocomplete for `@` in chat input to reference files, folders, and URLs inline
+- [ ] Message queuing — allow typing and sending the next message while Claude is still responding
+- [ ] Light theme — add light color scheme and theme toggle in settings
+- [ ] Extended thinking indicator — show visual "thinking" state when Claude uses deep/ultrathink reasoning
+- [ ] Compact mode — toggle for denser chat layout with reduced spacing and smaller text
+- [ ] Voice mode — speech-to-text input and text-to-speech responses via Web Speech API
+- [ ] History search — Ctrl+R style recall of past user prompts for quick re-use
+- [ ] Session forking — branch current conversation into a new session with shared history
+- [ ] Git worktrees — UI for `--worktree` flag to run isolated parallel sessions on separate branches
+- [ ] Vim mode — vim keybindings for the chat input textarea
+- [ ] Reduced motion — respect `prefers-reduced-motion` for accessibility
