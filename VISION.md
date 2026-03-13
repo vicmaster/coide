@@ -276,7 +276,7 @@ Electron Renderer Process (React)
 - [x] Inline chat date separators — Slack-style day dividers (Today/Yesterday/date) between messages from different days
 
 ### Copycat — Features from Claude Code CLI
-- [ ] Plan mode toggle — button to enter/exit plan mode (auto-accept edits, strategic planning before execution)
+- [x] Plan mode toggle — button to enter/exit plan mode (auto-accept edits, strategic planning before execution)
 - [ ] Effort level selector — UI toggle (low/medium/high) mapping to CLI `--effort` flag
 - [ ] Model switching — dropdown to switch between Opus/Sonnet/Haiku mid-session via `--model` flag
 - [ ] Status line — bottom bar showing current model, token usage, estimated cost, and session ID

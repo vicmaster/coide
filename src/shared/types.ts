@@ -7,6 +7,7 @@ export type CoideSettings = {
   defaultCwd: string
   fontSize: 'small' | 'medium' | 'large'
   effort: string // '' = default, or 'low' | 'medium' | 'high'
+  planMode: boolean
 }
 
 export const DEFAULT_SETTINGS: CoideSettings = {
@@ -17,5 +18,6 @@ export const DEFAULT_SETTINGS: CoideSettings = {
   claudeBinaryPath: 'claude',
   defaultCwd: '',
   fontSize: 'medium',
-  effort: ''
+  effort: '',
+  planMode: false
 }

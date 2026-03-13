@@ -89,7 +89,7 @@ function stripAnsi(str: string): string {
 }
 
 // Tools that require explicit user approval before running
-const PERMISSION_REQUIRED = new Set(['Bash', 'Edit', 'Write'])
+const PERMISSION_REQUIRED = new Set(['Bash', 'Edit', 'Write', 'ExitPlanMode'])
 
 // Per-session PTY state
 type PendingPermission = {
@@ -305,6 +305,7 @@ export function runClaude(
       : coideSystemPrompt
     args.push('--append-system-prompt', fullSystemPrompt)
     if (settings.effort) args.push('--effort', settings.effort)
+    if (settings.planMode) args.push('--permission-mode', 'plan')
 
     const env = { ...process.env } as Record<string, string>
     delete env['CLAUDECODE']
