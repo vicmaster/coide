@@ -59,6 +59,9 @@ const api = {
   system: {
     homedir: (): Promise<string> => ipcRenderer.invoke('system:homedir')
   },
+  git: {
+    branch: (cwd: string): Promise<string> => ipcRenderer.invoke('git:branch', { cwd })
+  },
   mcp: {
     list: (cwd: string) => ipcRenderer.invoke('mcp:list', { cwd })
   },

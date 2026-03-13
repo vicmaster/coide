@@ -231,6 +231,19 @@ ipcMain.handle('skills:delete', async (_event, { filePath }: { filePath: string 
 
 ipcMain.handle('system:homedir', () => homedir())
 
+ipcMain.handle('git:branch', async (_event, { cwd }: { cwd: string }) => {
+  try {
+    const { execFile } = await import('child_process')
+    return new Promise<string>((resolve) => {
+      execFile('git', ['branch', '--show-current'], { cwd }, (err, stdout) => {
+        resolve(err ? '' : stdout.trim())
+      })
+    })
+  } catch {
+    return ''
+  }
+})
+
 ipcMain.handle('claude:save-temp-file', async (_event, { base64, name }: { base64: string; name: string }) => {
   try {
     await mkdir(FILES_DIR, { recursive: true })

@@ -8,6 +8,17 @@ type Tab = 'sessions' | 'skills' | 'commands'
 export default function Sidebar(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<Tab>('sessions')
   const { createSession, activeSessionId } = useSessionsStore()
+  const [gitBranch, setGitBranch] = useState('')
+
+  const cwd = useSessionsStore((state) => {
+    const session = state.sessions.find((s) => s.id === state.activeSessionId)
+    return session?.cwd ?? localStorage.getItem('cwd') ?? ''
+  })
+
+  useEffect(() => {
+    if (!cwd) { setGitBranch(''); return }
+    window.api.git.branch(cwd).then(setGitBranch)
+  }, [cwd])
 
   const handleNewSession = (): void => {
     const store = useSessionsStore.getState()
@@ -61,6 +72,19 @@ export default function Sidebar(): React.JSX.Element {
         {activeTab === 'skills' && <SkillsList />}
         {activeTab === 'commands' && <CommandsList />}
       </div>
+
+      {/* Git branch */}
+      {gitBranch && (
+        <div className="px-3 py-1.5 border-t border-white/[0.06] flex items-center gap-1.5 text-[11px] text-white/30 font-mono truncate">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+            <line x1="6" y1="3" x2="6" y2="15" />
+            <circle cx="18" cy="6" r="3" />
+            <circle cx="6" cy="18" r="3" />
+            <path d="M18 9a9 9 0 0 1-9 9" />
+          </svg>
+          <span className="truncate">{gitBranch}</span>
+        </div>
+      )}
 
       {/* Footer actions */}
       {activeTab === 'sessions' && (
