@@ -4,6 +4,7 @@ import { useSessionsStore } from '../store/sessions'
 import DiffViewer from './DiffViewer'
 import { buildDiffFromToolInput } from '../utils/diff'
 import { useFilePreviewStore } from '../store/filePreview'
+import { useSettingsStore } from '../store/settings'
 import { detectError, type DetectedError } from '../utils/errorDetection'
 
 const TOOL_ICONS: Record<string, string> = {
@@ -75,6 +76,7 @@ function ToolCallCardInner({
   message: ToolCallMessage
   isLoading?: boolean
 }): React.JSX.Element {
+  const compact = useSettingsStore((s) => s.compactMode)
   const isFileOp = message.tool_name === 'Edit' || message.tool_name === 'Write'
   const [expanded, setExpanded] = useState(isFileOp)
   const done = message.result !== undefined
@@ -115,11 +117,11 @@ function ToolCallCardInner({
         : 'border-white/[0.07] bg-white/[0.025]'
 
   return (
-    <div className={`my-1 rounded-lg border overflow-hidden text-xs ${borderClass}`}>
+    <div className={`${compact ? 'my-0.5' : 'my-1'} rounded-lg border overflow-hidden text-xs ${borderClass}`}>
       {/* Header row */}
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-white/[0.03] transition-colors"
+        className={`w-full flex items-center gap-2 ${compact ? 'px-2 py-1.5' : 'px-3 py-2'} text-left hover:bg-white/[0.03] transition-colors`}
       >
         {/* Status dot */}
         <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${dotClass}`} />

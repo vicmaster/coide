@@ -19,6 +19,7 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
   const [acSelectedIndex, setAcSelectedIndex] = useState(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const defaultCwd = useSettingsStore((s) => s.defaultCwd)
+  const compact = useSettingsStore((s) => s.compactMode)
 
   // Reset textarea height when input is cleared
   useEffect(() => {
@@ -326,7 +327,7 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
           ))}
         </div>
       )}
-      <div className="flex items-end gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 focus-within:border-white/[0.15] transition-colors">
+      <div className={`flex items-end gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] focus-within:border-white/[0.15] transition-colors ${compact ? 'px-2.5 py-1.5' : 'px-3 py-2.5'}`}>
         <button
           onClick={pickFiles}
           disabled={isLoading}

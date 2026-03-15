@@ -8,6 +8,7 @@ export type CoideSettings = {
   fontSize: 'small' | 'medium' | 'large'
   effort: '' | 'low' | 'medium' | 'high' | 'max'
   planMode: boolean
+  compactMode: boolean
 }
 
 export const DEFAULT_SETTINGS: CoideSettings = {
@@ -19,5 +20,6 @@ export const DEFAULT_SETTINGS: CoideSettings = {
   defaultCwd: '',
   fontSize: 'medium',
   effort: '',
-  planMode: false
+  planMode: false,
+  compactMode: false
 }

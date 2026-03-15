@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { getSingletonHighlighter, createJavaScriptRegexEngine } from 'shiki'
 import { useFilePreviewStore } from '../store/filePreview'
+import { useSettingsStore } from '../store/settings'
 
 const THEME = 'github-dark-dimmed'
 const LANGS = [
@@ -21,7 +22,7 @@ const highlighterPromise = getSingletonHighlighter({
   engine: createJavaScriptRegexEngine()
 })
 
-function CodeBlock({ language, code }: { language: string; code: string }): React.JSX.Element {
+function CodeBlock({ language, code, compact }: { language: string; code: string; compact?: boolean }): React.JSX.Element {
   const [html, setHtml] = useState('')
   const [copied, setCopied] = useState(false)
 
@@ -45,7 +46,7 @@ function CodeBlock({ language, code }: { language: string; code: string }): Reac
   }
 
   return (
-    <div className="my-3 rounded-lg overflow-hidden border border-white/[0.08] bg-[#1a1f27]">
+    <div className={`${compact ? 'my-1.5' : 'my-3'} rounded-lg overflow-hidden border border-white/[0.08] bg-[#1a1f27]`}>
       <div className="flex items-center justify-between px-3 py-1.5 bg-white/[0.03] border-b border-white/[0.06]">
         <span className="text-[10px] text-white/25 font-mono">{language || 'code'}</span>
         <button
@@ -57,11 +58,11 @@ function CodeBlock({ language, code }: { language: string; code: string }): Reac
       </div>
       {html ? (
         <div
-          className="[&>pre]:p-4 [&>pre]:overflow-x-auto [&>pre]:text-[13px] [&>pre]:leading-relaxed [&>pre]:m-0 [&_code]:bg-transparent [&_code]:p-0"
+          className={`[&>pre]:overflow-x-auto [&>pre]:text-[13px] [&>pre]:leading-relaxed [&>pre]:m-0 [&_code]:bg-transparent [&_code]:p-0 ${compact ? '[&>pre]:p-2' : '[&>pre]:p-4'}`}
           dangerouslySetInnerHTML={{ __html: html }}
         />
       ) : (
-        <pre className="p-4 overflow-x-auto text-[13px] leading-relaxed m-0">
+        <pre className={`${compact ? 'p-2' : 'p-4'} overflow-x-auto text-[13px] leading-relaxed m-0`}>
           <code className="text-white/60 font-mono">{code}</code>
         </pre>
       )}
@@ -77,6 +78,7 @@ function isFilePath(text: string): boolean {
 }
 
 function MarkdownRendererInner({ children }: { children: string }): React.JSX.Element {
+  const compact = useSettingsStore((s) => s.compactMode)
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -113,23 +115,23 @@ function MarkdownRendererInner({ children }: { children: string }): React.JSX.El
             )
           }
 
-          return <CodeBlock language={match?.[1] ?? ''} code={code} />
+          return <CodeBlock language={match?.[1] ?? ''} code={code} compact={compact} />
         },
 
         // Headings
         h1({ children }) {
-          return <h1 className="text-xl font-bold text-white/90 mt-5 mb-2 first:mt-0">{children}</h1>
+          return <h1 className={`text-xl font-bold text-white/90 first:mt-0 ${compact ? 'mt-3 mb-1' : 'mt-5 mb-2'}`}>{children}</h1>
         },
         h2({ children }) {
-          return <h2 className="text-base font-semibold text-white/85 mt-4 mb-2 first:mt-0">{children}</h2>
+          return <h2 className={`text-base font-semibold text-white/85 first:mt-0 ${compact ? 'mt-2 mb-1' : 'mt-4 mb-2'}`}>{children}</h2>
         },
         h3({ children }) {
-          return <h3 className="text-sm font-semibold text-white/80 mt-3 mb-1 first:mt-0">{children}</h3>
+          return <h3 className={`text-sm font-semibold text-white/80 first:mt-0 ${compact ? 'mt-1.5 mb-0.5' : 'mt-3 mb-1'}`}>{children}</h3>
         },
 
         // Paragraphs & text
         p({ children }) {
-          return <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>
+          return <p className={`last:mb-0 leading-relaxed ${compact ? 'mb-1.5' : 'mb-3'}`}>{children}</p>
         },
         strong({ children }) {
           return <strong className="font-semibold text-white/95">{children}</strong>
@@ -140,10 +142,10 @@ function MarkdownRendererInner({ children }: { children: string }): React.JSX.El
 
         // Lists
         ul({ children }) {
-          return <ul className="mb-3 ml-4 list-disc space-y-1 last:mb-0">{children}</ul>
+          return <ul className={`ml-4 list-disc last:mb-0 ${compact ? 'mb-1.5 space-y-0.5' : 'mb-3 space-y-1'}`}>{children}</ul>
         },
         ol({ children }) {
-          return <ol className="mb-3 ml-4 list-decimal space-y-1 last:mb-0">{children}</ol>
+          return <ol className={`ml-4 list-decimal last:mb-0 ${compact ? 'mb-1.5 space-y-0.5' : 'mb-3 space-y-1'}`}>{children}</ol>
         },
         li({ children }) {
           return <li className="text-white/80 leading-relaxed">{children}</li>
@@ -152,7 +154,7 @@ function MarkdownRendererInner({ children }: { children: string }): React.JSX.El
         // Blockquote
         blockquote({ children }) {
           return (
-            <blockquote className="border-l-2 border-white/15 pl-3 my-3 italic text-white/45">
+            <blockquote className={`border-l-2 border-white/15 pl-3 italic text-white/45 ${compact ? 'my-1.5' : 'my-3'}`}>
               {children}
             </blockquote>
           )
