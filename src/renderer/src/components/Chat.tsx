@@ -632,6 +632,25 @@ export default function Chat({
               </button>
             )
           })()}
+          <div className="flex items-center rounded-md border border-white/[0.06] overflow-hidden" title="Model — click to switch, click active to reset to default (opus).">
+            {(['opus', 'sonnet', 'haiku'] as const).map((m) => {
+              const isActive = model === m
+              const isDefault = !model && m === 'opus'
+              return (
+                <button
+                  key={m}
+                  onClick={() => updateSettings({ model: isActive ? '' : m })}
+                  className={`px-1.5 py-0.5 text-[10px] transition-colors ${
+                    isActive || isDefault
+                      ? 'bg-violet-500/20 text-violet-400 font-medium'
+                      : 'text-white/25 hover:text-white/50 hover:bg-white/[0.04]'
+                  }`}
+                >
+                  {m}
+                </button>
+              )
+            })}
+          </div>
           <div className="flex items-center rounded-md border border-white/[0.06] overflow-hidden" title="Effort level — controls reasoning depth. Click active level to reset to default.">
             {(['low', 'med', 'high', 'max'] as const).map((level) => {
               const value = level === 'med' ? 'medium' : level
