@@ -304,6 +304,7 @@ ipcMain.handle('mcp:list', async (_event, { cwd }: { cwd: string }) => {
   }
 
   // Local: ~/.claude.json → mcpServers (user-local scope, used by `claude mcp add` default)
+  // Also check per-project servers in ~/.claude.json → projects[cwd].mcpServers (plugin-installed servers like context7)
   try {
     const raw = await readFile(join(homedir(), '.claude.json'), 'utf-8')
     const json = JSON.parse(raw)
@@ -311,6 +312,18 @@ ipcMain.handle('mcp:list', async (_event, { cwd }: { cwd: string }) => {
     for (const [name, cfg] of Object.entries(servers) as [string, Record<string, unknown>][]) {
       if (!results.some((r) => r.name === name)) {
         results.push({ name, command: cfg.command as string | undefined, args: cfg.args as string[] | undefined, url: cfg.url as string | undefined, scope: 'global' })
+      }
+    }
+    // Per-project servers stored under projects[cwd].mcpServers
+    const projects = json.projects ?? {}
+    for (const [projPath, projCfg] of Object.entries(projects) as [string, Record<string, unknown>][]) {
+      if (cwd.startsWith(projPath)) {
+        const projServers = (projCfg.mcpServers ?? {}) as Record<string, Record<string, unknown>>
+        for (const [name, cfg] of Object.entries(projServers)) {
+          if (!results.some((r) => r.name === name)) {
+            results.push({ name, command: cfg.command as string | undefined, args: cfg.args as string[] | undefined, url: cfg.url as string | undefined, scope: 'project' })
+          }
+        }
       }
     }
   } catch {
