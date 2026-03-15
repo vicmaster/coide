@@ -378,6 +378,18 @@ export function runClaude(
             }
           }
 
+          // Detect extended thinking blocks
+          if (raw.type === 'assistant') {
+            const msg2 = raw.message as Record<string, unknown> | undefined
+            const content2 = msg2?.content as Array<Record<string, unknown>> | undefined
+            if (Array.isArray(content2)) {
+              const thinkingBlock = content2.find((b) => b.type === 'thinking')
+              if (thinkingBlock) {
+                win.webContents.send('claude:event', { ...tag, type: 'thinking', thinking: thinkingBlock.thinking ?? '' })
+              }
+            }
+          }
+
           if (raw.type === 'assistant' && !sess.waitingForPermission) {
             const content = (raw.message as Record<string, unknown>)?.content as Array<Record<string, unknown>>
             if (Array.isArray(content)) {

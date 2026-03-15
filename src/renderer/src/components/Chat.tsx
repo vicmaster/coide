@@ -22,6 +22,7 @@ type ClaudeEvent = ClaudeEventBase & (
   | { type: 'usage'; input_tokens: number; output_tokens: number; cache_creation_input_tokens: number; cache_read_input_tokens: number }
   | { type: 'result'; result: string; session_id: string; is_error: boolean }
   | { type: 'error'; result: string }
+  | { type: 'thinking'; thinking: string }
   | { type: 'stream_end' }
 )
 
@@ -54,6 +55,8 @@ export default function Chat({
   const [searchQuery, setSearchQuery] = useState('')
   const [activeMatchIndex, setActiveMatchIndex] = useState(0)
   const dragCounterRef = useRef(0)
+  // Extended thinking state: tracks when Claude is actively reasoning
+  const [thinkingSessions, setThinkingSessions] = useState<Map<string, number>>(new Map()) // sessionId → startTime
 
   const skipPermissions = useSettingsStore((s) => s.skipPermissions)
   const planMode = useSettingsStore((s) => s.planMode)
@@ -186,6 +189,25 @@ export default function Chat({
           cacheReadTokens: event.cache_read_input_tokens
         })
         return
+      }
+
+      if (event.type === 'thinking') {
+        setThinkingSessions((prev) => {
+          if (prev.has(sid)) return prev
+          const next = new Map(prev)
+          next.set(sid, Date.now())
+          return next
+        })
+      }
+
+      // Clear thinking state when Claude starts doing something (tool use, result, etc.)
+      if (event.type === 'tool_start' || event.type === 'result' || event.type === 'stream_end') {
+        setThinkingSessions((prev) => {
+          if (!prev.has(sid)) return prev
+          const next = new Map(prev)
+          next.delete(sid)
+          return next
+        })
       }
 
       if (event.type === 'tool_start') {
@@ -909,17 +931,21 @@ export default function Chat({
 
         {isLoading && (
           <div className="flex justify-start">
-            <div className={`rounded-2xl border border-white/10 bg-white/5 ${compactMode ? 'px-3 py-2' : 'px-4 py-3'}`}>
-              <div className="flex gap-1">
-                {[0, 1, 2].map((i) => (
-                  <span
-                    key={i}
-                    className="h-2 w-2 rounded-full bg-white/40 animate-bounce"
-                    style={{ animationDelay: `${i * 150}ms` }}
-                  />
-                ))}
+            {activeSessionId && thinkingSessions.has(activeSessionId) ? (
+              <ThinkingIndicator startTime={thinkingSessions.get(activeSessionId)!} compact={compactMode} />
+            ) : (
+              <div className={`rounded-2xl border border-white/10 bg-white/5 ${compactMode ? 'px-3 py-2' : 'px-4 py-3'}`}>
+                <div className="flex gap-1">
+                  {[0, 1, 2].map((i) => (
+                    <span
+                      key={i}
+                      className="h-2 w-2 rounded-full bg-white/40 animate-bounce"
+                      style={{ animationDelay: `${i * 150}ms` }}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
@@ -972,6 +998,35 @@ export default function Chat({
       )}
 
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+    </div>
+  )
+}
+
+function ThinkingIndicator({ startTime, compact }: { startTime: number; compact: boolean }): React.JSX.Element {
+  const [elapsed, setElapsed] = useState(0)
+
+  useEffect(() => {
+    const id = setInterval(() => setElapsed(Date.now() - startTime), 100)
+    return () => clearInterval(id)
+  }, [startTime])
+
+  const secs = (elapsed / 1000).toFixed(1)
+
+  return (
+    <div className={`rounded-2xl border border-violet-500/15 bg-violet-500/5 ${compact ? 'px-3 py-2' : 'px-4 py-3'}`}>
+      <div className="flex items-center gap-2">
+        <div className="flex items-end gap-[3px]">
+          {[10, 14, 8, 12].map((h, i) => (
+            <span
+              key={i}
+              className="w-[2px] rounded-sm bg-violet-400 animate-pulse"
+              style={{ height: `${h}px`, animationDelay: `${i * 200}ms`, animationDuration: `${800 + i * 150}ms` }}
+            />
+          ))}
+        </div>
+        <span className="text-xs font-medium text-violet-400 font-mono">Thinking</span>
+        <span className="text-[11px] text-violet-400/40 font-mono">{secs}s</span>
+      </div>
     </div>
   )
 }

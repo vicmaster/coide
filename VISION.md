@@ -283,7 +283,7 @@ Electron Renderer Process (React)
 - [ ] @-mentions — autocomplete for `@` in chat input to reference files, folders, and URLs inline
 - [ ] Message queuing — allow typing and sending the next message while Claude is still responding
 - [ ] Light theme — add light color scheme and theme toggle in settings
-- [ ] Extended thinking indicator — show visual "thinking" state when Claude uses deep/ultrathink reasoning
+- [x] Extended thinking indicator — show visual "thinking" state when Claude uses deep/ultrathink reasoning
 - [x] Compact mode — toggle for denser chat layout with reduced spacing and smaller text
 - [ ] Voice mode — speech-to-text input and text-to-speech responses via Web Speech API
 - [ ] History search — Ctrl+R style recall of past user prompts for quick re-use
