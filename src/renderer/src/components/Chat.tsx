@@ -58,6 +58,7 @@ export default function Chat({
   const skipPermissions = useSettingsStore((s) => s.skipPermissions)
   const planMode = useSettingsStore((s) => s.planMode)
   const effort = useSettingsStore((s) => s.effort)
+  const model = useSettingsStore((s) => s.model)
   const updateSettings = useSettingsStore((s) => s.updateSettings)
   const fontSize = useSettingsStore((s) => s.fontSize)
   const defaultCwd = useSettingsStore((s) => s.defaultCwd)
@@ -903,11 +904,26 @@ export default function Chat({
 
       {/* Input */}
       <ChatInput cwd={cwd} isLoading={isLoading} sendMessage={sendMessage} />
-      {claudeSessionId && (
-        <p className="-mt-2 pb-2 text-center text-[10px] text-white/15 font-mono">
-          {claudeSessionId.slice(0, 8)}…
-        </p>
-      )}
+
+      {/* Status line */}
+      <div className="flex items-center justify-center gap-3 px-4 py-1 text-[10px] font-mono text-white/25 border-t border-white/[0.04]">
+        <span className="text-white/35">{model || 'opus'}</span>
+        {effort && <span className="text-violet-400/50">{effort}</span>}
+        {usage && (() => {
+          const total = usage.inputTokens + usage.outputTokens
+          const fmt = (n: number): string => n >= 1_000_000 ? (n / 1_000_000).toFixed(2) + 'M' : n >= 1000 ? Math.round(n / 1000) + 'k' : String(n)
+          return <span>{fmt(total)} tokens · {Math.round(usagePct)}%</span>
+        })()}
+        {usage && (() => {
+          const costPerMInput = model === 'haiku' ? 0.8 : model === 'sonnet' ? 3 : 5
+          const costPerMOutput = model === 'haiku' ? 4 : model === 'sonnet' ? 15 : 25
+          const cost = (usage.inputTokens * costPerMInput + usage.outputTokens * costPerMOutput) / 1_000_000
+          return <span className="text-green-400/40">${cost < 0.01 ? cost.toFixed(4) : cost.toFixed(2)}</span>
+        })()}
+        {claudeSessionId && (
+          <span className="text-white/15">{claudeSessionId.slice(0, 8)}</span>
+        )}
+      </div>
 
       {currentPermission && (
         <PermissionDialog

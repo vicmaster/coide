@@ -279,7 +279,7 @@ Electron Renderer Process (React)
 - [x] Plan mode toggle — button to enter/exit plan mode (auto-accept edits, strategic planning before execution)
 - [x] Effort level selector — segmented control (low/med/high/max) in chat header, click to toggle effort level
 - [ ] Model switching — dropdown to switch between Opus/Sonnet/Haiku mid-session via `--model` flag
-- [ ] Status line — bottom bar showing current model, token usage, estimated cost, and session ID
+- [x] Status line — bottom bar showing current model, effort level, token usage, estimated cost, and session ID
 - [ ] @-mentions — autocomplete for `@` in chat input to reference files, folders, and URLs inline
 - [ ] Message queuing — allow typing and sending the next message while Claude is still responding
 - [ ] Light theme — add light color scheme and theme toggle in settings
