@@ -286,7 +286,7 @@ Electron Renderer Process (React)
 - [x] Extended thinking indicator — show visual "thinking" state when Claude uses deep/ultrathink reasoning
 - [x] Compact mode — toggle for denser chat layout with reduced spacing and smaller text
 - [ ] Voice mode — speech-to-text input and text-to-speech responses via Web Speech API
-- [ ] History search — Ctrl+R style recall of past user prompts for quick re-use
+- [x] History search — Ctrl+R style recall of past user prompts for quick re-use
 - [ ] Session forking — branch current conversation into a new session with shared history
 - [ ] Git worktrees — UI for `--worktree` flag to run isolated parallel sessions on separate branches
 - [ ] Vim mode — vim keybindings for the chat input textarea

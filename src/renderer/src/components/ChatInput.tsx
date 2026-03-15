@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { useSessionsStore, type ImageAttachment, type FileAttachment } from '../store/sessions'
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useSessionsStore, type ImageAttachment, type FileAttachment, type TextMessage } from '../store/sessions'
 import { useSettingsStore } from '../store/settings'
 import SlashAutocomplete, { useSlashItems, type AutocompleteItem } from './SlashAutocomplete'
+import HistorySearch, { type HistoryItem } from './HistorySearch'
 
 const SUPPORTED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
 
@@ -20,6 +21,39 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const defaultCwd = useSettingsStore((s) => s.defaultCwd)
   const compact = useSettingsStore((s) => s.compactMode)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyQuery, setHistoryQuery] = useState('')
+  const [historySelectedIndex, setHistorySelectedIndex] = useState(0)
+
+  // Collect all past user prompts across sessions
+  const sessions = useSessionsStore((s) => s.sessions)
+  const allHistoryItems = useMemo((): HistoryItem[] => {
+    const items: HistoryItem[] = []
+    for (const session of sessions) {
+      for (const msg of session.messages) {
+        if (msg.role === 'user') {
+          const text = (msg as TextMessage).text
+          if (text.trim()) {
+            items.push({ text, timestamp: msg.timestamp ?? session.createdAt, cwd: session.cwd })
+          }
+        }
+      }
+    }
+    // Most recent first, deduplicate by text
+    items.sort((a, b) => b.timestamp - a.timestamp)
+    const seen = new Set<string>()
+    return items.filter((item) => {
+      if (seen.has(item.text)) return false
+      seen.add(item.text)
+      return true
+    })
+  }, [sessions])
+
+  const filteredHistory = useMemo((): HistoryItem[] => {
+    if (!historyQuery) return allHistoryItems.slice(0, 20)
+    const q = historyQuery.toLowerCase()
+    return allHistoryItems.filter((item) => item.text.toLowerCase().includes(q)).slice(0, 20)
+  }, [allHistoryItems, historyQuery])
 
   // Reset textarea height when input is cleared
   useEffect(() => {
@@ -134,7 +168,24 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
     await sendMessage(text.trim(), images.length > 0 ? images : undefined, files.length > 0 ? files : undefined)
   }, [input, stagedImages, stagedFiles, sendMessage])
 
+  const handleHistorySelect = useCallback((item: HistoryItem): void => {
+    setInput(item.text)
+    setHistoryOpen(false)
+    setHistoryQuery('')
+    setHistorySelectedIndex(0)
+    textareaRef.current?.focus()
+  }, [])
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
+    // Ctrl+R to open history search
+    if (e.key === 'r' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault()
+      setHistoryOpen((v) => !v)
+      setHistoryQuery('')
+      setHistorySelectedIndex(0)
+      return
+    }
+
     if (autocompleteVisible) {
       if (e.key === 'ArrowDown') {
         e.preventDefault()
@@ -285,6 +336,17 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
           selectedIndex={acSelectedIndex}
           onSelect={handleAutocompleteSelect}
           onHover={setAcSelectedIndex}
+        />
+      )}
+      {historyOpen && (
+        <HistorySearch
+          query={historyQuery}
+          onQueryChange={(q) => { setHistoryQuery(q); setHistorySelectedIndex(0) }}
+          items={filteredHistory}
+          selectedIndex={historySelectedIndex}
+          onSelect={handleHistorySelect}
+          onHover={setHistorySelectedIndex}
+          onClose={() => { setHistoryOpen(false); setHistoryQuery(''); textareaRef.current?.focus() }}
         />
       )}
       {fileError && (
