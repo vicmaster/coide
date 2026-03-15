@@ -57,6 +57,7 @@ export default function Chat({
 
   const skipPermissions = useSettingsStore((s) => s.skipPermissions)
   const planMode = useSettingsStore((s) => s.planMode)
+  const effort = useSettingsStore((s) => s.effort)
   const updateSettings = useSettingsStore((s) => s.updateSettings)
   const fontSize = useSettingsStore((s) => s.fontSize)
   const defaultCwd = useSettingsStore((s) => s.defaultCwd)
@@ -629,6 +630,28 @@ export default function Chat({
               </button>
             )
           })()}
+          <div className="flex items-center rounded-md border border-white/[0.06] overflow-hidden" title="Effort level — controls reasoning depth. Click active level to reset to default.">
+            {(['low', 'med', 'high', 'max'] as const).map((level) => {
+              const value = level === 'med' ? 'medium' : level
+              const isActive = effort === value
+              const isDefault = !effort && value === 'high'
+              return (
+                <button
+                  key={level}
+                  onClick={() => updateSettings({ effort: isActive ? '' : value })}
+                  className={`px-1.5 py-0.5 text-[10px] transition-colors ${
+                    isActive
+                      ? 'bg-violet-500/20 text-violet-400 font-medium'
+                      : isDefault
+                        ? 'text-white/40 border-b border-b-white/10'
+                        : 'text-white/25 hover:text-white/50 hover:bg-white/[0.04]'
+                  }`}
+                >
+                  {level}
+                </button>
+              )
+            })}
+          </div>
           <button
             onClick={() => updateSettings({ planMode: !planMode })}
             title={planMode ? 'Plan mode ON — Claude will plan before executing. Click to disable.' : 'Click to enable plan mode (plan before executing)'}

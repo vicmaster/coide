@@ -6,7 +6,7 @@ export type CoideSettings = {
   claudeBinaryPath: string
   defaultCwd: string
   fontSize: 'small' | 'medium' | 'large'
-  effort: string // '' = default, or 'low' | 'medium' | 'high'
+  effort: '' | 'low' | 'medium' | 'high' | 'max'
   planMode: boolean
 }
 

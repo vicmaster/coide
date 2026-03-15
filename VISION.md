@@ -277,7 +277,7 @@ Electron Renderer Process (React)
 
 ### Copycat — Features from Claude Code CLI
 - [x] Plan mode toggle — button to enter/exit plan mode (auto-accept edits, strategic planning before execution)
-- [ ] Effort level selector — UI toggle (low/medium/high) mapping to CLI `--effort` flag
+- [x] Effort level selector — segmented control (low/med/high/max) in chat header, click to toggle effort level
 - [ ] Model switching — dropdown to switch between Opus/Sonnet/Haiku mid-session via `--model` flag
 - [ ] Status line — bottom bar showing current model, token usage, estimated cost, and session ID
 - [ ] @-mentions — autocomplete for `@` in chat input to reference files, folders, and URLs inline
