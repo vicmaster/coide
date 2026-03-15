@@ -7,7 +7,7 @@ const EMPTY_TASKS: Task[] = []
 const EMPTY_MESSAGES: Message[] = []
 const EMPTY_USAGE: SessionUsage = { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 }
 
-type Tab = 'agents' | 'todo' | 'context' | 'files' | 'mcp'
+type Tab = 'agents' | 'context' | 'mcp'
 
 export default function RightPanel(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<Tab>('agents')
@@ -17,7 +17,7 @@ export default function RightPanel(): React.JSX.Element {
       {/* Header — matches sidebar and chat header height */}
       <div className="flex items-end px-3 pt-[46px] pb-2.5 border-b border-white/[0.06]">
         <div className="flex gap-0.5">
-          {(['agents', 'todo', 'context', 'files', 'mcp'] as Tab[]).map((tab) => (
+          {(['agents', 'context', 'mcp'] as Tab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -35,13 +35,30 @@ export default function RightPanel(): React.JSX.Element {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-3">
-        {activeTab === 'agents' && <AgentTree />}
-        {activeTab === 'todo' && <TodoList />}
-        {activeTab === 'context' && <ContextTracker />}
-        {activeTab === 'files' && <FileChangelog />}
+        {activeTab === 'agents' && <AgentsTab />}
+        {activeTab === 'context' && <ContextTab />}
         {activeTab === 'mcp' && <McpPanel />}
       </div>
     </aside>
+  )
+}
+
+function AgentsTab(): React.JSX.Element {
+  return (
+    <div className="space-y-4">
+      <AgentTree />
+      <div className="h-px bg-white/[0.06]" />
+      <TodoList />
+    </div>
+  )
+}
+
+function ContextTab(): React.JSX.Element {
+  return (
+    <div className="space-y-4">
+      <ContextTracker />
+      <FileChangelog />
+    </div>
   )
 }
 
@@ -416,7 +433,7 @@ function ContextTracker(): React.JSX.Element {
       {files.length > 0 && (
         <div className="px-1">
           <p className="text-[10px] text-white/25">
-            {files.length} file{files.length !== 1 ? 's' : ''} touched — see <span className="text-white/40">Files</span> tab
+            {files.length} file{files.length !== 1 ? 's' : ''} touched
           </p>
         </div>
       )}

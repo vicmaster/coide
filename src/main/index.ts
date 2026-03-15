@@ -303,6 +303,20 @@ ipcMain.handle('mcp:list', async (_event, { cwd }: { cwd: string }) => {
     // no global settings
   }
 
+  // Local: ~/.claude.json → mcpServers (user-local scope, used by `claude mcp add` default)
+  try {
+    const raw = await readFile(join(homedir(), '.claude.json'), 'utf-8')
+    const json = JSON.parse(raw)
+    const servers = json.mcpServers ?? {}
+    for (const [name, cfg] of Object.entries(servers) as [string, Record<string, unknown>][]) {
+      if (!results.some((r) => r.name === name)) {
+        results.push({ name, command: cfg.command as string | undefined, args: cfg.args as string[] | undefined, url: cfg.url as string | undefined, scope: 'global' })
+      }
+    }
+  } catch {
+    // no local config
+  }
+
   // Project: <cwd>/.mcp.json → mcpServers
   try {
     const raw = await readFile(join(cwd, '.mcp.json'), 'utf-8')
