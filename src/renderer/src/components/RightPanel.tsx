@@ -341,7 +341,7 @@ function formatTokens(n: number): string {
   return String(n)
 }
 
-const CONTEXT_LIMIT = 200_000
+const CONTEXT_LIMIT = 1_000_000
 const FILE_TOOL_NAMES = new Set(['Read', 'Edit', 'Write', 'Glob', 'Grep'])
 
 function ContextTracker(): React.JSX.Element {
@@ -378,7 +378,7 @@ function ContextTracker(): React.JSX.Element {
         <div className="rounded-lg border border-white/[0.06] bg-white/[0.03] p-3">
           <div className="flex justify-between text-[11px] mb-2">
             <span className="text-white/40">Used</span>
-            <span className="text-white/50 font-mono">{formatTokens(total)} / 200k</span>
+            <span className="text-white/50 font-mono">{formatTokens(total)} / 1M</span>
           </div>
           <div className="h-1 w-full rounded-full bg-white/[0.07]">
             <div

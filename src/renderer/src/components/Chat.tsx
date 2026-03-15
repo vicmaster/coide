@@ -87,7 +87,7 @@ export default function Chat({
   const usage = activeSession?.usage ?? null
 
   const isLoading = activeSessionId ? loadingSessions.has(activeSessionId) : false
-  const CONTEXT_LIMIT = 200_000
+  const CONTEXT_LIMIT = 1_000_000
   const usagePct = usage ? Math.min(((usage.inputTokens + usage.outputTokens) / CONTEXT_LIMIT) * 100, 100) : 0
 
   // Scroll to bottom instantly on session switch or initial load
