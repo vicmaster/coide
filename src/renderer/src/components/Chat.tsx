@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { useSessionsStore, type Message, type TextMessage, type ToolCallMessage, type ImageAttachment, type FileAttachment, type TaskStatus, type AgentStatus } from '../store/sessions'
 import { useSettingsStore } from '../store/settings'
 import MarkdownRenderer from './MarkdownRenderer'
@@ -11,6 +12,7 @@ import { findMatches } from '../utils/inSessionSearch'
 import { useHighlightMatches } from '../hooks/useHighlightMatches'
 
 const EMPTY_MESSAGES: Message[] = []
+const BOUNCE_DOTS = [0, 1, 2]
 
 type ClaudeEventBase = { coideSessionId?: string }
 
@@ -39,7 +41,6 @@ export default function Chat({
 }): React.JSX.Element {
   const [loadingSessions, setLoadingSessions] = useState<Set<string>>(new Set())
   const [permissionQueue, setPermissionQueue] = useState<(PermissionRequest & { coideSessionId?: string })[]>([])
-  const bottomRef = useRef<HTMLDivElement>(null)
   const messagesRef = useRef<HTMLDivElement>(null)
   const [showJumpBottom, setShowJumpBottom] = useState(false)
   const cleanupRef = useRef<(() => void) | null>(null)
@@ -96,20 +97,68 @@ export default function Chat({
   const CONTEXT_LIMIT = 1_000_000
   const usagePct = usage ? Math.min(((usage.inputTokens + usage.outputTokens) / CONTEXT_LIMIT) * 100, 100) : 0
 
-  // Scroll to bottom instantly on session switch or initial load
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView()
-  }, [activeSessionId])
-
-  // Only auto-scroll when user is near the bottom (not reading history)
-  useEffect(() => {
-    const el = messagesRef.current
-    if (!el) return
-    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
-    if (distanceFromBottom < 150) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  // Build virtual items: interleave date separators with messages, plus loading indicator
+  type VirtualItem = { kind: 'separator'; label: string } | { kind: 'message'; msg: Message; idx: number } | { kind: 'loading' }
+  const virtualItems = useMemo((): VirtualItem[] => {
+    const items: VirtualItem[] = []
+    for (let idx = 0; idx < messages.length; idx++) {
+      const msg = messages[idx]
+      if (msg.timestamp) {
+        const msgDate = new Date(msg.timestamp)
+        const prevMsg = idx > 0 ? messages[idx - 1] : null
+        const prevDate = prevMsg?.timestamp ? new Date(prevMsg.timestamp) : null
+        if (!prevDate || msgDate.toDateString() !== prevDate.toDateString()) {
+          const today = new Date()
+          const yesterday = new Date(today)
+          yesterday.setDate(yesterday.getDate() - 1)
+          let label: string
+          if (msgDate.toDateString() === today.toDateString()) label = 'Today'
+          else if (msgDate.toDateString() === yesterday.toDateString()) label = 'Yesterday'
+          else label = msgDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
+          items.push({ kind: 'separator', label })
+        }
+      }
+      items.push({ kind: 'message', msg, idx })
     }
-  }, [messages])
+    if (isLoading) items.push({ kind: 'loading' })
+    return items
+  }, [messages, isLoading])
+
+  // Virtualizer setup
+  const virtualizer = useVirtualizer({
+    count: virtualItems.length,
+    getScrollElement: () => messagesRef.current,
+    estimateSize: () => 80,
+    overscan: 5,
+    getItemKey: (index) => {
+      const item = virtualItems[index]
+      if (item.kind === 'separator') return `sep-${index}`
+      if (item.kind === 'loading') return 'loading'
+      return item.msg.id
+    },
+  })
+
+  // Scroll to bottom on session switch
+  useEffect(() => {
+    if (virtualItems.length > 0) {
+      virtualizer.scrollToIndex(virtualItems.length - 1, { align: 'end' })
+    }
+  }, [activeSessionId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-scroll when new messages arrive (only if near bottom)
+  const prevCountRef = useRef(virtualItems.length)
+  useEffect(() => {
+    if (virtualItems.length > prevCountRef.current) {
+      const el = messagesRef.current
+      if (el) {
+        const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+        if (distanceFromBottom < 200) {
+          virtualizer.scrollToIndex(virtualItems.length - 1, { align: 'end', behavior: 'smooth' })
+        }
+      }
+    }
+    prevCountRef.current = virtualItems.length
+  }, [virtualItems.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Track scroll position to show/hide "jump to bottom" button
   useEffect(() => {
@@ -823,8 +872,8 @@ export default function Chat({
         />
       )}
 
-      {/* Messages */}
-      <div ref={messagesRef} className={`flex-1 overflow-y-auto relative ${compactMode ? 'px-4 py-2 space-y-2' : 'px-6 py-4 space-y-4'} ${compactMode ? (fontSize === 'small' ? 'text-[12px]' : fontSize === 'large' ? 'text-[14px]' : 'text-[13px]') : (fontSize === 'small' ? 'text-[13px]' : fontSize === 'large' ? 'text-[17px]' : 'text-[15px]')}`}>
+      {/* Messages — virtualized */}
+      <div ref={messagesRef} className={`flex-1 overflow-y-auto relative ${compactMode ? 'px-4 py-2' : 'px-6 py-4'} ${compactMode ? (fontSize === 'small' ? 'text-[12px]' : fontSize === 'large' ? 'text-[14px]' : 'text-[13px]') : (fontSize === 'small' ? 'text-[13px]' : fontSize === 'large' ? 'text-[17px]' : 'text-[15px]')}`}>
         {messages.length === 0 && !isLoading && (
           <div className="flex h-full flex-col items-center justify-center gap-3">
             <p className="text-[32px] font-semibold tracking-tight text-white/[0.07]">coide</p>
@@ -832,130 +881,123 @@ export default function Chat({
           </div>
         )}
 
-        {messages.map((msg, idx) => {
-          // Date separator
-          let dateSeparator: React.ReactNode = null
-          if (msg.timestamp) {
-            const msgDate = new Date(msg.timestamp)
-            const prevMsg = idx > 0 ? messages[idx - 1] : null
-            const prevDate = prevMsg?.timestamp ? new Date(prevMsg.timestamp) : null
-            const showSeparator = !prevDate ||
-              msgDate.toDateString() !== prevDate.toDateString()
-            if (showSeparator) {
-              const today = new Date()
-              const yesterday = new Date(today)
-              yesterday.setDate(yesterday.getDate() - 1)
-              let label: string
-              if (msgDate.toDateString() === today.toDateString()) {
-                label = 'Today'
-              } else if (msgDate.toDateString() === yesterday.toDateString()) {
-                label = 'Yesterday'
-              } else {
-                label = msgDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
-              }
-              dateSeparator = (
-                <div className="flex items-center gap-3 py-2">
-                  <div className="flex-1 h-px bg-white/[0.06]" />
-                  <span className="text-[10px] font-medium text-white/25 uppercase tracking-wider">{label}</span>
-                  <div className="flex-1 h-px bg-white/[0.06]" />
-                </div>
-              )
-            }
-          }
-          if (editingMessageId === msg.id && msg.role === 'user') {
-            const textMsg = msg as TextMessage
-            return (
-              <React.Fragment key={msg.id}>
-              {dateSeparator}
-              <div data-message-id={msg.id} className="flex justify-end">
-                <div className="max-w-[75%] w-full">
-                  {textMsg.images && textMsg.images.length > 0 && (
-                    <div className="flex gap-2 flex-wrap mb-2 justify-end">
-                      {textMsg.images.map((img, i) => (
-                        <img key={i} src={img.dataUrl} alt="" className="h-20 rounded-lg object-cover max-w-[200px]" />
-                      ))}
+        {virtualItems.length > 0 && (
+          <div style={{ height: virtualizer.getTotalSize(), width: '100%', position: 'relative' }}>
+            {virtualizer.getVirtualItems().map((vItem) => {
+              const item = virtualItems[vItem.index]
+
+              if (item.kind === 'separator') {
+                return (
+                  <div
+                    key={vItem.key}
+                    data-index={vItem.index}
+                    ref={virtualizer.measureElement}
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vItem.start}px)` }}
+                  >
+                    <div className={`flex items-center gap-3 ${compactMode ? 'py-1' : 'py-2'}`}>
+                      <div className="flex-1 h-px bg-white/[0.06]" />
+                      <span className="text-[10px] font-medium text-white/25 uppercase tracking-wider">{item.label}</span>
+                      <div className="flex-1 h-px bg-white/[0.06]" />
                     </div>
-                  )}
-                  <textarea
-                    autoFocus
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    className="w-full resize-none rounded-2xl bg-blue-600 px-4 py-3 text-white outline-none text-sm leading-relaxed"
-                    rows={Math.max(2, editText.split('\n').length)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Escape') {
-                        setEditingMessageId(null)
-                        setEditText('')
-                      }
-                    }}
-                  />
-                  <div className="flex justify-end gap-2 mt-2">
-                    <button
-                      onClick={() => { setEditingMessageId(null); setEditText('') }}
-                      className="rounded-lg px-3 py-1 text-xs text-white/50 hover:text-white/80 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      disabled={!editText.trim()}
-                      onClick={() => {
-                        const mid = editingMessageId!
-                        const text = editText
-                        setEditingMessageId(null)
-                        setEditText('')
-                        editAndResend(mid, text)
-                      }}
-                      className="rounded-lg bg-blue-500 px-3 py-1 text-xs font-medium text-white hover:bg-blue-400 disabled:opacity-25 transition-colors"
-                    >
-                      Save
-                    </button>
+                  </div>
+                )
+              }
+
+              if (item.kind === 'loading') {
+                return (
+                  <div
+                    key={vItem.key}
+                    data-index={vItem.index}
+                    ref={virtualizer.measureElement}
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vItem.start}px)` }}
+                  >
+                    <div className={`flex justify-start ${compactMode ? 'py-1' : 'py-2'}`}>
+                      {activeSessionId && thinkingSessions.has(activeSessionId) ? (
+                        <ThinkingIndicator startTime={thinkingSessions.get(activeSessionId)!} compact={compactMode} />
+                      ) : (
+                        <div className={`rounded-2xl border border-white/10 bg-white/5 ${compactMode ? 'px-3 py-2' : 'px-4 py-3'}`}>
+                          <div className="flex gap-1">
+                            {BOUNCE_DOTS.map((i) => (
+                              <span key={i} className="h-2 w-2 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              }
+
+              const msg = item.msg
+              const gap = compactMode ? 'py-1' : 'py-2'
+
+              if (editingMessageId === msg.id && msg.role === 'user') {
+                const textMsg = msg as TextMessage
+                return (
+                  <div
+                    key={vItem.key}
+                    data-index={vItem.index}
+                    ref={virtualizer.measureElement}
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vItem.start}px)` }}
+                  >
+                    <div data-message-id={msg.id} className={`flex justify-end ${gap}`}>
+                      <div className="max-w-[75%] w-full">
+                        {textMsg.images && textMsg.images.length > 0 && (
+                          <div className="flex gap-2 flex-wrap mb-2 justify-end">
+                            {textMsg.images.map((img, i) => (
+                              <img key={i} src={img.dataUrl} alt="" className="h-20 rounded-lg object-cover max-w-[200px]" />
+                            ))}
+                          </div>
+                        )}
+                        <textarea
+                          autoFocus
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          className="w-full resize-none rounded-2xl bg-blue-600 px-4 py-3 text-white outline-none text-sm leading-relaxed"
+                          rows={Math.max(2, editText.split('\n').length)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Escape') { setEditingMessageId(null); setEditText('') }
+                          }}
+                        />
+                        <div className="flex justify-end gap-2 mt-2">
+                          <button onClick={() => { setEditingMessageId(null); setEditText('') }} className="rounded-lg px-3 py-1 text-xs text-white/50 hover:text-white/80 transition-colors">Cancel</button>
+                          <button
+                            disabled={!editText.trim()}
+                            onClick={() => { const mid = editingMessageId!; const text = editText; setEditingMessageId(null); setEditText(''); editAndResend(mid, text) }}
+                            className="rounded-lg bg-blue-500 px-3 py-1 text-xs font-medium text-white hover:bg-blue-400 disabled:opacity-25 transition-colors"
+                          >Save</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              }
+
+              return (
+                <div
+                  key={vItem.key}
+                  data-index={vItem.index}
+                  ref={virtualizer.measureElement}
+                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vItem.start}px)` }}
+                >
+                  <div data-message-id={msg.id} className={gap}>
+                    <MessageRow
+                      message={msg}
+                      isLoading={isLoading}
+                      onEdit={msg.role === 'user' && !isLoading ? handleStartEdit : undefined}
+                    />
                   </div>
                 </div>
-              </div>
-              </React.Fragment>
-            )
-          }
-          return (
-            <React.Fragment key={msg.id}>
-            {dateSeparator}
-            <div data-message-id={msg.id}>
-              <MessageRow
-                message={msg}
-                isLoading={isLoading}
-                onEdit={msg.role === 'user' && !isLoading ? handleStartEdit : undefined}
-              />
-            </div>
-            </React.Fragment>
-          )
-        })}
-
-        {isLoading && (
-          <div className="flex justify-start">
-            {activeSessionId && thinkingSessions.has(activeSessionId) ? (
-              <ThinkingIndicator startTime={thinkingSessions.get(activeSessionId)!} compact={compactMode} />
-            ) : (
-              <div className={`rounded-2xl border border-white/10 bg-white/5 ${compactMode ? 'px-3 py-2' : 'px-4 py-3'}`}>
-                <div className="flex gap-1">
-                  {[0, 1, 2].map((i) => (
-                    <span
-                      key={i}
-                      className="h-2 w-2 rounded-full bg-white/40 animate-bounce"
-                      style={{ animationDelay: `${i * 150}ms` }}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
+              )
+            })}
           </div>
         )}
-
-        <div ref={bottomRef} />
       </div>
 
       {/* Jump to bottom */}
       {showJumpBottom && (
         <button
-          onClick={() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' })}
+          onClick={() => virtualizer.scrollToIndex(virtualItems.length - 1, { align: 'end', behavior: 'smooth' })}
           className="absolute left-1/2 -translate-x-1/2 bottom-[90px] z-10 rounded-full bg-white/[0.1] border border-white/[0.1] px-3 py-1.5 text-[11px] text-white/50 hover:text-white/80 hover:bg-white/[0.15] transition-all backdrop-blur-sm shadow-lg flex items-center gap-1.5"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

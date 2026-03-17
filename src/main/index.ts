@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow, ipcMain, dialog, nativeImage } from 'electro
 import { join } from 'path'
 import { readdir, readFile, mkdir, writeFile, rm } from 'fs/promises'
 import { homedir, tmpdir } from 'os'
+import { execFile as execFileImported } from 'child_process'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { runClaude, abortClaude, respondPermission } from './claude'
 import { spawnTerminal, writeTerminal, resizeTerminal, killTerminal, killAllTerminals } from './terminal'
@@ -231,26 +232,19 @@ ipcMain.handle('skills:delete', async (_event, { filePath }: { filePath: string 
 
 ipcMain.handle('fs:listFiles', async (_event, { cwd, query }: { cwd: string; query: string }) => {
   try {
-    const { execFile } = await import('child_process')
-
-    // Use git ls-files for tracked files, fall back to find
+    // Use git ls-files for tracked files, fall back to shallow readdir
     const files = await new Promise<string[]>((resolve) => {
-      execFile(
-        'git',
-        ['ls-files', '--cached', '--others', '--exclude-standard'],
-        { cwd, maxBuffer: 1024 * 1024 * 5 },
-        (err, stdout) => {
-          if (err) {
-            // Fallback: basic readdir
-            readdir(cwd, { recursive: true }).then(
-              (entries) => resolve(entries.map(String).slice(0, 5000)),
-              () => resolve([])
-            )
-            return
-          }
-          resolve(stdout.split('\n').filter(Boolean))
+      execFileImported('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd, maxBuffer: 1024 * 1024 * 2, timeout: 5000 }, (err, stdout) => {
+        if (err) {
+          // Fallback: top-level readdir only (no recursive traversal)
+          readdir(cwd).then(
+            (entries) => resolve(entries.map(String).slice(0, 500)),
+            () => resolve([])
+          )
+          return
         }
-      )
+        resolve(stdout.split('\n').filter(Boolean))
+      })
     })
 
     const q = query.toLowerCase()
@@ -285,9 +279,8 @@ ipcMain.handle('system:homedir', () => homedir())
 
 ipcMain.handle('git:branch', async (_event, { cwd }: { cwd: string }) => {
   try {
-    const { execFile } = await import('child_process')
     return new Promise<string>((resolve) => {
-      execFile('git', ['branch', '--show-current'], { cwd }, (err, stdout) => {
+      execFileImported('git', ['branch', '--show-current'], { cwd, timeout: 3000 }, (err, stdout) => {
         resolve(err ? '' : stdout.trim())
       })
     })

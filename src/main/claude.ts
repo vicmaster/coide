@@ -1,5 +1,6 @@
 import { app, BrowserWindow, Notification } from 'electron'
-import { appendFileSync, writeFileSync, readFileSync, unlinkSync, existsSync } from 'fs'
+import { appendFile, writeFile, readFile, unlink, existsSync } from 'fs'
+import { writeFile as writeFileAsync, readFile as readFileAsync, unlink as unlinkAsync } from 'fs/promises'
 import { homedir } from 'os'
 import { join } from 'path'
 import { type CoideSettings, DEFAULT_SETTINGS } from '../shared/types'
@@ -10,12 +11,27 @@ import { execFile } from 'child_process'
 
 const LOG = '/tmp/coide-debug.log'
 
+// Buffered async logger — collects messages and flushes periodically to avoid blocking main thread
+let logBuffer: string[] = []
+let logFlushTimer: ReturnType<typeof setTimeout> | null = null
+
 function log(msg: string): void {
-  try { appendFileSync(LOG, `[${new Date().toISOString()}] ${msg}\n`) } catch {}
+  logBuffer.push(`[${new Date().toISOString()}] ${msg}`)
   console.log(msg)
+  if (!logFlushTimer) {
+    logFlushTimer = setTimeout(flushLog, 200)
+  }
 }
 
-try { writeFileSync(LOG, '') } catch {}
+function flushLog(): void {
+  logFlushTimer = null
+  if (logBuffer.length === 0) return
+  const batch = logBuffer.join('\n') + '\n'
+  logBuffer = []
+  appendFile(LOG, batch, () => {})
+}
+
+writeFile(LOG, '', () => {})
 
 function resolveClaudeBinary(configured: string): string {
   // If user set an absolute path, use it directly
@@ -127,7 +143,7 @@ export function abortClaude(coideSessionId?: string): void {
   }
 }
 
-export function respondPermission(approved: boolean, coideSessionId?: string): void {
+export async function respondPermission(approved: boolean, coideSessionId?: string): Promise<void> {
   if (!coideSessionId) return
   const sess = ptySessions.get(coideSessionId)
   if (!sess) return
@@ -163,9 +179,9 @@ export function respondPermission(approved: boolean, coideSessionId?: string): v
       handleEvent(raw, win, coideSessionId)
     }
   } else {
-    revertFileChange(toolInfo)
+    await revertFileChange(toolInfo)
     for (const remaining of sess.pendingPermissions) {
-      revertFileChange(remaining)
+      await revertFileChange(remaining)
     }
 
     win.webContents.send('claude:event', {
@@ -197,31 +213,29 @@ export function respondPermission(approved: boolean, coideSessionId?: string): v
   }
 }
 
-function captureOriginalContent(toolName: string, input: Record<string, unknown>): string | null {
+async function captureOriginalContent(toolName: string, input: Record<string, unknown>): Promise<string | null> {
   if (toolName !== 'Edit' && toolName !== 'Write') return null
   const filePath = String(input.file_path ?? input.path ?? '')
   if (!filePath) return null
   try {
-    return readFileSync(filePath, 'utf-8')
+    return await readFileAsync(filePath, 'utf-8')
   } catch {
     return null // File doesn't exist yet (new file)
   }
 }
 
-function revertFileChange(toolInfo: PendingPermission): void {
+async function revertFileChange(toolInfo: PendingPermission): Promise<void> {
   if (toolInfo.tool_name !== 'Edit' && toolInfo.tool_name !== 'Write') return
   const filePath = String(toolInfo.input.file_path ?? toolInfo.input.path ?? '')
   if (!filePath) return
 
   try {
     if (toolInfo.originalContent != null) {
-      // Restore original content
-      writeFileSync(filePath, toolInfo.originalContent, 'utf-8')
+      await writeFileAsync(filePath, toolInfo.originalContent, 'utf-8')
       log(`Reverted file: ${filePath}`)
     } else {
-      // File was newly created — delete it
       if (existsSync(filePath)) {
-        unlinkSync(filePath)
+        await unlinkAsync(filePath)
         log(`Deleted new file: ${filePath}`)
       }
     }
@@ -336,6 +350,8 @@ export function runClaude(
     ptySessions.set(coideSessionId, sess)
 
     let lineBuffer = ''
+    const MAX_LINE_BUFFER = 1024 * 1024 // 1 MB cap on line buffer
+    const MAX_EVENT_BUFFER = 500 // Max buffered events while waiting for permission
 
     function settle(fn: () => void): void {
       if (sess.settled) return
@@ -347,8 +363,57 @@ export function runClaude(
       }, 200)
     }
 
+    async function processToolBlocks(
+      toolBlocks: Array<Record<string, unknown>>,
+      needsPermission: boolean
+    ): Promise<boolean> {
+      if (needsPermission) {
+        if (skipPermissions) {
+          for (const block of toolBlocks) {
+            const toolInput = (block.input ?? {}) as Record<string, unknown>
+            const originalContent = await captureOriginalContent(block.name as string, toolInput)
+            win.webContents.send('claude:event', { ...tag, type: 'tool_start', tool_id: block.id as string, tool_name: block.name as string })
+            win.webContents.send('claude:event', { ...tag, type: 'tool_input', tool_id: block.id as string, tool_name: block.name as string, input: toolInput, originalContent })
+          }
+        } else {
+          for (const block of toolBlocks) {
+            const toolInput = (block.input ?? {}) as Record<string, unknown>
+            const toolInfo: PendingPermission = {
+              tool_id: block.id as string,
+              tool_name: block.name as string,
+              input: toolInput,
+              originalContent: await captureOriginalContent(block.name as string, toolInput)
+            }
+            if (PERMISSION_REQUIRED.has(block.name as string)) {
+              sess.pendingPermissions.push(toolInfo)
+              win.webContents.send('claude:permission', { ...toolInfo, coideSessionId })
+              notify(win, 'Permission Needed', `Claude wants to use ${block.name as string}`)
+            } else {
+              win.webContents.send('claude:event', { ...tag, type: 'tool_start', tool_id: toolInfo.tool_id, tool_name: toolInfo.tool_name })
+              win.webContents.send('claude:event', { ...tag, type: 'tool_input', tool_id: toolInfo.tool_id, tool_name: toolInfo.tool_name, input: toolInfo.input })
+            }
+          }
+          sess.waitingForPermission = true
+          return true // Signal: skip to next line
+        }
+      } else {
+        for (const block of toolBlocks) {
+          win.webContents.send('claude:event', { ...tag, type: 'tool_start', tool_id: block.id as string, tool_name: block.name as string })
+          win.webContents.send('claude:event', { ...tag, type: 'tool_input', tool_id: block.id as string, tool_name: block.name as string, input: (block.input ?? {}) as Record<string, unknown> })
+        }
+      }
+      return false
+    }
+
     ptyProc.onData((data: string) => {
       lineBuffer += stripAnsi(data)
+
+      // Cap line buffer to prevent unbounded memory growth
+      if (lineBuffer.length > MAX_LINE_BUFFER) {
+        log(`Line buffer exceeded ${MAX_LINE_BUFFER} bytes, truncating`)
+        lineBuffer = lineBuffer.slice(-MAX_LINE_BUFFER / 2)
+      }
+
       const lines = lineBuffer.split('\n')
       lineBuffer = lines.pop() ?? ''
 
@@ -396,48 +461,27 @@ export function runClaude(
               const toolBlocks = content.filter((b) => b.type === 'tool_use')
               if (toolBlocks.length > 0) {
                 const needsPermission = toolBlocks.some((b) => PERMISSION_REQUIRED.has(b.name as string))
-
-                if (needsPermission) {
-                  if (skipPermissions) {
-                    for (const block of toolBlocks) {
-                      const toolInput = (block.input ?? {}) as Record<string, unknown>
-                      const originalContent = captureOriginalContent(block.name as string, toolInput)
-                      win.webContents.send('claude:event', { ...tag, type: 'tool_start', tool_id: block.id as string, tool_name: block.name as string })
-                      win.webContents.send('claude:event', { ...tag, type: 'tool_input', tool_id: block.id as string, tool_name: block.name as string, input: toolInput, originalContent })
-                    }
-                  } else {
-                    for (const block of toolBlocks) {
-                      const toolInput = (block.input ?? {}) as Record<string, unknown>
-                      const toolInfo: PendingPermission = {
-                        tool_id: block.id as string,
-                        tool_name: block.name as string,
-                        input: toolInput,
-                        originalContent: captureOriginalContent(block.name as string, toolInput)
+                // Process tool blocks async (file reads for original content)
+                processToolBlocks(toolBlocks, needsPermission).then((shouldSkip) => {
+                  if (!shouldSkip) {
+                    if (sess.waitingForPermission) {
+                      if (sess.pendingEventBuffer.length < MAX_EVENT_BUFFER) {
+                        sess.pendingEventBuffer.push(raw)
                       }
-                      if (PERMISSION_REQUIRED.has(block.name as string)) {
-                        sess.pendingPermissions.push(toolInfo)
-                        win.webContents.send('claude:permission', { ...toolInfo, coideSessionId })
-                        notify(win, 'Permission Needed', `Claude wants to use ${block.name as string}`)
-                      } else {
-                        win.webContents.send('claude:event', { ...tag, type: 'tool_start', tool_id: toolInfo.tool_id, tool_name: toolInfo.tool_name })
-                        win.webContents.send('claude:event', { ...tag, type: 'tool_input', tool_id: toolInfo.tool_id, tool_name: toolInfo.tool_name, input: toolInfo.input })
-                      }
+                    } else {
+                      handleEvent(raw, win, coideSessionId)
                     }
-                    sess.waitingForPermission = true
-                    continue
                   }
-                } else {
-                  for (const block of toolBlocks) {
-                    win.webContents.send('claude:event', { ...tag, type: 'tool_start', tool_id: block.id as string, tool_name: block.name as string })
-                    win.webContents.send('claude:event', { ...tag, type: 'tool_input', tool_id: block.id as string, tool_name: block.name as string, input: (block.input ?? {}) as Record<string, unknown> })
-                  }
-                }
+                })
+                continue
               }
             }
           }
 
           if (sess.waitingForPermission) {
-            sess.pendingEventBuffer.push(raw)
+            if (sess.pendingEventBuffer.length < MAX_EVENT_BUFFER) {
+              sess.pendingEventBuffer.push(raw)
+            }
           } else {
             handleEvent(raw, win, coideSessionId)
           }
