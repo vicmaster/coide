@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useSessionsStore, type ImageAttachment, type FileAttachment, type TextMessage } from '../store/sessions'
 import { useSettingsStore } from '../store/settings'
 import SlashAutocomplete, { useSlashItems, type AutocompleteItem } from './SlashAutocomplete'
+import AtMentionAutocomplete, { useAtMentionItems, type MentionItem } from './AtMentionAutocomplete'
 import HistorySearch, { type HistoryItem } from './HistorySearch'
 
 const SUPPORTED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
@@ -18,12 +19,14 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
   const [stagedFiles, setStagedFiles] = useState<FileAttachment[]>([])
   const [fileError, setFileError] = useState<string | null>(null)
   const [acSelectedIndex, setAcSelectedIndex] = useState(0)
+  const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const defaultCwd = useSettingsStore((s) => s.defaultCwd)
   const compact = useSettingsStore((s) => s.compactMode)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historyQuery, setHistoryQuery] = useState('')
   const [historySelectedIndex, setHistorySelectedIndex] = useState(0)
+  const [mentionAnchorLeft, setMentionAnchorLeft] = useState(0)
 
   // Collect all past user prompts across sessions
   const sessions = useSessionsStore((s) => s.sessions)
@@ -90,6 +93,30 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
     setAcSelectedIndex(0)
   }, [slashQuery])
 
+  // @-mention autocomplete: detect @query at cursor position
+  const [mentionQuery, mentionStart] = useMemo((): [string | null, number] => {
+    const textarea = textareaRef.current
+    if (!textarea || autocompleteVisible) return [null, -1]
+    const cursor = textarea.selectionStart ?? input.length
+    // Walk backward from cursor to find unescaped @
+    const before = input.slice(0, cursor)
+    const atIdx = before.lastIndexOf('@')
+    if (atIdx < 0) return [null, -1]
+    // @ must be at start or preceded by whitespace
+    if (atIdx > 0 && !/\s/.test(before[atIdx - 1])) return [null, -1]
+    const query = before.slice(atIdx + 1)
+    // No spaces in the query (simple heuristic)
+    if (/\s/.test(query)) return [null, -1]
+    return [query, atIdx]
+  }, [input, autocompleteVisible])
+
+  const mentionItems = useAtMentionItems(mentionQuery, cwd)
+  const mentionVisible = mentionQuery !== null && mentionQuery.length > 0 && !isLoading && mentionItems.length > 0
+
+  useEffect(() => {
+    setMentionSelectedIndex(0)
+  }, [mentionQuery])
+
   const executeCommand = useCallback((name: string): void => {
     setInput('')
     const store = useSessionsStore.getState()
@@ -144,6 +171,22 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
         break
     }
   }, [sendMessage, defaultCwd])
+
+  const handleMentionSelect = useCallback((item: MentionItem): void => {
+    if (mentionStart < 0) return
+    const textarea = textareaRef.current
+    const cursor = textarea?.selectionStart ?? input.length
+    const before = input.slice(0, mentionStart)
+    const after = input.slice(cursor)
+    const newInput = `${before}@${item.path} ${after}`
+    setInput(newInput)
+    // Place cursor after the inserted mention
+    const newCursor = mentionStart + 1 + item.path.length + 1
+    requestAnimationFrame(() => {
+      textarea?.focus()
+      textarea?.setSelectionRange(newCursor, newCursor)
+    })
+  }, [input, mentionStart])
 
   const handleAutocompleteSelect = useCallback((item: AutocompleteItem): void => {
     if (item.type === 'skill') {
@@ -205,6 +248,32 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
       if (e.key === 'Escape') {
         e.preventDefault()
         setInput('')
+        return
+      }
+    }
+    if (mentionVisible) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setMentionSelectedIndex((i) => (i + 1) % mentionItems.length)
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setMentionSelectedIndex((i) => (i - 1 + mentionItems.length) % mentionItems.length)
+        return
+      }
+      if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
+        e.preventDefault()
+        handleMentionSelect(mentionItems[mentionSelectedIndex])
+        return
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        // Remove the @ trigger to dismiss
+        const before = input.slice(0, mentionStart)
+        const cursor = textareaRef.current?.selectionStart ?? input.length
+        const after = input.slice(cursor)
+        setInput(before + after)
         return
       }
     }
@@ -336,6 +405,15 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
           selectedIndex={acSelectedIndex}
           onSelect={handleAutocompleteSelect}
           onHover={setAcSelectedIndex}
+        />
+      )}
+      {mentionVisible && (
+        <AtMentionAutocomplete
+          items={mentionItems}
+          selectedIndex={mentionSelectedIndex}
+          onSelect={handleMentionSelect}
+          onHover={setMentionSelectedIndex}
+          anchorLeft={mentionAnchorLeft}
         />
       )}
       {historyOpen && (

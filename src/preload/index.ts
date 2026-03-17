@@ -54,7 +54,9 @@ const api = {
     readFile: (filePath: string): Promise<{ content?: string; error?: string }> =>
       ipcRenderer.invoke('fs:readFile', { filePath }),
     revertFile: (filePath: string, originalContent: string | null): Promise<{ success?: boolean; error?: string }> =>
-      ipcRenderer.invoke('fs:revertFile', { filePath, originalContent })
+      ipcRenderer.invoke('fs:revertFile', { filePath, originalContent }),
+    listFiles: (cwd: string, query: string): Promise<{ path: string; type: 'file' | 'folder' }[]> =>
+      ipcRenderer.invoke('fs:listFiles', { cwd, query })
   },
   system: {
     homedir: (): Promise<string> => ipcRenderer.invoke('system:homedir')

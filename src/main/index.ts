@@ -229,6 +229,58 @@ ipcMain.handle('skills:delete', async (_event, { filePath }: { filePath: string 
   }
 })
 
+ipcMain.handle('fs:listFiles', async (_event, { cwd, query }: { cwd: string; query: string }) => {
+  try {
+    const { execFile } = await import('child_process')
+
+    // Use git ls-files for tracked files, fall back to find
+    const files = await new Promise<string[]>((resolve) => {
+      execFile(
+        'git',
+        ['ls-files', '--cached', '--others', '--exclude-standard'],
+        { cwd, maxBuffer: 1024 * 1024 * 5 },
+        (err, stdout) => {
+          if (err) {
+            // Fallback: basic readdir
+            readdir(cwd, { recursive: true }).then(
+              (entries) => resolve(entries.map(String).slice(0, 5000)),
+              () => resolve([])
+            )
+            return
+          }
+          resolve(stdout.split('\n').filter(Boolean))
+        }
+      )
+    })
+
+    const q = query.toLowerCase()
+    const results: { path: string; type: 'file' | 'folder' }[] = []
+    const seenFolders = new Set<string>()
+
+    for (const file of files) {
+      if (results.length >= 15) break
+      const lower = file.toLowerCase()
+      // Match against filename or full path
+      if (!lower.includes(q)) continue
+
+      // Add parent folders that match
+      const parts = file.split('/')
+      for (let i = 1; i < parts.length; i++) {
+        const folder = parts.slice(0, i).join('/') + '/'
+        if (!seenFolders.has(folder) && folder.toLowerCase().includes(q)) {
+          seenFolders.add(folder)
+          if (results.length < 15) results.push({ path: folder, type: 'folder' })
+        }
+      }
+      results.push({ path: file, type: 'file' })
+    }
+
+    return results.slice(0, 15)
+  } catch {
+    return []
+  }
+})
+
 ipcMain.handle('system:homedir', () => homedir())
 
 ipcMain.handle('git:branch', async (_event, { cwd }: { cwd: string }) => {
