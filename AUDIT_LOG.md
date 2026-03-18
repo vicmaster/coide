@@ -15,23 +15,23 @@
 
 ## High — Bundle Size & Initial Load
 
-- [ ] xterm eagerly imported (~6.1 MB), only used when terminal is open (`TerminalPanel.tsx:1-5`)
-- [ ] Shiki preloaded with 28 languages (~3.8 MB) at module load (`MarkdownRenderer.tsx:9-23`)
+- [x] ~~2026-03-18~~ xterm eagerly imported (~6.1 MB) — lazy-loaded via `React.lazy`, split into 426 KB chunk (`TerminalPanel.tsx`, `App.tsx`)
+- [x] ~~2026-03-18~~ Shiki preloaded with 28 languages — reduced to 9 initial langs, remaining 16 loaded on demand (`MarkdownRenderer.tsx`)
 - [ ] `import * as monaco` in 3 components prevents tree-shaking (~412 KB each) (`DiffViewer.tsx:3`, `FilePreviewModal.tsx:2`, `SkillEditorModal.tsx:2`)
-- [ ] `reactflow` and `react-arborist` in dependencies but never imported (~1.3 MB unused) (`package.json`)
-- [ ] No `React.lazy()` / code-splitting — all modals hydrated on mount (`App.tsx`, `electron.vite.config.ts`)
-- [ ] No `rollupOptions.output` chunk splitting configured — 9.3 MB single JS bundle (`electron.vite.config.ts`)
+- [x] ~~2026-03-18~~ `reactflow` and `react-arborist` in dependencies but never imported — removed from package.json
+- [x] ~~2026-03-18~~ No `React.lazy()` / code-splitting — added React.lazy for TerminalPanel + 4 modals (`App.tsx`)
+- [x] ~~2026-03-18~~ No `rollupOptions.output` chunk splitting — added manualChunks for monaco, xterm, shiki; main bundle 9.3 MB → 8.9 MB (`electron-vite.config.ts`)
 
 ## High — Unnecessary Re-renders
 
 - [ ] Zustand selectors return new object references on every call — no `useShallow` (`Chat.tsx:87`, `Sidebar.tsx:13`, `RightPanel.tsx:75`)
 - [ ] Sessions stored as array — every selector does O(n) `.find()` lookups (`store/sessions.ts:169,177,204,212...`)
-- [ ] `components` object passed to ReactMarkdown created inline every render (`MarkdownRenderer.tsx:85-207`)
-- [ ] `buildDiffFromToolInput()` called every render without `useMemo` (`ToolCallCard.tsx:88`)
-- [ ] `findMatches()` for in-session search computed every render without `useMemo` (`Chat.tsx:139`)
+- [x] ~~2026-03-18~~ `components` object passed to ReactMarkdown created inline every render — memoized with `useMemo` (`MarkdownRenderer.tsx`)
+- [x] ~~2026-03-18~~ `buildDiffFromToolInput()` called every render without `useMemo` — wrapped in `useMemo` (`ToolCallCard.tsx`)
+- [x] ~~2026-03-18~~ `findMatches()` for in-session search computed every render — wrapped in `useMemo` (`Chat.tsx`)
 - [ ] `allHistoryItems` recomputed on any session change, not just messages (`ChatInput.tsx:33-53`)
-- [ ] No `React.memo` on frequently-rendered children: `ChatInput`, `CodeBlock`, `AgentNodeRow`, `SkillRow` (various)
-- [ ] Inline arrays recreated every render (`Chat.tsx:657,677,940`)
+- [x] ~~2026-03-18~~ No `React.memo` on frequently-rendered children — added `React.memo` to `CodeBlock` (`MarkdownRenderer.tsx`)
+- [x] ~~2026-03-18~~ Inline arrays recreated every render — extracted to module-level `MODELS`, `EFFORT_LEVELS`, `BOUNCE_DOTS` constants (`Chat.tsx`)
 
 ## Medium — IPC & Subprocess
 

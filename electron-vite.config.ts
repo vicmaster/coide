@@ -16,6 +16,17 @@ export default defineConfig({
         '@': resolve('src/renderer/src')
       }
     },
-    plugins: [react()]
+    plugins: [react()],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'monaco': ['monaco-editor', '@monaco-editor/react'],
+            'xterm': ['@xterm/xterm', '@xterm/addon-fit', '@xterm/addon-web-links'],
+            'shiki': ['shiki']
+          }
+        }
+      }
+    }
   }
 })

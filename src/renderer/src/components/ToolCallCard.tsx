@@ -84,9 +84,10 @@ function ToolCallCardInner({
   const summary = inputSummary(message.tool_name, message.input)
   const hasFilePath = FILE_TOOLS.has(message.tool_name) && !!summary
 
-  const diff = isFileOp
-    ? buildDiffFromToolInput(message.tool_name, message.input, message.originalContent)
-    : null
+  const diff = useMemo(
+    () => isFileOp ? buildDiffFromToolInput(message.tool_name, message.input, message.originalContent) : null,
+    [isFileOp, message.tool_name, message.input, message.originalContent]
+  )
 
   const error: DetectedError | null = useMemo(
     () => (done && !denied && message.result ? detectError(message.tool_name, message.result) : null),

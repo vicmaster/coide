@@ -1,15 +1,17 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import Sidebar from './components/Sidebar'
 import Chat from './components/Chat'
 import RightPanel from './components/RightPanel'
-import TerminalPanel from './components/TerminalPanel'
 import SessionSearch from './components/SessionSearch'
-import FilePreviewModal from './components/FilePreviewModal'
-import SkillEditorModal from './components/SkillEditorModal'
-import HookEditorModal from './components/HookEditorModal'
-import WelcomeModal from './components/WelcomeModal'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useSessionsStore } from './store/sessions'
+
+// Lazy-load heavy components — TerminalPanel (~6.1 MB xterm), modals with Monaco
+const TerminalPanel = React.lazy(() => import('./components/TerminalPanel'))
+const FilePreviewModal = React.lazy(() => import('./components/FilePreviewModal'))
+const SkillEditorModal = React.lazy(() => import('./components/SkillEditorModal'))
+const HookEditorModal = React.lazy(() => import('./components/HookEditorModal'))
+const WelcomeModal = React.lazy(() => import('./components/WelcomeModal'))
 
 export default function App(): React.JSX.Element {
   const [rightPanelOpen, setRightPanelOpen] = useState(true)
@@ -93,7 +95,9 @@ export default function App(): React.JSX.Element {
               className="h-[3px] cursor-row-resize hover:bg-blue-500/30 transition-colors"
             />
             <div style={{ height: terminalHeight }} className="min-h-0 flex-shrink-0">
-              <TerminalPanel cwd={cwd} />
+              <Suspense fallback={<div className="flex items-center justify-center h-full text-white/20 text-xs">Loading terminal…</div>}>
+                <TerminalPanel cwd={cwd} />
+              </Suspense>
             </div>
           </>
         )}
@@ -105,17 +109,13 @@ export default function App(): React.JSX.Element {
       {/* Session search modal */}
       <SessionSearch />
 
-      {/* File preview modal */}
-      <FilePreviewModal />
-
-      {/* Skill editor modal */}
-      <SkillEditorModal />
-
-      {/* Hook editor modal */}
-      <HookEditorModal />
-
-      {/* Welcome modal — first-run onboarding */}
-      <WelcomeModal />
+      {/* Lazy-loaded modals */}
+      <Suspense fallback={null}>
+        <FilePreviewModal />
+        <SkillEditorModal />
+        <HookEditorModal />
+        <WelcomeModal />
+      </Suspense>
     </div>
   )
 }

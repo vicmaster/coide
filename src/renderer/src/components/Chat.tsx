@@ -13,6 +13,8 @@ import { useHighlightMatches } from '../hooks/useHighlightMatches'
 
 const EMPTY_MESSAGES: Message[] = []
 const BOUNCE_DOTS = [0, 1, 2]
+const MODELS = ['opus', 'sonnet', 'haiku'] as const
+const EFFORT_LEVELS = ['low', 'med', 'high', 'max'] as const
 
 type ClaudeEventBase = { coideSessionId?: string }
 
@@ -185,7 +187,7 @@ export default function Chat({
     setActiveMatchIndex(0)
   }, [activeSessionId])
 
-  const searchMatches = searchOpen ? findMatches(messages, searchQuery) : []
+  const searchMatches = useMemo(() => searchOpen ? findMatches(messages, searchQuery) : [], [searchOpen, messages, searchQuery])
   const searchMatchCount = searchMatches.length
 
   useEffect(() => {
@@ -704,7 +706,7 @@ export default function Chat({
             )
           })()}
           <div className="flex items-center rounded-md border border-white/[0.06] overflow-hidden" title="Model — click to switch, click active to reset to default (opus).">
-            {(['opus', 'sonnet', 'haiku'] as const).map((m) => {
+            {MODELS.map((m) => {
               const isActive = model === m
               const isDefault = !model && m === 'opus'
               return (
@@ -723,7 +725,7 @@ export default function Chat({
             })}
           </div>
           <div className="flex items-center rounded-md border border-white/[0.06] overflow-hidden" title="Effort level — controls reasoning depth. Click active level to reset to default.">
-            {(['low', 'med', 'high', 'max'] as const).map((level) => {
+            {EFFORT_LEVELS.map((level) => {
               const value = level === 'med' ? 'medium' : level
               const isActive = effort === value
               const isDefault = !effort && value === 'high'

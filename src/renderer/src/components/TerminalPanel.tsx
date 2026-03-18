@@ -44,7 +44,7 @@ export default function TerminalPanel({ cwd }: { cwd: string }): React.JSX.Eleme
 
   // Initialize terminal when active tab changes
   useEffect(() => {
-    if (!activeTabId || !containerRef.current) return
+    if (!activeTabId || !containerRef.current || !cwd) return
 
     // Hide all terminals, show active
     for (const [id, entry] of terminalsRef.current) {
