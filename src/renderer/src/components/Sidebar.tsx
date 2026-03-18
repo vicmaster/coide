@@ -256,6 +256,25 @@ function SkillsList(): React.JSX.Element {
   const filteredGlobal = filter(skills.global)
   const hasResults = filteredProject.length > 0 || filteredGlobal.length > 0
 
+  const handleRun = useCallback((skill: SkillInfo) => {
+    setPendingAction({ type: 'send', text: `/${skill.name}` })
+  }, [setPendingAction])
+
+  const handleEdit = useCallback((skill: SkillInfo) => {
+    useSkillEditorStore.getState().openEdit(skill)
+  }, [])
+
+  const handleDelete = useCallback(async (skill: SkillInfo) => {
+    await window.api.skills.delete(skill.filePath)
+    window.dispatchEvent(new Event('coide:skills-changed'))
+  }, [])
+
+  const handleExport = useCallback(async (skill: SkillInfo) => {
+    const { content, error } = await window.api.fs.readFile(skill.filePath)
+    if (error || !content) return
+    await window.api.dialog.saveFile(`${skill.name}.md`, content)
+  }, [])
+
   return (
     <div className="space-y-2">
       <input
@@ -273,17 +292,10 @@ function SkillsList(): React.JSX.Element {
               <SkillRow
                 key={skill.filePath}
                 skill={skill}
-                onRun={() => setPendingAction({ type: 'send', text: `/${skill.name}` })}
-                onEdit={() => useSkillEditorStore.getState().openEdit(skill)}
-                onDelete={async () => {
-                  await window.api.skills.delete(skill.filePath)
-                  window.dispatchEvent(new Event('coide:skills-changed'))
-                }}
-                onExport={async () => {
-                  const { content, error } = await window.api.fs.readFile(skill.filePath)
-                  if (error || !content) return
-                  await window.api.dialog.saveFile(`${skill.name}.md`, content)
-                }}
+                onRun={handleRun}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onExport={handleExport}
               />
             ))}
           </div>
@@ -297,17 +309,10 @@ function SkillsList(): React.JSX.Element {
               <SkillRow
                 key={skill.filePath}
                 skill={skill}
-                onRun={() => setPendingAction({ type: 'send', text: `/${skill.name}` })}
-                onEdit={() => useSkillEditorStore.getState().openEdit(skill)}
-                onDelete={async () => {
-                  await window.api.skills.delete(skill.filePath)
-                  window.dispatchEvent(new Event('coide:skills-changed'))
-                }}
-                onExport={async () => {
-                  const { content, error } = await window.api.fs.readFile(skill.filePath)
-                  if (error || !content) return
-                  await window.api.dialog.saveFile(`${skill.name}.md`, content)
-                }}
+                onRun={handleRun}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onExport={handleExport}
               />
             ))}
           </div>
@@ -322,7 +327,7 @@ function SkillsList(): React.JSX.Element {
   )
 }
 
-function SkillRow({
+const SkillRow = React.memo(function SkillRow({
   skill,
   onRun,
   onEdit,
@@ -330,10 +335,10 @@ function SkillRow({
   onExport
 }: {
   skill: SkillInfo
-  onRun: () => void
-  onEdit: () => void
-  onDelete: () => void
-  onExport: () => void
+  onRun: (skill: SkillInfo) => void
+  onEdit: (skill: SkillInfo) => void
+  onDelete: (skill: SkillInfo) => void
+  onExport: (skill: SkillInfo) => void
 }): React.JSX.Element {
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -345,7 +350,7 @@ function SkillRow({
           <div className="flex items-center gap-1.5 text-[10px]">
             <span className="text-white/40">Delete?</span>
             <button
-              onClick={() => { onDelete(); setConfirmDelete(false) }}
+              onClick={() => { onDelete(skill); setConfirmDelete(false) }}
               className="text-red-400 hover:text-red-300 transition-colors"
             >
               Yes
@@ -360,13 +365,13 @@ function SkillRow({
         ) : (
           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
             <button
-              onClick={onEdit}
+              onClick={() => onEdit(skill)}
               className="text-[10px] text-white/40 hover:text-white/70 transition-colors"
             >
               Edit
             </button>
             <button
-              onClick={onExport}
+              onClick={() => onExport(skill)}
               className="text-[10px] text-white/40 hover:text-white/70 transition-colors"
             >
               Exp
@@ -378,7 +383,7 @@ function SkillRow({
               Del
             </button>
             <button
-              onClick={onRun}
+              onClick={() => onRun(skill)}
               className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
             >
               Run
@@ -389,7 +394,7 @@ function SkillRow({
       <p className="mt-0.5 text-[10px] text-white/30 truncate">{skill.description}</p>
     </div>
   )
-}
+})
 
 function CommandsList(): React.JSX.Element {
   const [search, setSearch] = useState('')

@@ -17,7 +17,23 @@ type PtyProcess = {
   pid: number
 }
 
-const terminals = new Map<string, PtyProcess>()
+type TerminalEntry = {
+  proc: PtyProcess
+  flushTimer: ReturnType<typeof setTimeout> | null
+  buffer: string
+}
+
+const terminals = new Map<string, TerminalEntry>()
+
+// Batch IPC messages: accumulate PTY data and flush every 16ms (~60fps)
+function flushTerminalBuffer(id: string, win: BrowserWindow): void {
+  const entry = terminals.get(id)
+  if (!entry || !entry.buffer) return
+  if (win.isDestroyed()) { entry.buffer = ''; return }
+  win.webContents.send('terminal:data', { id, data: entry.buffer })
+  entry.buffer = ''
+  entry.flushTimer = null
+}
 
 export function spawnTerminal(
   id: string,
@@ -25,8 +41,10 @@ export function spawnTerminal(
   win: BrowserWindow
 ): { pid: number } {
   // Kill existing terminal with this id
-  if (terminals.has(id)) {
-    try { terminals.get(id)!.kill() } catch { /* already dead */ }
+  const existing = terminals.get(id)
+  if (existing) {
+    if (existing.flushTimer) clearTimeout(existing.flushTimer)
+    try { existing.proc.kill() } catch { /* already dead */ }
     terminals.delete(id)
   }
 
@@ -39,14 +57,21 @@ export function spawnTerminal(
     env: { ...process.env, TERM: 'xterm-256color' }
   })
 
-  terminals.set(id, term)
+  const entry: TerminalEntry = { proc: term, flushTimer: null, buffer: '' }
+  terminals.set(id, entry)
 
   term.onData((data: string) => {
     if (win.isDestroyed()) return
-    win.webContents.send('terminal:data', { id, data })
+    entry.buffer += data
+    if (!entry.flushTimer) {
+      entry.flushTimer = setTimeout(() => flushTerminalBuffer(id, win), 16)
+    }
   })
 
   term.onExit(({ exitCode }) => {
+    // Flush remaining buffer before removing
+    if (entry.buffer) flushTerminalBuffer(id, win)
+    if (entry.flushTimer) clearTimeout(entry.flushTimer)
     terminals.delete(id)
     if (!win.isDestroyed()) {
       win.webContents.send('terminal:exit', { id, exitCode })
@@ -57,24 +82,26 @@ export function spawnTerminal(
 }
 
 export function writeTerminal(id: string, data: string): void {
-  terminals.get(id)?.write(data)
+  terminals.get(id)?.proc.write(data)
 }
 
 export function resizeTerminal(id: string, cols: number, rows: number): void {
-  terminals.get(id)?.resize(cols, rows)
+  terminals.get(id)?.proc.resize(cols, rows)
 }
 
 export function killTerminal(id: string): void {
-  const term = terminals.get(id)
-  if (term) {
-    try { term.kill() } catch { /* already dead */ }
+  const entry = terminals.get(id)
+  if (entry) {
+    if (entry.flushTimer) clearTimeout(entry.flushTimer)
+    try { entry.proc.kill() } catch { /* already dead */ }
     terminals.delete(id)
   }
 }
 
 export function killAllTerminals(): void {
-  for (const [id, term] of terminals) {
-    try { term.kill() } catch { /* already dead */ }
+  for (const [id, entry] of terminals) {
+    if (entry.flushTimer) clearTimeout(entry.flushTimer)
+    try { entry.proc.kill() } catch { /* already dead */ }
     terminals.delete(id)
   }
 }

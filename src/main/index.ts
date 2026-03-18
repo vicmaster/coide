@@ -151,11 +151,19 @@ const EXT_MAP: Record<string, string> = {
   'image/webp': 'webp'
 }
 
+// Cache dir creation — only mkdir once per directory
+const ensuredDirs = new Set<string>()
+async function ensureDir(dir: string): Promise<void> {
+  if (ensuredDirs.has(dir)) return
+  await mkdir(dir, { recursive: true })
+  ensuredDirs.add(dir)
+}
+
 ipcMain.handle(
   'claude:save-image',
   async (_event, { base64, mediaType }: { base64: string; mediaType: string }) => {
     const ext = EXT_MAP[mediaType] ?? 'png'
-    await mkdir(IMAGES_DIR, { recursive: true })
+    await ensureDir(IMAGES_DIR)
     const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
     const filePath = join(IMAGES_DIR, filename)
     await writeFile(filePath, Buffer.from(base64, 'base64'))
@@ -291,7 +299,7 @@ ipcMain.handle('git:branch', async (_event, { cwd }: { cwd: string }) => {
 
 ipcMain.handle('claude:save-temp-file', async (_event, { base64, name }: { base64: string; name: string }) => {
   try {
-    await mkdir(FILES_DIR, { recursive: true })
+    await ensureDir(FILES_DIR)
     const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${name}`
     const filePath = join(FILES_DIR, filename)
     await writeFile(filePath, Buffer.from(base64, 'base64'))
@@ -336,56 +344,52 @@ ipcMain.handle('mcp:list', async (_event, { cwd }: { cwd: string }) => {
   type McpEntry = { name: string; command?: string; args?: string[]; url?: string; scope: 'global' | 'project' }
   const results: McpEntry[] = []
 
-  // Global: ~/.claude/settings.json → mcpServers
-  try {
-    const raw = await readFile(join(homedir(), '.claude', 'settings.json'), 'utf-8')
-    const json = JSON.parse(raw)
-    const servers = json.mcpServers ?? {}
-    for (const [name, cfg] of Object.entries(servers) as [string, Record<string, unknown>][]) {
-      results.push({ name, command: cfg.command as string | undefined, args: cfg.args as string[] | undefined, url: cfg.url as string | undefined, scope: 'global' })
-    }
-  } catch {
-    // no global settings
+  // Read all config files in parallel
+  const [globalRaw, localRaw, projectRaw] = await Promise.all([
+    readFile(join(homedir(), '.claude', 'settings.json'), 'utf-8').catch(() => null),
+    readFile(join(homedir(), '.claude.json'), 'utf-8').catch(() => null),
+    readFile(join(cwd, '.mcp.json'), 'utf-8').catch(() => null)
+  ])
+
+  const parseServers = (raw: string | null, scope: 'global' | 'project', key = 'mcpServers'): void => {
+    if (!raw) return
+    try {
+      const json = JSON.parse(raw)
+      const servers = json[key] ?? {}
+      for (const [name, cfg] of Object.entries(servers) as [string, Record<string, unknown>][]) {
+        if (!results.some((r) => r.name === name)) {
+          results.push({ name, command: cfg.command as string | undefined, args: cfg.args as string[] | undefined, url: cfg.url as string | undefined, scope })
+        }
+      }
+    } catch { /* invalid JSON */ }
   }
 
-  // Local: ~/.claude.json → mcpServers (user-local scope, used by `claude mcp add` default)
-  // Also check per-project servers in ~/.claude.json → projects[cwd].mcpServers (plugin-installed servers like context7)
-  try {
-    const raw = await readFile(join(homedir(), '.claude.json'), 'utf-8')
-    const json = JSON.parse(raw)
-    const servers = json.mcpServers ?? {}
-    for (const [name, cfg] of Object.entries(servers) as [string, Record<string, unknown>][]) {
-      if (!results.some((r) => r.name === name)) {
-        results.push({ name, command: cfg.command as string | undefined, args: cfg.args as string[] | undefined, url: cfg.url as string | undefined, scope: 'global' })
-      }
-    }
-    // Per-project servers stored under projects[cwd].mcpServers
-    const projects = json.projects ?? {}
-    for (const [projPath, projCfg] of Object.entries(projects) as [string, Record<string, unknown>][]) {
-      if (cwd.startsWith(projPath)) {
-        const projServers = (projCfg.mcpServers ?? {}) as Record<string, Record<string, unknown>>
-        for (const [name, cfg] of Object.entries(projServers)) {
-          if (!results.some((r) => r.name === name)) {
-            results.push({ name, command: cfg.command as string | undefined, args: cfg.args as string[] | undefined, url: cfg.url as string | undefined, scope: 'project' })
+  // Global: ~/.claude/settings.json → mcpServers
+  parseServers(globalRaw, 'global')
+
+  // Local: ~/.claude.json → mcpServers
+  parseServers(localRaw, 'global')
+
+  // Per-project servers in ~/.claude.json → projects[cwd].mcpServers
+  if (localRaw) {
+    try {
+      const json = JSON.parse(localRaw)
+      const projects = json.projects ?? {}
+      for (const [projPath, projCfg] of Object.entries(projects) as [string, Record<string, unknown>][]) {
+        if (cwd.startsWith(projPath)) {
+          const projServers = (projCfg.mcpServers ?? {}) as Record<string, Record<string, unknown>>
+          for (const [name, cfg] of Object.entries(projServers)) {
+            if (!results.some((r) => r.name === name)) {
+              results.push({ name, command: cfg.command as string | undefined, args: cfg.args as string[] | undefined, url: cfg.url as string | undefined, scope: 'project' })
+            }
           }
         }
       }
-    }
-  } catch {
-    // no local config
+    } catch { /* */ }
   }
 
   // Project: <cwd>/.mcp.json → mcpServers
-  try {
-    const raw = await readFile(join(cwd, '.mcp.json'), 'utf-8')
-    const json = JSON.parse(raw)
-    const servers = json.mcpServers ?? {}
-    for (const [name, cfg] of Object.entries(servers) as [string, Record<string, unknown>][]) {
-      results.push({ name, command: cfg.command as string | undefined, args: cfg.args as string[] | undefined, url: cfg.url as string | undefined, scope: 'project' })
-    }
-  } catch {
-    // no project mcp config
-  }
+  parseServers(projectRaw, 'project')
 
   return results
 })

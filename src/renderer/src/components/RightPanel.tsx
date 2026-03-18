@@ -198,9 +198,9 @@ function TimelineView({ agents }: { agents: Agent[] }): React.JSX.Element {
   const hasRunning = agents.some((a) => a.status === 'running')
 
   useEffect(() => {
-    if (!hasRunning) return
-    const id = setInterval(() => setTick((t) => t + 1), 500)
-    return () => clearInterval(id)
+    if (!hasRunning) return undefined
+    const intervalId = setInterval(() => setTick((t) => t + 1), 500)
+    return () => clearInterval(intervalId)
   }, [hasRunning])
 
   const now = Date.now()

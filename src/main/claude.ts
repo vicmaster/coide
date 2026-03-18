@@ -472,6 +472,8 @@ export function runClaude(
                       handleEvent(raw, win, coideSessionId)
                     }
                   }
+                }).catch((err) => {
+                  log(`processToolBlocks error: ${err}`)
                 })
                 continue
               }

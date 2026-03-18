@@ -30,21 +30,21 @@
 - [x] ~~2026-03-18~~ `buildDiffFromToolInput()` called every render without `useMemo` — wrapped in `useMemo` (`ToolCallCard.tsx`)
 - [x] ~~2026-03-18~~ `findMatches()` for in-session search computed every render — wrapped in `useMemo` (`Chat.tsx`)
 - [ ] `allHistoryItems` recomputed on any session change, not just messages (`ChatInput.tsx:33-53`)
-- [x] ~~2026-03-18~~ No `React.memo` on frequently-rendered children — added `React.memo` to `CodeBlock` (`MarkdownRenderer.tsx`)
+- [x] ~~2026-03-18~~ No `React.memo` on frequently-rendered children — added `React.memo` to `CodeBlock`, `SkillRow` (`MarkdownRenderer.tsx`, `Sidebar.tsx`)
 - [x] ~~2026-03-18~~ Inline arrays recreated every render — extracted to module-level `MODELS`, `EFFORT_LEVELS`, `BOUNCE_DOTS` constants (`Chat.tsx`)
 
 ## Medium — IPC & Subprocess
 
 - [x] ~~2026-03-18~~ Dynamic `await import('child_process')` in hot IPC paths — moved to top-level import (`src/main/index.ts`)
-- [ ] `mcp:list` reads 3 JSON files sequentially instead of `Promise.all` (`src/main/index.ts:342-398`)
-- [ ] Terminal PTY sends every data chunk as separate IPC message — no batching (`src/main/terminal.ts:44-47`)
-- [ ] `mkdir(recursive: true)` called on every image save, not cached (`src/main/index.ts:157,301`)
-- [ ] PTY Map entries may not be deleted on error paths (`src/main/claude.ts:336,346`)
+- [x] ~~2026-03-18~~ `mcp:list` reads 3 JSON files sequentially — replaced with `Promise.all` (`src/main/index.ts`)
+- [x] ~~2026-03-18~~ Terminal PTY sends every data chunk as separate IPC message — added 16ms batching buffer (`src/main/terminal.ts`)
+- [x] ~~2026-03-18~~ `mkdir(recursive: true)` called on every image save — cached with `ensureDir()` set (`src/main/index.ts`)
+- [x] ~~2026-03-18~~ PTY Map entries may not be deleted on error paths — added `.catch()` to async processToolBlocks (`src/main/claude.ts`)
 - [ ] XLSX/PPTX read entirely into memory synchronously up to 10 MB (`src/main/fileExtractor.ts:84,104`)
 
 ## Low — Minor Inefficiencies
 
-- [ ] xterm CSS imported twice — component import and global styles (`TerminalPanel.tsx:5` + `index.css`)
+- [x] ~~2026-03-18~~ xterm CSS imported twice — verified: global CSS is only custom overrides (scrollbar), not a duplicate. Non-issue.
 - [ ] Status color/border class conditionals computed inline instead of memoized (`ToolCallCard.tsx:101-117`)
-- [ ] Sidebar skill list handlers created inline per-item in `.map()` (`Sidebar.tsx:272-312`)
-- [ ] Timeline interval cleanup race condition on unmount (`RightPanel.tsx:200-203`)
+- [x] ~~2026-03-18~~ Sidebar skill list handlers created inline per-item — extracted to `useCallback` handlers, added `React.memo` to `SkillRow` (`Sidebar.tsx`)
+- [x] ~~2026-03-18~~ Timeline interval cleanup race condition on unmount — fixed explicit `return undefined` path (`RightPanel.tsx`)
