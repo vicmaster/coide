@@ -69,11 +69,126 @@ Claude Code (orchestrator)
 └── Test Runner Agent ○ pending
 ```
 
-**Ambitious: Visual Agent Builder**
-- Drag and drop agent types into a workflow
-- Define tools, conditions, and triggers per agent
-- Save as reusable agent templates per project type
-- Think n8n/Zapier but for Claude agents on your codebase
+**Visual Agent Workflows** *(flagship feature — differentiator from Claude App and CLI)*
+
+A visual workflow builder (like n8n/Zapier) for orchestrating Claude agents on your codebase. Design multi-step AI pipelines, watch them execute in real-time, save as reusable templates.
+
+**Why this is unique:** Claude CLI runs agents but they're invisible — you can't design flows, reuse patterns, or pause/adjust mid-execution. Claude App doesn't have agents at all. Coide becomes a platform for AI automation, not just a GUI wrapper.
+
+***Architecture:***
+```
+Workflow Definition (JSON)
+  ↓
+Workflow Engine (main process — src/main/workflow.ts)
+  ├── Spawns Claude CLI per node (reuses existing PTY runner)
+  ├── Captures structured output → passes to next node as context
+  ├── Evaluates conditions (exit code, regex match, JSON path)
+  ├── Manages parallel branches (fork/join)
+  └── Handles loops, retry, timeout
+  ↓
+React Flow Canvas (renderer — src/renderer/src/components/WorkflowCanvas.tsx)
+  └── Visualizes execution in real-time (node states, data flow, logs)
+```
+
+***Node Types:***
+| Node | What it does | Claude CLI flags |
+|------|-------------|------------------|
+| `Prompt` | Run Claude with a prompt + system prompt | `-p`, `--append-system-prompt` |
+| `Condition` | Branch based on previous output | N/A (JS eval in engine) |
+| `Loop` | Repeat until condition met or max iterations | Re-spawns with `--resume` |
+| `Parallel` | Fork into N branches, join when all complete | Multiple PTY sessions |
+| `Tool Filter` | Restrict which tools Claude can use | `--allowedTools` |
+| `Model Switch` | Use different model for this step | `--model` |
+| `Script` | Run a shell command (no Claude) | Direct `child_process` |
+| `Human Review` | Pause and wait for user approval | Permission system |
+
+***Data Flow Between Nodes:***
+- Each node produces an output (Claude's final `result` text or script stdout)
+- Output injected into next node's prompt via template: `"Previous step output:\n{{prev.output}}"`
+- Variables system: nodes can write to `workflow.vars` (e.g., `{{vars.planText}}`)
+- Special extractors: `json:path.to.field`, `regex:pattern`, `lines:5-10`
+
+***Workflow Definition Format (JSON):***
+```json
+{
+  "id": "pr-review-pipeline",
+  "name": "PR Review Pipeline",
+  "nodes": [
+    { "id": "explore", "type": "prompt", "prompt": "Read the git diff and list all changed files", "model": "haiku", "position": { "x": 100, "y": 200 } },
+    { "id": "analyze", "type": "prompt", "prompt": "Review these changes for bugs, security issues, and style:\n{{explore.output}}", "model": "sonnet", "systemPrompt": "You are a senior code reviewer.", "position": { "x": 400, "y": 200 } },
+    { "id": "has_issues", "type": "condition", "expression": "output.includes('issue') || output.includes('bug')", "position": { "x": 700, "y": 200 } },
+    { "id": "fix", "type": "prompt", "prompt": "Fix the issues found:\n{{analyze.output}}", "allowedTools": ["Edit", "Write", "Bash"], "position": { "x": 900, "y": 100 } },
+    { "id": "approve", "type": "script", "command": "echo 'No issues found — PR approved'", "position": { "x": 900, "y": 300 } }
+  ],
+  "edges": [
+    { "from": "explore", "to": "analyze" },
+    { "from": "analyze", "to": "has_issues" },
+    { "from": "has_issues", "to": "fix", "label": "yes" },
+    { "from": "has_issues", "to": "approve", "label": "no" }
+  ]
+}
+```
+
+***UI Components:***
+- `WorkflowCanvas.tsx` — React Flow canvas with custom node renderers
+- `WorkflowNodeConfig.tsx` — Side panel to edit node properties (prompt, model, tools, etc.)
+- `WorkflowRunner.tsx` — Execution controls (run, pause, stop, step-through)
+- `WorkflowTemplates.tsx` — Gallery of built-in and saved templates
+- `WorkflowHistory.tsx` — Past executions with replay capability
+
+***Built-in Templates:***
+- **PR Review** — explore diff → analyze → fix if needed → summarize
+- **Bug Fix** — reproduce → diagnose → implement fix → verify with tests
+- **Refactor + Test** — identify targets → refactor → run tests → retry on failure
+- **Onboard to Repo** — scan structure → read key files → generate architecture summary
+- **Feature Implementation** — plan → implement → test → review → iterate
+
+***Key Files (to be created):***
+```
+src/main/workflow.ts           — Workflow execution engine (spawns Claude CLI per node)
+src/main/workflowStore.ts      — Persist workflows to disk (~/.coide/workflows/)
+src/renderer/src/components/WorkflowCanvas.tsx    — React Flow canvas
+src/renderer/src/components/WorkflowNodeConfig.tsx — Node property editor
+src/renderer/src/components/WorkflowRunner.tsx    — Execution UI (run/pause/stop)
+src/renderer/src/components/WorkflowTemplates.tsx — Template gallery
+src/renderer/src/store/workflow.ts               — Zustand store for workflow state
+```
+
+***Dependencies:***
+- `reactflow` (previously removed — reinstall when building this feature)
+- Existing: `node-pty` (PTY runner), `zustand` (state), Electron IPC
+
+***Implementation Phases:***
+
+**Phase 1 — MVP (1-2 weeks)**
+- [ ] React Flow canvas with Prompt, Condition, and Script node types
+- [ ] Sequential execution only (no parallel/loops yet)
+- [ ] Each Prompt node spawns Claude CLI via existing `runClaude()` with configurable prompt + system prompt
+- [ ] Output of node N injected as context into node N+1
+- [ ] Real-time node state visualization (pending → running → done/failed)
+- [ ] Node click to see full output in side panel
+- [ ] Save/load workflows as JSON files
+- [ ] 2-3 built-in templates (PR Review, Bug Fix)
+- [ ] New tab in Sidebar: "Workflows" alongside Sessions/Skills/Commands
+- [ ] Keyboard shortcut: Cmd+W to open workflow canvas
+
+**Phase 2 — Powerful (2-3 weeks)**
+- [ ] Parallel branches (fork/join nodes)
+- [ ] Loop nodes with max iterations and exit condition
+- [ ] Variables system (`{{vars.name}}` templates in prompts)
+- [ ] Tool filter per node (`--allowedTools`)
+- [ ] Model selection per node
+- [ ] Human Review node (pause and show approval dialog)
+- [ ] Execution history with replay
+- [ ] Import/export workflow JSON files
+
+**Phase 3 — Platform (ongoing)**
+- [ ] Triggers: file watcher, git hooks, cron schedule, manual
+- [ ] Template marketplace — community-shared workflows
+- [ ] Sub-workflows (a node can reference another workflow)
+- [ ] Metrics dashboard: success rate, avg duration, token cost per workflow
+- [ ] Multi-project: same workflow across different CWDs
+- [ ] Webhook triggers for CI/CD integration
 
 ### 8. Navigation & History
 - Conversation history sidebar with search
