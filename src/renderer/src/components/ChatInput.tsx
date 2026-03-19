@@ -190,11 +190,13 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
 
   const handleAutocompleteSelect = useCallback((item: AutocompleteItem): void => {
     if (item.type === 'skill') {
-      sendMessage('/' + item.name)
+      // Insert into input so user can add arguments before sending
+      setInput('/' + item.name + ' ')
+      textareaRef.current?.focus()
     } else {
       executeCommand(item.name)
     }
-  }, [sendMessage, executeCommand])
+  }, [executeCommand])
 
   // Send handler: captures staged attachments, clears input, delegates to parent
   const handleSend = useCallback(async (): Promise<void> => {
