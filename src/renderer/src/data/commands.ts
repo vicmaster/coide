@@ -12,6 +12,7 @@ export const BUILT_IN_COMMANDS = [
   { name: '/model', description: 'Switch Claude model' },
   { name: '/permissions', description: 'Manage tool permissions' },
   { name: '/pr-review', description: 'Review a pull request' },
+  { name: '/restart', description: 'Restart Claude session (reconnects MCP servers)' },
   { name: '/review', description: 'Review recent changes' },
   { name: '/status', description: 'Show session status' },
   { name: '/terminal-setup', description: 'Install shell integration' },

@@ -137,6 +137,11 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
       case 'clear':
         useSessionsStore.getState().clearMessages(sid)
         break
+      case 'restart':
+        window.api.claude.abort(sid)
+        useSessionsStore.getState().restartSession(sid)
+        addInfo('Session restarted. MCP servers will reconnect on the next message.')
+        break
       case 'help':
         addInfo(
           `**Available commands:**\n\n` +
@@ -146,6 +151,7 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
           `| /cost | Show token usage |\n` +
           `| /help | Show this help |\n` +
           `| /compact | Compact conversation context |\n` +
+          `| /restart | Restart Claude session (reconnects MCP servers) |\n` +
           `| /init | Initialize project with CLAUDE.md |\n` +
           `| /review | Review recent changes |\n` +
           `| /pr-review | Review a pull request |\n` +
