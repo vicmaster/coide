@@ -66,6 +66,16 @@ export type Agent = {
   totalTokens?: number
 }
 
+export type McpServerInfo = {
+  name: string
+  status: 'connected' | 'failed' | 'pending'
+  tools: string[]
+  command?: string
+  args?: string[]
+  url?: string
+  scope?: 'global' | 'project'
+}
+
 export type Session = {
   id: string
   claudeSessionId: string | null
@@ -76,6 +86,7 @@ export type Session = {
   tasks: Task[]
   agents: Agent[]
   usage: SessionUsage
+  mcpServers?: McpServerInfo[]
 }
 
 export type PendingAction = { type: 'send' | 'insert'; text: string }
@@ -101,6 +112,7 @@ type SessionsStore = {
   addUsage: (sessionId: string, delta: SessionUsage) => void
   addAgent: (sessionId: string, agent: Agent) => void
   updateAgent: (sessionId: string, toolId: string, updates: Partial<Agent>) => void
+  setMcpServers: (sessionId: string, servers: McpServerInfo[]) => void
   truncateAtMessage: (sessionId: string, messageId: string) => void
   setPendingAction: (action: PendingAction) => void
   clearPendingAction: () => void
@@ -298,6 +310,14 @@ export const useSessionsStore = create<SessionsStore>()(
               )
             }
           })
+        }))
+      },
+
+      setMcpServers: (sessionId: string, servers: McpServerInfo[]) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? { ...s, mcpServers: servers } : s
+          )
         }))
       },
 

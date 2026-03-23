@@ -286,6 +286,16 @@ function handleEvent(raw: Record<string, unknown>, win: BrowserWindow, coideSess
     }
   }
 
+  if (type === 'system' && raw.subtype === 'init') {
+    win.webContents.send('claude:event', {
+      ...tag,
+      type: 'system',
+      subtype: 'init',
+      mcp_servers: raw.mcp_servers ?? [],
+      tools: raw.tools ?? []
+    })
+  }
+
   // 'assistant' usage is extracted in the onData loop (before tool logic) so it's not missed on `continue`
 }
 

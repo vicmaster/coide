@@ -406,3 +406,4 @@ Electron Renderer Process (React)
 - [ ] Git worktrees — UI for `--worktree` flag to run isolated parallel sessions on separate branches
 - [ ] Vim mode — vim keybindings for the chat input textarea
 - [ ] Reduced motion — respect `prefers-reduced-motion` for accessibility
+- [x] Vitest test suite — unit tests for store actions, utilities, and event parsing with `npm test`

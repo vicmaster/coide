@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react'
-import { useSessionsStore, type Task, type Agent, type ToolCallMessage, type SessionUsage, type Message } from '../store/sessions'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
+import { useSessionsStore, type Task, type Agent, type ToolCallMessage, type SessionUsage, type Message, type McpServerInfo } from '../store/sessions'
 import FileChangelog from './FileChangelog'
 
 const EMPTY_AGENTS: Agent[] = []
@@ -441,29 +441,59 @@ function ContextTracker(): React.JSX.Element {
   )
 }
 
-type McpServer = { name: string; command?: string; args?: string[]; url?: string; scope: 'global' | 'project' }
+type McpConfigEntry = { name: string; command?: string; args?: string[]; url?: string; scope: 'global' | 'project' }
+
+const EMPTY_MCP: McpServerInfo[] = []
 
 function McpPanel(): React.JSX.Element {
-  const [servers, setServers] = useState<McpServer[]>([])
-  const [loading, setLoading] = useState(true)
+  const [configEntries, setConfigEntries] = useState<McpConfigEntry[]>([])
   const cwd = useSessionsStore((s) => s.sessions.find((sess) => sess.id === s.activeSessionId)?.cwd ?? '')
+  const liveServers = useSessionsStore((s) => {
+    const session = s.sessions.find((sess) => sess.id === s.activeSessionId)
+    return session?.mcpServers ?? EMPTY_MCP
+  })
 
   useEffect(() => {
-    if (!cwd) { setLoading(false); return }
-    window.api.mcp.list(cwd).then((result: McpServer[]) => {
-      setServers(result)
-      setLoading(false)
-    }).catch(() => setLoading(false))
+    if (!cwd) return
+    window.api.mcp.list(cwd).then((result: McpConfigEntry[]) => setConfigEntries(result)).catch(() => {})
   }, [cwd])
 
-  if (loading) {
-    return (
-      <div>
-        <SectionLabel label="MCP Servers" />
-        <p className="text-[11px] text-white/20 text-center mt-4">Loading...</p>
-      </div>
-    )
-  }
+  // Merge live status with static config
+  const servers = useMemo(() => {
+    const configMap = new Map(configEntries.map((c) => [c.name, c]))
+    if (liveServers.length > 0) {
+      return liveServers.map((live) => {
+        const cfg = configMap.get(live.name)
+        return { ...live, command: cfg?.command, args: cfg?.args, url: cfg?.url, scope: cfg?.scope }
+      })
+    }
+    return configEntries.map((cfg) => ({
+      name: cfg.name,
+      status: 'pending' as const,
+      tools: [] as string[],
+      command: cfg.command,
+      args: cfg.args,
+      url: cfg.url,
+      scope: cfg.scope
+    }))
+  }, [liveServers, configEntries])
+
+  const handleReconnect = useCallback(() => {
+    const store = useSessionsStore.getState()
+    const sid = store.activeSessionId
+    if (!sid) return
+    window.api.claude.abort(sid)
+    store.restartSession(sid)
+    store.addMessage(sid, {
+      id: Date.now().toString(),
+      role: 'assistant',
+      text: 'Session restarted. MCP servers will reconnect on the next message.'
+    })
+  }, [])
+
+  const connected = servers.filter((s) => s.status === 'connected').length
+  const failed = servers.filter((s) => s.status === 'failed').length
+  const pending = servers.filter((s) => s.status === 'pending').length
 
   if (servers.length === 0) {
     return (
@@ -476,31 +506,96 @@ function McpPanel(): React.JSX.Element {
 
   return (
     <div>
-      <SectionLabel label="MCP Servers" />
+      <div className="flex items-center justify-between px-1 mb-2">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-white/20">MCP Servers</p>
+        {failed > 0 && (
+          <button
+            onClick={handleReconnect}
+            className="flex items-center gap-1 rounded px-1.5 py-0.5 bg-blue-500/10 hover:bg-blue-500/20 transition-colors"
+            title="Restart session to reconnect MCP servers"
+          >
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" className="text-blue-400/70">
+              <path d="M1 4v4h4M15 12V8h-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M2.5 10a6 6 0 0110.2-3M13.5 6a6 6 0 01-10.2 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span className="text-[9px] font-medium text-blue-400/70">Reconnect</span>
+          </button>
+        )}
+      </div>
+
       <div className="space-y-1.5">
         {servers.map((server) => (
-          <div
-            key={`${server.scope}-${server.name}`}
-            className="rounded-lg border border-white/[0.06] bg-white/[0.03] p-2.5"
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs text-white/60 font-medium truncate">{server.name}</span>
-              <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 ${
-                server.scope === 'global'
-                  ? 'bg-blue-500/15 text-blue-400/70'
-                  : 'bg-green-500/15 text-green-400/70'
-              }`}>
-                {server.scope}
-              </span>
-            </div>
-            <p className="text-[10px] text-white/25 font-mono truncate">
-              {server.url
-                ? server.url
-                : [server.command, ...(server.args ?? [])].join(' ')}
-            </p>
-          </div>
+          <McpServerCard key={server.name} server={server} />
         ))}
       </div>
+
+      <p className="text-[10px] text-white/20 text-center mt-3">
+        {connected > 0 && <span className="text-green-400/50">{connected} connected</span>}
+        {connected > 0 && (failed > 0 || pending > 0) && <span> · </span>}
+        {failed > 0 && <span className="text-red-400/50">{failed} failed</span>}
+        {failed > 0 && pending > 0 && <span> · </span>}
+        {pending > 0 && <span className="text-yellow-400/50">{pending} pending</span>}
+      </p>
+    </div>
+  )
+}
+
+function McpServerCard({ server }: { server: McpServerInfo & { command?: string; args?: string[]; url?: string; scope?: string } }): React.JSX.Element {
+  const [expanded, setExpanded] = useState(false)
+
+  const statusDot =
+    server.status === 'connected' ? 'bg-green-400'
+    : server.status === 'failed' ? 'bg-red-400'
+    : 'bg-yellow-400 animate-pulse'
+
+  const statusBadge =
+    server.status === 'connected' ? 'bg-green-500/15 text-green-400/70'
+    : server.status === 'failed' ? 'bg-red-500/15 text-red-400/70'
+    : 'bg-yellow-500/15 text-yellow-400/70'
+
+  const cmdText = server.url ?? [server.command, ...(server.args ?? [])].filter(Boolean).join(' ')
+
+  return (
+    <div className="rounded-lg border border-white/[0.06] bg-white/[0.03] p-2.5">
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center gap-2"
+      >
+        <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${statusDot}`} />
+        <span className="text-xs text-white/60 font-medium truncate flex-1 text-left">{server.name}</span>
+        <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 ${statusBadge}`}>
+          {server.status}
+        </span>
+      </button>
+
+      {expanded && (
+        <div className="mt-2 space-y-2">
+          {cmdText && (
+            <p className="text-[10px] text-white/25 font-mono truncate" title={cmdText}>{cmdText}</p>
+          )}
+          {server.tools.length > 0 && (
+            <div>
+              <div className="flex items-center gap-1 mb-1">
+                <svg width="9" height="9" viewBox="0 0 16 16" fill="none" className="text-white/25">
+                  <path d="M14.7 6.3a1 1 0 000-1.4l-1.6-1.6a1 1 0 00-1.4 0l-2.3 2.3-1.3-1.3a1 1 0 00-1.4 0l-4.4 4.4a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l4.4-4.4a1 1 0 000-1.4l-1.3-1.3 2.3-2.3z" stroke="currentColor" strokeWidth="1.2"/>
+                </svg>
+                <span className="text-[10px] text-white/25">{server.tools.length} tool{server.tools.length !== 1 ? 's' : ''}</span>
+              </div>
+              <div className="space-y-0.5">
+                {server.tools.map((tool) => (
+                  <div key={tool} className="flex items-center gap-1.5 px-1">
+                    <span className="text-[10px] text-white/15">•</span>
+                    <span className="text-[10px] text-white/35 font-mono truncate">{tool}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {server.tools.length === 0 && server.status === 'failed' && (
+            <p className="text-[10px] text-red-400/40 italic">Failed to connect — no tools available</p>
+          )}
+        </div>
+      )}
     </div>
   )
 }

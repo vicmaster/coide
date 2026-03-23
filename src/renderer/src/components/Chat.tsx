@@ -10,6 +10,7 @@ import SettingsModal from './SettingsModal'
 import InSessionSearchBar from './InSessionSearchBar'
 import { findMatches } from '../utils/inSessionSearch'
 import { useHighlightMatches } from '../hooks/useHighlightMatches'
+import { parseMcpFromInit } from '../utils/mcpParsing'
 
 const EMPTY_MESSAGES: Message[] = []
 const BOUNCE_DOTS = [0, 1, 2]
@@ -28,6 +29,7 @@ type ClaudeEvent = ClaudeEventBase & (
   | { type: 'error'; result: string }
   | { type: 'thinking'; thinking: string }
   | { type: 'stream_end' }
+  | { type: 'system'; subtype: string; mcp_servers?: { name: string; status: string }[]; tools?: string[] }
 )
 
 export default function Chat({
@@ -226,11 +228,18 @@ export default function Chat({
 
     const cleanup = window.api.claude.onEvent((raw: unknown) => {
       const event = raw as ClaudeEvent
-      const { addMessage, updateClaudeSessionId, updateToolResult, addTask, updateTask, setTasks, removeTask, setTaskId, addAgent, updateAgent, addUsage } =
+      const { addMessage, updateClaudeSessionId, updateToolResult, addTask, updateTask, setTasks, removeTask, setTaskId, addAgent, updateAgent, addUsage, setMcpServers } =
         useSessionsStore.getState()
       // Route events to the session identified by coideSessionId tag
       const sid = event.coideSessionId ?? useSessionsStore.getState().activeSessionId
       if (!sid) return
+
+      if (event.type === 'system' && event.subtype === 'init') {
+        if (event.mcp_servers) {
+          setMcpServers(sid, parseMcpFromInit(event.mcp_servers, event.tools ?? []))
+        }
+        return
+      }
 
       if (event.type === 'usage') {
         addUsage(sid, {
