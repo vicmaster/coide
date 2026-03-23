@@ -60,6 +60,7 @@ export default function Chat({
   const [searchQuery, setSearchQuery] = useState('')
   const [activeMatchIndex, setActiveMatchIndex] = useState(0)
   const dragCounterRef = useRef(0)
+  const sendMessageRef = useRef<((text: string, images?: ImageAttachment[], files?: FileAttachment[]) => Promise<void>) | null>(null)
   // Extended thinking state: tracks when Claude is actively reasoning
   const [thinkingSessions, setThinkingSessions] = useState<Map<string, number>>(new Map()) // sessionId → startTime
 
@@ -390,6 +391,12 @@ export default function Chat({
         }
         setLoadingSessions((prev) => { const next = new Set(prev); next.delete(sid); return next })
         setPermissionQueue((q) => q.filter((p) => p.coideSessionId !== sid))
+
+        // Auto-send queued message
+        const queued = useSessionsStore.getState().clearQueuedMessage(sid)
+        if (queued && !event.is_error && sendMessageRef.current) {
+          setTimeout(() => sendMessageRef.current?.(queued.text, queued.images, queued.files), 100)
+        }
       }
 
       if (event.type === 'error' && event.result) {
@@ -558,6 +565,8 @@ export default function Chat({
       setLoadingSessions((prev) => { const next = new Set(prev); next.delete(sid!); return next })
     }
   }, [loadingSessions])
+
+  sendMessageRef.current = sendMessage
 
   const editAndResend = useCallback(async (messageId: string, newText: string): Promise<void> => {
     const sid = useSessionsStore.getState().activeSessionId

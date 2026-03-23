@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { useSessionsStore, type ImageAttachment, type FileAttachment, type TextMessage } from '../store/sessions'
+import { useSessionsStore, type ImageAttachment, type FileAttachment, type TextMessage, type QueuedMessage } from '../store/sessions'
 import { useSettingsStore } from '../store/settings'
 import SlashAutocomplete, { useSlashItems, type AutocompleteItem } from './SlashAutocomplete'
 import AtMentionAutocomplete, { useAtMentionItems, type MentionItem } from './AtMentionAutocomplete'
@@ -204,7 +204,13 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
     }
   }, [executeCommand])
 
-  // Send handler: captures staged attachments, clears input, delegates to parent
+  // Read queued message for current session
+  const queuedMessage = useSessionsStore((s) => {
+    const session = s.sessions.find((sess) => sess.id === s.activeSessionId)
+    return session?.queuedMessage ?? null
+  })
+
+  // Send handler: if loading, queue the message; otherwise send immediately
   const handleSend = useCallback(async (): Promise<void> => {
     const text = input
     const images = [...stagedImages]
@@ -216,8 +222,21 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
     setStagedImages([])
     setStagedFiles([])
 
+    if (isLoading) {
+      const sid = useSessionsStore.getState().activeSessionId
+      if (sid) {
+        const queued: QueuedMessage = {
+          text: text.trim(),
+          ...(images.length > 0 ? { images } : {}),
+          ...(files.length > 0 ? { files } : {})
+        }
+        useSessionsStore.getState().setQueuedMessage(sid, queued)
+      }
+      return
+    }
+
     await sendMessage(text.trim(), images.length > 0 ? images : undefined, files.length > 0 ? files : undefined)
-  }, [input, stagedImages, stagedFiles, sendMessage])
+  }, [input, stagedImages, stagedFiles, sendMessage, isLoading])
 
   const handleHistorySelect = useCallback((item: HistoryItem): void => {
     setInput(item.text)
@@ -435,6 +454,22 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
           onClose={() => { setHistoryOpen(false); setHistoryQuery(''); textareaRef.current?.focus() }}
         />
       )}
+      {queuedMessage && (
+        <div className="mb-2 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-3 py-2 text-[12px] text-yellow-400/80 flex items-center justify-between">
+          <span className="truncate">
+            <span className="font-medium">Queued:</span> {queuedMessage.text}
+          </span>
+          <button
+            onClick={() => {
+              const sid = useSessionsStore.getState().activeSessionId
+              if (sid) useSessionsStore.getState().clearQueuedMessage(sid)
+            }}
+            className="text-yellow-400/40 hover:text-yellow-400 ml-2 flex-shrink-0"
+          >
+            ×
+          </button>
+        </div>
+      )}
       {fileError && (
         <div className="mb-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-[12px] text-red-400 flex items-center justify-between">
           <span>{fileError}</span>
@@ -478,7 +513,6 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
       <div className={`flex items-end gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] focus-within:border-white/[0.15] transition-colors ${compact ? 'px-2.5 py-1.5' : 'px-3 py-2.5'}`}>
         <button
           onClick={pickFiles}
-          disabled={isLoading}
           title="Attach files"
           className="flex-shrink-0 text-white/25 hover:text-white/50 transition-colors disabled:opacity-25 pb-0.5"
         >
@@ -498,18 +532,19 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
             })
           }}
           onKeyDown={handleKeyDown}
-          placeholder="Message Claude…"
+          placeholder={isLoading ? 'Type to queue next message…' : 'Message Claude…'}
           rows={1}
-          disabled={isLoading}
-          className="flex-1 resize-none bg-transparent text-sm text-white/90 placeholder-white/20 outline-none disabled:opacity-40 leading-relaxed"
+          className="flex-1 resize-none bg-transparent text-sm text-white/90 placeholder-white/20 outline-none leading-relaxed"
           style={{ maxHeight: '300px', overflow: 'auto' }}
         />
         <button
           onClick={handleSend}
-          disabled={(!input.trim() && stagedImages.length === 0 && stagedFiles.length === 0) || isLoading}
-          className="flex-shrink-0 rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-25"
+          disabled={!input.trim() && stagedImages.length === 0 && stagedFiles.length === 0}
+          className={`flex-shrink-0 rounded-lg px-2.5 py-1 text-xs font-medium text-white transition-colors disabled:opacity-25 ${
+            isLoading ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-blue-600 hover:bg-blue-500'
+          }`}
         >
-          Send
+          {isLoading ? 'Queue' : 'Send'}
         </button>
       </div>
     </div>

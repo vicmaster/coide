@@ -11,7 +11,10 @@
     "preview": "electron-vite preview",
     "package": "npm run build && electron-builder",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "release": "npm test && npm version patch && npm run package && git push && git push --tags",
+    "release:minor": "npm test && npm version minor && npm run package && git push && git push --tags",
+    "release:major": "npm test && npm version major && npm run package && git push && git push --tags"
   },
   "build": {
     "appId": "com.coide",

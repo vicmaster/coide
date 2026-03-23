@@ -202,6 +202,39 @@ describe('Sessions Store', () => {
     })
   })
 
+  describe('queuedMessage', () => {
+    it('sets a queued message on the session', () => {
+      const id = createTestSession()
+      useSessionsStore.getState().setQueuedMessage(id, { text: 'next question' })
+      const session = useSessionsStore.getState().sessions.find((s) => s.id === id)!
+      expect(session.queuedMessage).toEqual({ text: 'next question' })
+    })
+
+    it('clearQueuedMessage returns the queued message and clears it', () => {
+      const id = createTestSession()
+      useSessionsStore.getState().setQueuedMessage(id, { text: 'queued msg' })
+      const queued = useSessionsStore.getState().clearQueuedMessage(id)
+      expect(queued).toEqual({ text: 'queued msg' })
+      const session = useSessionsStore.getState().sessions.find((s) => s.id === id)!
+      expect(session.queuedMessage).toBeNull()
+    })
+
+    it('clearQueuedMessage returns null when nothing is queued', () => {
+      const id = createTestSession()
+      const queued = useSessionsStore.getState().clearQueuedMessage(id)
+      expect(queued).toBeNull()
+    })
+
+    it('overwrites previous queued message', () => {
+      const id = createTestSession()
+      const store = useSessionsStore.getState()
+      store.setQueuedMessage(id, { text: 'first' })
+      store.setQueuedMessage(id, { text: 'second' })
+      const session = useSessionsStore.getState().sessions.find((s) => s.id === id)!
+      expect(session.queuedMessage?.text).toBe('second')
+    })
+  })
+
   describe('truncateAtMessage', () => {
     it('removes messages from the given ID onward and resets session state', () => {
       const id = createTestSession()

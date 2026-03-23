@@ -396,7 +396,7 @@ Electron Renderer Process (React)
 - [x] Model switching — dropdown to switch between Opus/Sonnet/Haiku mid-session via `--model` flag
 - [x] Status line — bottom bar showing current model, effort level, token usage, estimated cost, and session ID
 - [x] @-mentions — autocomplete for `@` in chat input to reference files, folders, and URLs inline
-- [ ] Message queuing — allow typing and sending the next message while Claude is still responding
+- [x] Message queuing — allow typing and sending the next message while Claude is still responding
 - [ ] Light theme — add light color scheme and theme toggle in settings
 - [x] Extended thinking indicator — show visual "thinking" state when Claude uses deep/ultrathink reasoning
 - [x] Compact mode — toggle for denser chat layout with reduced spacing and smaller text

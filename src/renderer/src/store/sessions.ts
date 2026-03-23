@@ -76,6 +76,12 @@ export type McpServerInfo = {
   scope?: 'global' | 'project'
 }
 
+export type QueuedMessage = {
+  text: string
+  images?: ImageAttachment[]
+  files?: FileAttachment[]
+}
+
 export type Session = {
   id: string
   claudeSessionId: string | null
@@ -87,6 +93,7 @@ export type Session = {
   agents: Agent[]
   usage: SessionUsage
   mcpServers?: McpServerInfo[]
+  queuedMessage?: QueuedMessage | null
 }
 
 export type PendingAction = { type: 'send' | 'insert'; text: string }
@@ -113,6 +120,8 @@ type SessionsStore = {
   addAgent: (sessionId: string, agent: Agent) => void
   updateAgent: (sessionId: string, toolId: string, updates: Partial<Agent>) => void
   setMcpServers: (sessionId: string, servers: McpServerInfo[]) => void
+  setQueuedMessage: (sessionId: string, msg: QueuedMessage) => void
+  clearQueuedMessage: (sessionId: string) => QueuedMessage | null
   truncateAtMessage: (sessionId: string, messageId: string) => void
   setPendingAction: (action: PendingAction) => void
   clearPendingAction: () => void
@@ -319,6 +328,26 @@ export const useSessionsStore = create<SessionsStore>()(
             s.id === sessionId ? { ...s, mcpServers: servers } : s
           )
         }))
+      },
+
+      setQueuedMessage: (sessionId: string, msg: QueuedMessage) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? { ...s, queuedMessage: msg } : s
+          )
+        }))
+      },
+
+      clearQueuedMessage: (sessionId: string) => {
+        let queued: QueuedMessage | null = null
+        set((state) => ({
+          sessions: state.sessions.map((s) => {
+            if (s.id !== sessionId) return s
+            queued = s.queuedMessage ?? null
+            return { ...s, queuedMessage: null }
+          })
+        }))
+        return queued
       },
 
       truncateAtMessage: (sessionId: string, messageId: string) => {
