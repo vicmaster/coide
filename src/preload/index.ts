@@ -31,7 +31,10 @@ const api = {
       ipcRenderer.invoke('claude:process-file', { filePath }),
 
     saveTempFile: (base64: string, name: string): Promise<string | null> =>
-      ipcRenderer.invoke('claude:save-temp-file', { base64, name })
+      ipcRenderer.invoke('claude:save-temp-file', { base64, name }),
+
+    checkBinary: (customPath?: string): Promise<{ found: boolean; path: string; version?: string }> =>
+      ipcRenderer.invoke('claude:check-binary', { customPath })
   },
   dialog: {
     pickFolder: (): Promise<string | null> => ipcRenderer.invoke('dialog:pickFolder'),

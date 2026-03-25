@@ -407,3 +407,4 @@ Electron Renderer Process (React)
 - [ ] Vim mode — vim keybindings for the chat input textarea
 - [ ] Reduced motion — respect `prefers-reduced-motion` for accessibility
 - [x] Vitest test suite — unit tests for store actions, utilities, and event parsing with `npm test`
+- [x] Onboarding wizard — CLI detection, folder picker, and getting-started tips for first-time users

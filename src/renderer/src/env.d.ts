@@ -22,6 +22,7 @@ interface Window {
       respondPermission: (approved: boolean, coideSessionId?: string) => void
       abort: (coideSessionId?: string) => void
       saveImage: (base64: string, mediaType: string) => Promise<string>
+      checkBinary: (customPath?: string) => Promise<{ found: boolean; path: string; version?: string }>
     }
     dialog: {
       pickFolder: () => Promise<string | null>

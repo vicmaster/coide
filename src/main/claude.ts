@@ -33,7 +33,7 @@ function flushLog(): void {
 
 writeFile(LOG, '', () => {})
 
-function resolveClaudeBinary(configured: string): string {
+export function resolveClaudeBinary(configured: string): string {
   // If user set an absolute path, use it directly
   if (configured && configured.startsWith('/')) return configured
 

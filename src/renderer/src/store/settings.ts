@@ -16,10 +16,17 @@ export const useSettingsStore = create<SettingsStore>()(
     }),
     {
       name: 'coide-settings',
-      merge: (persisted, current) => ({
-        ...current,
-        ...(persisted as Partial<SettingsStore>)
-      }),
+      merge: (persisted, current) => {
+        const merged = {
+          ...current,
+          ...(persisted as Partial<SettingsStore>)
+        }
+        // Migration: existing users with defaultCwd already set skip onboarding
+        if (merged.defaultCwd && (persisted as Record<string, unknown>)?.onboardingComplete === undefined) {
+          merged.onboardingComplete = true
+        }
+        return merged
+      },
     }
   )
 )

@@ -4,7 +4,7 @@ import { readdir, readFile, mkdir, writeFile, rm } from 'fs/promises'
 import { homedir, tmpdir } from 'os'
 import { execFile as execFileImported } from 'child_process'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { runClaude, abortClaude, respondPermission } from './claude'
+import { runClaude, abortClaude, respondPermission, resolveClaudeBinary } from './claude'
 import { spawnTerminal, writeTerminal, resizeTerminal, killTerminal, killAllTerminals } from './terminal'
 import { processFile, FILES_DIR } from './fileExtractor'
 import { type CoideSettings, DEFAULT_SETTINGS } from '../shared/types'
@@ -96,6 +96,21 @@ ipcMain.handle(
 
 ipcMain.handle('claude:abort', (_event, coideSessionId?: string) => {
   abortClaude(coideSessionId)
+})
+
+ipcMain.handle('claude:check-binary', async (_event, { customPath }: { customPath?: string }) => {
+  const binary = resolveClaudeBinary(customPath || currentSettings.claudeBinaryPath)
+  try {
+    const version = await new Promise<string>((resolve, reject) => {
+      execFileImported(binary, ['--version'], { timeout: 5000 }, (err, stdout) => {
+        if (err) reject(err)
+        else resolve(stdout.trim())
+      })
+    })
+    return { found: true, path: binary, version }
+  } catch {
+    return { found: false, path: binary }
+  }
 })
 
 ipcMain.handle('claude:permission-response', (_event, { approved, coideSessionId }: { approved: boolean; coideSessionId?: string }) => {
