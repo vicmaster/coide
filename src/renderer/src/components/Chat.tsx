@@ -557,7 +557,7 @@ export default function Chat({
     const session = useSessionsStore.getState().sessions.find((s) => s.id === sid)!
 
     try {
-      await window.api.claude.query(prompt, session.cwd, session.claudeSessionId, sid)
+      await window.api.claude.query(prompt, session.cwd, session.claudeSessionId, sid, session.worktree?.name)
     } catch (err) {
       useSessionsStore
         .getState()
@@ -690,8 +690,66 @@ export default function Chat({
           >
             {cwd}
           </button>
+          {activeSession?.branch && (
+            <span className={`flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded flex-shrink-0 ${
+              activeSession.worktree
+                ? 'bg-green-500/15 text-green-400/70'
+                : 'bg-white/[0.06] text-white/30'
+            }`}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="6" y1="3" x2="6" y2="15" />
+                <circle cx="18" cy="6" r="3" />
+                <circle cx="6" cy="18" r="3" />
+                <path d="M18 9a9 9 0 0 1-9 9" />
+              </svg>
+              {activeSession.branch}
+            </span>
+          )}
+          {activeSession?.worktree && (
+            <span className="text-[9px] font-semibold text-purple-400/50 bg-purple-500/10 px-1.5 py-0.5 rounded flex-shrink-0">
+              worktree
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
+          {activeSession?.worktree && !isLoading && (
+            <>
+              <button
+                onClick={async () => {
+                  const wt = activeSession.worktree!
+                  const mainCwd = activeSession.cwd.replace(wt.path, '').replace(/\/$/, '') || activeSession.cwd
+                  const result = await window.api.git.worktreeMerge(mainCwd, wt.branch)
+                  const store = useSessionsStore.getState()
+                  if (result.success) {
+                    store.addMessage(activeSession.id, { id: Date.now().toString(), role: 'assistant', text: `Merged **${wt.branch}** into main branch.` })
+                  } else {
+                    store.addMessage(activeSession.id, { id: Date.now().toString(), role: 'error', text: `Merge failed: ${result.error}` })
+                  }
+                }}
+                className="flex items-center gap-1 rounded-md border border-green-500/20 px-2 py-0.5 text-[11px] text-green-400/70 hover:bg-green-500/10 transition-colors"
+                title="Merge worktree branch into main"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="18" cy="18" r="3" /><circle cx="6" cy="6" r="3" /><path d="M6 21V9a9 9 0 0 0 9 9" />
+                </svg>
+                Merge
+              </button>
+              <button
+                onClick={async () => {
+                  const wt = activeSession.worktree!
+                  const parentCwd = activeSession.cwd.replace(wt.path, '').replace(/\/$/, '') || activeSession.cwd
+                  await window.api.git.worktreeRemove(parentCwd, wt.path)
+                  useSessionsStore.getState().deleteSession(activeSession.id)
+                }}
+                className="rounded-md border border-red-500/20 px-1.5 py-0.5 text-red-400/50 hover:text-red-400/80 hover:bg-red-500/10 transition-colors"
+                title="Remove worktree and delete session"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+              </button>
+            </>
+          )}
           {isLoading && (
             <button
               onClick={() => { window.api.claude.abort(activeSessionId ?? undefined); setPermissionQueue((q) => q.filter((p) => p.coideSessionId !== activeSessionId)) }}
@@ -894,6 +952,16 @@ export default function Chat({
 
       {/* Messages — virtualized */}
       <div ref={messagesRef} className={`flex-1 overflow-y-auto relative ${compactMode ? 'px-4 py-2' : 'px-6 py-4'} ${compactMode ? (fontSize === 'small' ? 'text-[12px]' : fontSize === 'large' ? 'text-[14px]' : 'text-[13px]') : (fontSize === 'small' ? 'text-[13px]' : fontSize === 'large' ? 'text-[17px]' : 'text-[15px]')}`}>
+        {activeSession?.worktree && (
+          <div className="mb-3 flex items-center gap-2 rounded-lg border border-purple-500/15 bg-purple-500/[0.06] px-3 py-2">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-400/50 flex-shrink-0">
+              <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
+            </svg>
+            <p className="text-[11px] text-purple-400/50">
+              Worktree session — changes are isolated in <span className="font-mono font-medium">{activeSession.worktree.branch}</span>
+            </p>
+          </div>
+        )}
         {messages.length === 0 && !isLoading && (
           <div className="flex h-full flex-col items-center justify-center gap-3">
             <p className="text-[32px] font-semibold tracking-tight text-white/[0.07]">coide</p>

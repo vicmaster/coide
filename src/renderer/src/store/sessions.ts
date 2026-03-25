@@ -82,6 +82,12 @@ export type QueuedMessage = {
   files?: FileAttachment[]
 }
 
+export type WorktreeInfo = {
+  name: string
+  branch: string
+  path: string
+}
+
 export type Session = {
   id: string
   claudeSessionId: string | null
@@ -91,6 +97,9 @@ export type Session = {
   messages: Message[]
   tasks: Task[]
   agents: Agent[]
+  branch?: string
+  isGitRepo?: boolean
+  worktree?: WorktreeInfo | null
   usage: SessionUsage
   mcpServers?: McpServerInfo[]
   queuedMessage?: QueuedMessage | null
@@ -119,6 +128,8 @@ type SessionsStore = {
   addUsage: (sessionId: string, delta: SessionUsage) => void
   addAgent: (sessionId: string, agent: Agent) => void
   updateAgent: (sessionId: string, toolId: string, updates: Partial<Agent>) => void
+  setGitInfo: (sessionId: string, info: { isGitRepo: boolean; branch?: string }) => void
+  setWorktree: (sessionId: string, worktree: WorktreeInfo | null) => void
   setMcpServers: (sessionId: string, servers: McpServerInfo[]) => void
   setQueuedMessage: (sessionId: string, msg: QueuedMessage) => void
   clearQueuedMessage: (sessionId: string) => QueuedMessage | null
@@ -319,6 +330,22 @@ export const useSessionsStore = create<SessionsStore>()(
               )
             }
           })
+        }))
+      },
+
+      setGitInfo: (sessionId: string, info: { isGitRepo: boolean; branch?: string }) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? { ...s, isGitRepo: info.isGitRepo, branch: info.branch } : s
+          )
+        }))
+      },
+
+      setWorktree: (sessionId: string, worktree: WorktreeInfo | null) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? { ...s, worktree, ...(worktree ? { branch: worktree.branch } : {}) } : s
+          )
         }))
       },
 

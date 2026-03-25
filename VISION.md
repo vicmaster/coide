@@ -403,7 +403,7 @@ Electron Renderer Process (React)
 - [ ] Voice mode — speech-to-text input and text-to-speech responses via Web Speech API
 - [x] History search — Ctrl+R style recall of past user prompts for quick re-use
 - [ ] Session forking — branch current conversation into a new session with shared history
-- [ ] Git worktrees — UI for `--worktree` flag to run isolated parallel sessions on separate branches
+- [x] Git worktrees — UI for `--worktree` flag to run isolated parallel sessions on separate branches
 - [ ] Vim mode — vim keybindings for the chat input textarea
 - [ ] Reduced motion — respect `prefers-reduced-motion` for accessibility
 - [x] Vitest test suite — unit tests for store actions, utilities, and event parsing with `npm test`

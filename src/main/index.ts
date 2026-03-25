@@ -83,10 +83,10 @@ function createWindow(): void {
 
 ipcMain.handle(
   'claude:query',
-  async (_event, { prompt, cwd, sessionId, coideSessionId }: { prompt: string; cwd: string; sessionId: string | null; coideSessionId: string }) => {
+  async (_event, { prompt, cwd, sessionId, coideSessionId, worktreeName }: { prompt: string; cwd: string; sessionId: string | null; coideSessionId: string; worktreeName?: string }) => {
     if (!mainWindow) return null
     try {
-      const newSessionId = await runClaude(prompt, cwd, sessionId, coideSessionId, mainWindow, currentSettings)
+      const newSessionId = await runClaude(prompt, cwd, sessionId, coideSessionId, mainWindow, currentSettings, worktreeName)
       return { sessionId: newSessionId }
     } catch (err) {
       return { error: String(err) }
@@ -294,6 +294,65 @@ ipcMain.handle('git:branch', async (_event, { cwd }: { cwd: string }) => {
     })
   } catch {
     return ''
+  }
+})
+
+ipcMain.handle('git:isRepo', async (_event, { cwd }: { cwd: string }) => {
+  try {
+    return new Promise<boolean>((resolve) => {
+      execFileImported('git', ['rev-parse', '--is-inside-work-tree'], { cwd, timeout: 3000 }, (err) => {
+        resolve(!err)
+      })
+    })
+  } catch {
+    return false
+  }
+})
+
+ipcMain.handle('git:worktreeCreate', async (_event, { cwd, branch }: { cwd: string; branch: string }) => {
+  try {
+    const worktreePath = join(cwd, '..', `.coide-worktree-${branch.replace(/[^a-zA-Z0-9-_]/g, '-')}`)
+    return new Promise<{ path: string; branch: string; error?: string }>((resolve) => {
+      execFileImported('git', ['worktree', 'add', '-b', branch, worktreePath], { cwd, timeout: 10000 }, (err) => {
+        if (err) {
+          // Branch may already exist, try without -b
+          execFileImported('git', ['worktree', 'add', worktreePath, branch], { cwd, timeout: 10000 }, (err2) => {
+            if (err2) resolve({ path: '', branch, error: String(err2) })
+            else resolve({ path: worktreePath, branch })
+          })
+        } else {
+          resolve({ path: worktreePath, branch })
+        }
+      })
+    })
+  } catch (err) {
+    return { path: '', branch, error: String(err) }
+  }
+})
+
+ipcMain.handle('git:worktreeMerge', async (_event, { cwd, branch }: { cwd: string; branch: string }) => {
+  try {
+    return new Promise<{ success: boolean; error?: string }>((resolve) => {
+      execFileImported('git', ['merge', branch], { cwd, timeout: 15000 }, (err, stdout, stderr) => {
+        if (err) resolve({ success: false, error: stderr || String(err) })
+        else resolve({ success: true })
+      })
+    })
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+})
+
+ipcMain.handle('git:worktreeRemove', async (_event, { cwd, worktreePath }: { cwd: string; worktreePath: string }) => {
+  try {
+    return new Promise<{ success: boolean; error?: string }>((resolve) => {
+      execFileImported('git', ['worktree', 'remove', worktreePath, '--force'], { cwd, timeout: 10000 }, (err) => {
+        if (err) resolve({ success: false, error: String(err) })
+        else resolve({ success: true })
+      })
+    })
+  } catch (err) {
+    return { success: false, error: String(err) }
   }
 })
 

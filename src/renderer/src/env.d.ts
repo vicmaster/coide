@@ -14,7 +14,8 @@ interface Window {
         prompt: string,
         cwd: string,
         sessionId: string | null,
-        coideSessionId: string
+        coideSessionId: string,
+        worktreeName?: string
       ) => Promise<{ sessionId: string | null } | { error: string }>
       onEvent: (callback: (event: unknown) => void) => () => void
       onPermission: (callback: (permission: unknown) => void) => () => void
@@ -29,6 +30,13 @@ interface Window {
     }
     system: {
       homedir: () => Promise<string>
+    }
+    git: {
+      branch: (cwd: string) => Promise<string>
+      isRepo: (cwd: string) => Promise<boolean>
+      worktreeCreate: (cwd: string, branch: string) => Promise<{ path: string; branch: string; error?: string }>
+      worktreeMerge: (cwd: string, branch: string) => Promise<{ success: boolean; error?: string }>
+      worktreeRemove: (cwd: string, worktreePath: string) => Promise<{ success: boolean; error?: string }>
     }
     mcp: {
       list: (cwd: string) => Promise<unknown[]>

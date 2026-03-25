@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useSessionsStore } from '../store/sessions'
 import { useSkillEditorStore } from '../store/skillEditor'
 import { BUILT_IN_COMMANDS } from '../data/commands'
+import WorktreeDialog from './WorktreeDialog'
 
 type Tab = 'sessions' | 'skills' | 'commands'
 
@@ -9,6 +10,8 @@ export default function Sidebar(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<Tab>('sessions')
   const { createSession, activeSessionId } = useSessionsStore()
   const [gitBranch, setGitBranch] = useState('')
+  const [isGitRepo, setIsGitRepo] = useState(false)
+  const [worktreeDialogOpen, setWorktreeDialogOpen] = useState(false)
 
   const cwd = useSessionsStore((state) => {
     const session = state.sessions.find((s) => s.id === state.activeSessionId)
@@ -16,8 +19,9 @@ export default function Sidebar(): React.JSX.Element {
   })
 
   useEffect(() => {
-    if (!cwd) { setGitBranch(''); return }
+    if (!cwd) { setGitBranch(''); setIsGitRepo(false); return }
     window.api.git.branch(cwd).then(setGitBranch)
+    window.api.git.isRepo(cwd).then(setIsGitRepo)
   }, [cwd])
 
   const handleNewSession = (): void => {
@@ -88,7 +92,7 @@ export default function Sidebar(): React.JSX.Element {
 
       {/* Footer actions */}
       {activeTab === 'sessions' && (
-        <div className="p-2 border-t border-white/[0.06]">
+        <div className="p-2 border-t border-white/[0.06] space-y-1.5">
           <div className="flex">
             <button
               onClick={handleNewSession}
@@ -106,7 +110,33 @@ export default function Sidebar(): React.JSX.Element {
               </svg>
             </button>
           </div>
+          {isGitRepo && (
+            <button
+              onClick={() => setWorktreeDialogOpen(true)}
+              className="w-full flex items-center justify-center gap-1.5 rounded-md border border-purple-500/20 bg-purple-500/10 hover:bg-purple-500/20 py-1.5 text-xs font-medium text-purple-400/80 transition-colors"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="6" y1="3" x2="6" y2="15" />
+                <circle cx="18" cy="6" r="3" />
+                <circle cx="6" cy="18" r="3" />
+                <path d="M18 9a9 9 0 0 1-9 9" />
+              </svg>
+              Worktree
+            </button>
+          )}
         </div>
+      )}
+      {worktreeDialogOpen && (
+        <WorktreeDialog
+          cwd={cwd}
+          onClose={() => setWorktreeDialogOpen(false)}
+          onCreated={(sessionId, initialPrompt) => {
+            setWorktreeDialogOpen(false)
+            if (initialPrompt) {
+              useSessionsStore.getState().setPendingAction({ type: 'send', text: initialPrompt })
+            }
+          }}
+        />
       )}
       {activeTab === 'skills' && (
         <div className="p-2 border-t border-white/[0.06] flex gap-1.5">
@@ -203,9 +233,23 @@ function SessionsList(): React.JSX.Element {
             }`}
           >
             <p className="text-xs truncate pr-5">{session.title}</p>
-            <p className="text-[10px] text-white/25 mt-0.5 font-mono truncate">
-              {session.cwd.split('/').pop()}
-            </p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-[10px] text-white/25 font-mono truncate">
+                {session.cwd.split('/').pop()}
+              </span>
+              {session.branch && (
+                <span className={`text-[9px] font-mono px-1 py-0.5 rounded flex-shrink-0 ${
+                  session.worktree
+                    ? 'bg-purple-500/15 text-purple-400/60'
+                    : 'bg-white/[0.06] text-white/25'
+                }`}>
+                  {session.branch}
+                </span>
+              )}
+              {session.worktree && (
+                <span className="text-[8px] font-medium text-purple-400/40 flex-shrink-0">wt</span>
+              )}
+            </div>
           </button>
           <button
             onClick={(e) => {

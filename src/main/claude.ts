@@ -305,7 +305,8 @@ export function runClaude(
   sessionId: string | null,
   coideSessionId: string,
   win: BrowserWindow,
-  settings: CoideSettings
+  settings: CoideSettings,
+  worktreeName?: string
 ): Promise<string | null> {
   return new Promise((resolve, reject) => {
     // No longer kills other sessions — each runs independently
@@ -330,6 +331,7 @@ export function runClaude(
     args.push('--append-system-prompt', fullSystemPrompt)
     if (settings.effort) args.push('--effort', settings.effort)
     if (settings.planMode) args.push('--permission-mode', 'plan')
+    if (worktreeName) args.push('--worktree', worktreeName)
 
     const env = { ...process.env } as Record<string, string>
     delete env['CLAUDECODE']

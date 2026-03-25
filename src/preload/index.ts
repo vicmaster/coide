@@ -3,8 +3,8 @@ import { electronAPI } from '@electron-toolkit/preload'
 
 const api = {
   claude: {
-    query: (prompt: string, cwd: string, sessionId: string | null, coideSessionId: string) =>
-      ipcRenderer.invoke('claude:query', { prompt, cwd, sessionId, coideSessionId }),
+    query: (prompt: string, cwd: string, sessionId: string | null, coideSessionId: string, worktreeName?: string) =>
+      ipcRenderer.invoke('claude:query', { prompt, cwd, sessionId, coideSessionId, worktreeName }),
 
     onEvent: (callback: (event: unknown) => void) => {
       const handler = (_e: Electron.IpcRendererEvent, data: unknown): void => callback(data)
@@ -62,7 +62,14 @@ const api = {
     homedir: (): Promise<string> => ipcRenderer.invoke('system:homedir')
   },
   git: {
-    branch: (cwd: string): Promise<string> => ipcRenderer.invoke('git:branch', { cwd })
+    branch: (cwd: string): Promise<string> => ipcRenderer.invoke('git:branch', { cwd }),
+    isRepo: (cwd: string): Promise<boolean> => ipcRenderer.invoke('git:isRepo', { cwd }),
+    worktreeCreate: (cwd: string, branch: string): Promise<{ path: string; branch: string; error?: string }> =>
+      ipcRenderer.invoke('git:worktreeCreate', { cwd, branch }),
+    worktreeMerge: (cwd: string, branch: string): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('git:worktreeMerge', { cwd, branch }),
+    worktreeRemove: (cwd: string, worktreePath: string): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('git:worktreeRemove', { cwd, worktreePath })
   },
   mcp: {
     list: (cwd: string) => ipcRenderer.invoke('mcp:list', { cwd })

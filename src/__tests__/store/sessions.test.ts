@@ -235,6 +235,40 @@ describe('Sessions Store', () => {
     })
   })
 
+  describe('gitInfo and worktree', () => {
+    it('sets git info on a session', () => {
+      const id = createTestSession()
+      useSessionsStore.getState().setGitInfo(id, { isGitRepo: true, branch: 'main' })
+      const session = useSessionsStore.getState().sessions.find((s) => s.id === id)!
+      expect(session.isGitRepo).toBe(true)
+      expect(session.branch).toBe('main')
+    })
+
+    it('sets git info to non-repo', () => {
+      const id = createTestSession()
+      useSessionsStore.getState().setGitInfo(id, { isGitRepo: false })
+      const session = useSessionsStore.getState().sessions.find((s) => s.id === id)!
+      expect(session.isGitRepo).toBe(false)
+      expect(session.branch).toBeUndefined()
+    })
+
+    it('sets worktree and updates branch', () => {
+      const id = createTestSession()
+      useSessionsStore.getState().setWorktree(id, { name: 'feat-pay', branch: 'feat/payments', path: '/tmp/wt' })
+      const session = useSessionsStore.getState().sessions.find((s) => s.id === id)!
+      expect(session.worktree).toEqual({ name: 'feat-pay', branch: 'feat/payments', path: '/tmp/wt' })
+      expect(session.branch).toBe('feat/payments')
+    })
+
+    it('clears worktree when set to null', () => {
+      const id = createTestSession()
+      useSessionsStore.getState().setWorktree(id, { name: 'wt', branch: 'b', path: '/p' })
+      useSessionsStore.getState().setWorktree(id, null)
+      const session = useSessionsStore.getState().sessions.find((s) => s.id === id)!
+      expect(session.worktree).toBeNull()
+    })
+  })
+
   describe('truncateAtMessage', () => {
     it('removes messages from the given ID onward and resets session state', () => {
       const id = createTestSession()
