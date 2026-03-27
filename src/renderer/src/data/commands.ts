@@ -5,6 +5,7 @@ export const BUILT_IN_COMMANDS = [
   { name: '/config', description: 'Open or manage settings' },
   { name: '/cost', description: 'Show token usage and cost' },
   { name: '/doctor', description: 'Check Claude Code health' },
+  { name: '/fast', description: 'Toggle fast output mode' },
   { name: '/init', description: 'Initialize project with CLAUDE.md' },
   { name: '/login', description: 'Switch auth or account' },
   { name: '/logout', description: 'Sign out of Claude' },
