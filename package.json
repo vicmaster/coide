@@ -12,9 +12,11 @@
     "package": "npm run build && electron-builder",
     "test": "vitest run",
     "test:watch": "vitest",
-    "release": "npm test && npm version patch && npm run package && git push && git push --tags",
-    "release:minor": "npm test && npm version minor && npm run package && git push && git push --tags",
-    "release:major": "npm test && npm version major && npm run package && git push && git push --tags"
+    "prepackage": "rm -rf dist",
+    "release": "npm test && npm version patch && npm run package && git push && git push --tags && npm run gh-release",
+    "release:minor": "npm test && npm version minor && npm run package && git push && git push --tags && npm run gh-release",
+    "release:major": "npm test && npm version major && npm run package && git push && git push --tags && npm run gh-release",
+    "gh-release": "gh release create v$(node -p \"require('./package.json').version\") --title v$(node -p \"require('./package.json').version\") --generate-notes dist/*.dmg dist/*-mac.zip"
   },
   "build": {
     "appId": "com.coide",
