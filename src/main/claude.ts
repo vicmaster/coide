@@ -315,7 +315,7 @@ export function runClaude(
     notificationsEnabled = settings.notifications
     const claudeBin = resolveClaudeBinary(settings.claudeBinaryPath)
 
-    const args = ['-p', prompt, '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions']
+    const args = ['-p', prompt, '--output-format', 'stream-json', '--verbose']
     if (sessionId) args.push('--resume', sessionId)
     if (settings.model) args.push('--model', settings.model)
     const coideSystemPrompt = [
@@ -330,7 +330,10 @@ export function runClaude(
       : coideSystemPrompt
     args.push('--append-system-prompt', fullSystemPrompt)
     if (settings.effort) args.push('--effort', settings.effort)
+    // Permission mode: plan mode takes priority, otherwise bypass permissions
+    // (coide handles its own permission UI via the skipPermissions setting)
     if (settings.planMode) args.push('--permission-mode', 'plan')
+    else args.push('--permission-mode', 'bypassPermissions')
     if (worktreeName) args.push('--worktree', worktreeName)
 
     const env = { ...process.env } as Record<string, string>
