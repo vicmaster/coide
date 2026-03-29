@@ -455,6 +455,20 @@ export function runClaude(
             }
           }
 
+          // Forward rate limit events to renderer
+          if (raw.type === 'rate_limit_event') {
+            const info = raw.rate_limit_info as Record<string, unknown> | undefined
+            if (info) {
+              win.webContents.send('claude:event', {
+                ...tag,
+                type: 'rate_limit',
+                status: (info.status as string) ?? 'unknown',
+                resetsAt: (info.resetsAt as number) ?? 0,
+                rateLimitType: (info.rateLimitType as string) ?? 'five_hour'
+              })
+            }
+          }
+
           // Detect extended thinking blocks
           if (raw.type === 'assistant') {
             const msg2 = raw.message as Record<string, unknown> | undefined

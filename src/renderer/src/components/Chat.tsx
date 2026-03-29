@@ -11,6 +11,7 @@ import InSessionSearchBar from './InSessionSearchBar'
 import { findMatches } from '../utils/inSessionSearch'
 import { useHighlightMatches } from '../hooks/useHighlightMatches'
 import { parseMcpFromInit } from '../utils/mcpParsing'
+import { useRateLimitStore } from '../store/rateLimit'
 
 const EMPTY_MESSAGES: Message[] = []
 const BOUNCE_DOTS = [0, 1, 2]
@@ -30,6 +31,7 @@ type ClaudeEvent = ClaudeEventBase & (
   | { type: 'thinking'; thinking: string }
   | { type: 'stream_end' }
   | { type: 'system'; subtype: string; mcp_servers?: { name: string; status: string }[]; tools?: string[] }
+  | { type: 'rate_limit'; status: string; resetsAt: number; rateLimitType: string }
 )
 
 export default function Chat({
@@ -248,6 +250,15 @@ export default function Chat({
           outputTokens: event.output_tokens,
           cacheCreationTokens: event.cache_creation_input_tokens,
           cacheReadTokens: event.cache_read_input_tokens
+        })
+        return
+      }
+
+      if (event.type === 'rate_limit') {
+        useRateLimitStore.getState().setWindow({
+          status: event.status,
+          resetsAt: event.resetsAt,
+          rateLimitType: event.rateLimitType
         })
         return
       }
@@ -1113,6 +1124,7 @@ export default function Chat({
           const cost = (usage.inputTokens * costPerMInput + usage.outputTokens * costPerMOutput) / 1_000_000
           return <span className="text-green-400/40">${cost < 0.01 ? cost.toFixed(4) : cost.toFixed(2)}</span>
         })()}
+        <RateLimitPill />
         {claudeSessionId && (
           <span className="text-white/15">{claudeSessionId.slice(0, 8)}</span>
         )}
@@ -1130,6 +1142,42 @@ export default function Chat({
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
     </div>
   )
+}
+
+function RateLimitPill(): React.JSX.Element | null {
+  const fiveHour = useRateLimitStore((s) => s.windows['five_hour'])
+  const [now, setNow] = useState(Date.now())
+
+  useEffect(() => {
+    if (!fiveHour) return
+    const id = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(id)
+  }, [fiveHour])
+
+  if (!fiveHour) return null
+
+  const isThrottled = fiveHour.status !== 'allowed'
+  const resetsInMs = fiveHour.resetsAt * 1000 - now
+  const resetsInMin = Math.max(0, Math.ceil(resetsInMs / 60_000))
+  const hours = Math.floor(resetsInMin / 60)
+  const mins = resetsInMin % 60
+  const resetStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`
+
+  if (isThrottled) {
+    return <span className="text-red-400/80 animate-pulse">5h: LIMIT · resets {resetStr}</span>
+  }
+
+  // Show reset countdown when we have a valid resetsAt (always useful for 5h window)
+  if (resetsInMs > 0) {
+    // Color based on how close to reset (closer = more used)
+    const totalWindowMs = 5 * 60 * 60 * 1000
+    const elapsed = totalWindowMs - resetsInMs
+    const pct = Math.min((elapsed / totalWindowMs) * 100, 100)
+    const color = pct > 90 ? 'text-red-400/80' : pct > 70 ? 'text-amber-400/70' : 'text-blue-400/50'
+    return <span className={color}>5h: resets {resetStr}</span>
+  }
+
+  return null
 }
 
 function ThinkingIndicator({ startTime, compact }: { startTime: number; compact: boolean }): React.JSX.Element {

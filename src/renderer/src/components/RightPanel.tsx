@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { useSessionsStore, type Task, type Agent, type ToolCallMessage, type SessionUsage, type Message, type McpServerInfo } from '../store/sessions'
+import { useRateLimitStore, type RateLimitWindow } from '../store/rateLimit'
 import FileChangelog from './FileChangelog'
 
 const EMPTY_AGENTS: Agent[] = []
@@ -57,6 +58,7 @@ function ContextTab(): React.JSX.Element {
   return (
     <div className="space-y-4">
       <ContextTracker />
+      <RateLimitCard />
       <FileChangelog />
     </div>
   )
@@ -437,6 +439,81 @@ function ContextTracker(): React.JSX.Element {
           </p>
         </div>
       )}
+    </div>
+  )
+}
+
+function formatResetTime(resetsAt: number, now: number): string {
+  const ms = resetsAt * 1000 - now
+  if (ms <= 0) return '0m'
+  const mins = Math.ceil(ms / 60_000)
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return h > 0 ? `${h}h ${m}m` : `${m}m`
+}
+
+function RateLimitBar({ window: w, now }: { window: RateLimitWindow; now: number }): React.JSX.Element {
+  const isThrottled = w.status !== 'allowed'
+  const resetsInMs = w.resetsAt * 1000 - now
+  const totalWindowMs = w.rateLimitType === 'five_hour' ? 5 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000
+  const elapsed = totalWindowMs - resetsInMs
+  const pct = isThrottled ? 100 : Math.min(Math.max((elapsed / totalWindowMs) * 100, 0), 100)
+  const barColor = isThrottled || pct > 90 ? 'bg-red-500/70' : pct > 70 ? 'bg-yellow-500/60' : 'bg-blue-500/60'
+  const valColor = isThrottled || pct > 90 ? 'text-red-400/80' : pct > 70 ? 'text-amber-400/70' : 'text-blue-400/60'
+  const label = w.rateLimitType === 'five_hour' ? '5-hour window' : '7-day window'
+
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-[10px]">
+        <span className="text-white/40">{label}</span>
+        <span className={`font-mono ${valColor}`}>
+          {isThrottled ? 'LIMIT' : `resets ${formatResetTime(w.resetsAt, now)}`}
+        </span>
+      </div>
+      <div className="h-1 w-full rounded-full bg-white/[0.07]">
+        <div
+          className={`h-1 rounded-full transition-all duration-500 ease-out ${barColor}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function RateLimitCard(): React.JSX.Element | null {
+  const windows = useRateLimitStore((s) => s.windows)
+  const [now, setNow] = useState(Date.now())
+
+  const entries = Object.values(windows)
+
+  useEffect(() => {
+    if (entries.length === 0) return
+    const id = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(id)
+  }, [entries.length])
+
+  if (entries.length === 0) return null
+
+  const anyThrottled = entries.some((w) => w.status !== 'allowed')
+  const borderColor = anyThrottled ? 'border-red-500/20' : 'border-white/[0.06]'
+  const bgColor = anyThrottled ? 'bg-red-500/[0.04]' : 'bg-white/[0.03]'
+
+  return (
+    <div>
+      <SectionLabel label="Rate Limit" />
+      <div className={`rounded-lg border ${borderColor} ${bgColor} p-3 space-y-3`}>
+        {entries.map((w) => (
+          <RateLimitBar key={w.rateLimitType} window={w} now={now} />
+        ))}
+        {anyThrottled && (
+          <div className="rounded bg-red-500/10 px-2 py-1.5 flex items-center gap-1.5">
+            <span className="text-[11px]">⏱</span>
+            <span className="text-[10px] font-mono text-red-400/80">
+              Throttled — resets {formatResetTime(entries[0].resetsAt, now)}
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
