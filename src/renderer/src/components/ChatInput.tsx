@@ -170,7 +170,10 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
         )
         break
       case 'cost':
-        addInfo(`**Token usage** — Cost tracking is not yet available in coide.`)
+        addInfo(`**Token usage** — Cost tracking is not yet available in coide. Use \`/stats\` for a detailed overview.`)
+        break
+      case 'stats':
+        window.dispatchEvent(new CustomEvent('coide:open-stats'))
         break
       default:
         sendMessage(name)

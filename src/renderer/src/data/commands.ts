@@ -15,6 +15,7 @@ export const BUILT_IN_COMMANDS = [
   { name: '/pr-review', description: 'Review a pull request' },
   { name: '/restart', description: 'Restart Claude session (reconnects MCP servers)' },
   { name: '/review', description: 'Review recent changes' },
+  { name: '/stats', description: 'Show session statistics and usage' },
   { name: '/status', description: 'Show session status' },
   { name: '/terminal-setup', description: 'Install shell integration' },
   { name: '/vim', description: 'Toggle vim keybinding mode' }

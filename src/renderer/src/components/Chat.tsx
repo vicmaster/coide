@@ -7,6 +7,7 @@ import ToolCallCard from './ToolCallCard'
 import PermissionDialog, { type PermissionRequest } from './PermissionDialog'
 import ChatInput from './ChatInput'
 import SettingsModal from './SettingsModal'
+import StatsModal from './StatsModal'
 import InSessionSearchBar from './InSessionSearchBar'
 import { findMatches } from '../utils/inSessionSearch'
 import { useHighlightMatches } from '../hooks/useHighlightMatches'
@@ -55,6 +56,7 @@ export default function Chat({
   const pendingToolsRef = useRef<Map<string, string>>(new Map())
   const [isDragging, setIsDragging] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [statsOpen, setStatsOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
@@ -78,6 +80,12 @@ export default function Chat({
 
   useEffect(() => {
     window.api.system.homedir().then(setHomedir)
+  }, [])
+
+  useEffect(() => {
+    const handler = (): void => setStatsOpen(true)
+    window.addEventListener('coide:open-stats', handler)
+    return () => window.removeEventListener('coide:open-stats', handler)
   }, [])
 
   // Sync all settings to main process on mount and whenever any setting changes
@@ -1140,6 +1148,7 @@ export default function Chat({
       )}
 
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+      {statsOpen && <StatsModal onClose={() => setStatsOpen(false)} />}
     </div>
   )
 }

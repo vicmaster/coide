@@ -415,6 +415,6 @@ Electron Renderer Process (React)
 - [x] Rate limit display — show rate limit usage percentage and reset countdown in status bar
 - [ ] Message stash (Ctrl+S) — save current input as draft, restore later with keyboard shortcut
 - [ ] `/context` optimization tips — forward to CLI and display actionable suggestions for reducing context usage
-- [ ] `/stats` usage statistics — token/cost stats view with detailed breakdown per session
+- [x] `/stats` usage statistics — token/cost stats view with detailed breakdown per session
 - [ ] `/rename` sessions — inline rename in sidebar to edit session title on demand
 - [ ] `/color` prompt customization — let users set prompt bar accent color for visual personalization
