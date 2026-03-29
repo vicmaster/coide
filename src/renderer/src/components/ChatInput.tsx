@@ -175,6 +175,14 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
       case 'stats':
         window.dispatchEvent(new CustomEvent('coide:open-stats'))
         break
+      case 'compact':
+        if (!session.claudeSessionId) {
+          addInfo('No active session to compact. Send a message first.')
+          break
+        }
+        addInfo('Compacting context…')
+        sendMessage('/compact')
+        break
       default:
         sendMessage(name)
         break
