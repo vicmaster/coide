@@ -178,6 +178,15 @@ export async function respondPermission(approved: boolean, coideSessionId?: stri
     for (const raw of buffered) {
       handleEvent(raw, win, coideSessionId)
     }
+
+    // If PTY already exited while we were waiting for permission,
+    // send stream_end and clean up now
+    if (!sess.pty.pid) {
+      if (!sess.settled) {
+        win.webContents.send('claude:event', { ...tag, type: 'stream_end' })
+      }
+      ptySessions.delete(coideSessionId)
+    }
   } else {
     await revertFileChange(toolInfo)
     for (const remaining of sess.pendingPermissions) {
@@ -208,7 +217,7 @@ export async function respondPermission(approved: boolean, coideSessionId?: stri
     sess.pendingEventBuffer = []
     sess.waitingForPermission = false
 
-    try { sess.pty.kill('SIGTERM') } catch {}
+    try { if (sess.pty.pid) sess.pty.kill('SIGTERM') } catch {}
     ptySessions.delete(coideSessionId)
   }
 }
@@ -536,6 +545,13 @@ export function runClaude(
           }
         } catch {}
         lineBuffer = ''
+      }
+
+      // If waiting for permission, keep the session alive so respondPermission
+      // can replay buffered events (CLI exits before user clicks Accept/Reject)
+      if (sess.waitingForPermission) {
+        log(`PTY exited while waiting for permission — session kept alive for user response`)
+        return
       }
 
       if (!sess.settled) {
