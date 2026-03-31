@@ -1,7 +1,7 @@
 ---
 name: ship-feature
 description: Test, commit all changes, mark the feature done in VISION.md, and push to origin
-disable-model-invocation: true
+disable-model-invocation: false
 argument-hint: [feature-description]
 ---
 
