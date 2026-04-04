@@ -8,6 +8,7 @@ import PermissionDialog, { type PermissionRequest } from './PermissionDialog'
 import ChatInput from './ChatInput'
 import SettingsModal from './SettingsModal'
 import StatsModal from './StatsModal'
+import CopyBlocksModal from './CopyBlocksModal'
 import InSessionSearchBar from './InSessionSearchBar'
 import { findMatches } from '../utils/inSessionSearch'
 import { useHighlightMatches } from '../hooks/useHighlightMatches'
@@ -57,6 +58,7 @@ export default function Chat({
   const [isDragging, setIsDragging] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [statsOpen, setStatsOpen] = useState(false)
+  const [copyBlocksOpen, setCopyBlocksOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
@@ -86,6 +88,12 @@ export default function Chat({
     const handler = (): void => setStatsOpen(true)
     window.addEventListener('coide:open-stats', handler)
     return () => window.removeEventListener('coide:open-stats', handler)
+  }, [])
+
+  useEffect(() => {
+    const handler = (): void => setCopyBlocksOpen(true)
+    window.addEventListener('coide:open-copy', handler)
+    return () => window.removeEventListener('coide:open-copy', handler)
   }, [])
 
   // Sync all settings to main process on mount and whenever any setting changes
@@ -1149,6 +1157,7 @@ export default function Chat({
 
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
       {statsOpen && <StatsModal onClose={() => setStatsOpen(false)} />}
+      {copyBlocksOpen && <CopyBlocksModal onClose={() => setCopyBlocksOpen(false)} />}
     </div>
   )
 }

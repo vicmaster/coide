@@ -27,6 +27,8 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
   const [historyQuery, setHistoryQuery] = useState('')
   const [historySelectedIndex, setHistorySelectedIndex] = useState(0)
   const [mentionAnchorLeft, setMentionAnchorLeft] = useState(0)
+  const stashRef = useRef<string>('')
+  const [hasStash, setHasStash] = useState(false)
 
   // Collect all past user prompts across sessions
   const sessions = useSessionsStore((s) => s.sessions)
@@ -183,6 +185,16 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
         addInfo('Compacting context…')
         sendMessage('/compact')
         break
+      case 'context':
+        if (!session.claudeSessionId) {
+          addInfo('No active session. Send a message first.')
+          break
+        }
+        sendMessage('/context')
+        break
+      case 'copy':
+        window.dispatchEvent(new CustomEvent('coide:open-copy'))
+        break
       default:
         sendMessage(name)
         break
@@ -268,7 +280,27 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
     textareaRef.current?.focus()
   }, [])
 
+  const handleStash = useCallback((): void => {
+    if (hasStash) {
+      setInput(stashRef.current)
+      stashRef.current = ''
+      setHasStash(false)
+      requestAnimationFrame(() => textareaRef.current?.focus())
+    } else {
+      if (!input.trim()) return
+      stashRef.current = input
+      setHasStash(true)
+      setInput('')
+    }
+  }, [hasStash, input])
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
+    // Ctrl+S to stash/restore draft
+    if (e.key === 's' && e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      e.preventDefault()
+      handleStash()
+      return
+    }
     // Ctrl+R to open history search
     if (e.key === 'r' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault()
@@ -475,6 +507,20 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
           onHover={setHistorySelectedIndex}
           onClose={() => { setHistoryOpen(false); setHistoryQuery(''); textareaRef.current?.focus() }}
         />
+      )}
+      {hasStash && (
+        <div className="mb-2 rounded-lg border border-indigo-500/20 bg-indigo-500/10 px-3 py-2 text-[12px] text-indigo-400/80 flex items-center justify-between">
+          <span>
+            <span className="font-medium">Draft stashed</span>
+            <span className="text-indigo-400/50 ml-1">— Ctrl+S to restore</span>
+          </span>
+          <button
+            onClick={() => { stashRef.current = ''; setHasStash(false) }}
+            className="text-indigo-400/40 hover:text-indigo-400 ml-2 flex-shrink-0"
+          >
+            ×
+          </button>
+        </div>
       )}
       {queuedMessage && (
         <div className="mb-2 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-3 py-2 text-[12px] text-yellow-400/80 flex items-center justify-between">

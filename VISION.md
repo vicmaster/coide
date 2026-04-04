@@ -405,16 +405,14 @@ Electron Renderer Process (React)
 - [ ] Session forking — branch current conversation into a new session with shared history
 - [x] Git worktrees — UI for `--worktree` flag to run isolated parallel sessions on separate branches
 - [ ] Vim mode — vim keybindings for the chat input textarea
-- [ ] Reduced motion — respect `prefers-reduced-motion` for accessibility
 - [x] Vitest test suite — unit tests for store actions, utilities, and event parsing with `npm test`
 - [x] Onboarding wizard — CLI detection, folder picker, and getting-started tips for first-time users
 - [ ] `/loop` recurring tasks — cron-like scheduled prompts on intervals (e.g. every 5m), reuses PTY runner on a timer
 - [x] `/compact` context compression — send compact command to CLI to compress conversation context mid-session
 - [ ] Auto-compaction — detect context approaching token limit and auto-compress without user intervention
-- [ ] `/copy` code block picker — interactive UI to pick and copy specific code blocks from the conversation
+- [x] `/copy` code block picker — interactive UI to pick and copy specific code blocks from the conversation
 - [x] Rate limit display — show rate limit usage percentage and reset countdown in status bar
-- [ ] Message stash (Ctrl+S) — save current input as draft, restore later with keyboard shortcut
-- [ ] `/context` optimization tips — forward to CLI and display actionable suggestions for reducing context usage
+- [x] Message stash (Ctrl+S) — save current input as draft, restore later with keyboard shortcut
+- [x] `/context` optimization tips — forward to CLI and display actionable suggestions for reducing context usage
 - [x] `/stats` usage statistics — token/cost stats view with detailed breakdown per session
 - [x] `/rename` sessions — inline rename in sidebar to edit session title on demand
-- [ ] `/color` prompt customization — let users set prompt bar accent color for visual personalization

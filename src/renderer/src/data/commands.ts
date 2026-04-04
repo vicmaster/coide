@@ -3,6 +3,8 @@ export const BUILT_IN_COMMANDS = [
   { name: '/clear', description: 'Clear conversation history' },
   { name: '/compact', description: 'Compact conversation context' },
   { name: '/config', description: 'Open or manage settings' },
+  { name: '/context', description: 'Show context usage and optimization tips' },
+  { name: '/copy', description: 'Browse and copy code blocks from this session' },
   { name: '/cost', description: 'Show token usage and cost' },
   { name: '/doctor', description: 'Check Claude Code health' },
   { name: '/fast', description: 'Toggle fast output mode' },
