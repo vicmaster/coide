@@ -133,6 +133,27 @@ describe('Sessions Store', () => {
     })
   })
 
+  describe('renameSession', () => {
+    it('renames the session title', () => {
+      const id = createTestSession()
+      useSessionsStore.getState().renameSession(id, 'My Custom Title')
+      expect(useSessionsStore.getState().sessions[0].title).toBe('My Custom Title')
+    })
+
+    it('trims whitespace', () => {
+      const id = createTestSession()
+      useSessionsStore.getState().renameSession(id, '  Trimmed  ')
+      expect(useSessionsStore.getState().sessions[0].title).toBe('Trimmed')
+    })
+
+    it('does not blank the title with empty string', () => {
+      const id = createTestSession()
+      useSessionsStore.getState().renameSession(id, 'Before')
+      useSessionsStore.getState().renameSession(id, '   ')
+      expect(useSessionsStore.getState().sessions[0].title).toBe('Before')
+    })
+  })
+
   describe('deleteSession', () => {
     it('removes the session and switches active to first remaining', () => {
       const id1 = createTestSession()

@@ -229,6 +229,17 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
 
     if (!text.trim() && images.length === 0 && files.length === 0) return
 
+    // Intercept /rename <title> before sending to CLI
+    if (text.trim().startsWith('/rename ')) {
+      const newTitle = text.trim().slice('/rename '.length).trim()
+      if (newTitle) {
+        const sid = useSessionsStore.getState().activeSessionId
+        if (sid) useSessionsStore.getState().renameSession(sid, newTitle)
+      }
+      setInput('')
+      return
+    }
+
     setInput('')
     setStagedImages([])
     setStagedFiles([])

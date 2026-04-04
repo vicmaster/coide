@@ -119,6 +119,7 @@ type SessionsStore = {
   updateSessionCwd: (sessionId: string, cwd: string) => void
   clearMessages: (sessionId: string) => void
   restartSession: (sessionId: string) => void
+  renameSession: (sessionId: string, title: string) => void
   deleteSession: (sessionId: string) => void
   addTask: (sessionId: string, task: Task) => void
   updateTask: (sessionId: string, taskId: string, updates: Partial<Task>) => void
@@ -225,6 +226,14 @@ export const useSessionsStore = create<SessionsStore>()(
         set((state) => ({
           sessions: state.sessions.map((s) =>
             s.id === sessionId ? { ...s, claudeSessionId: null } : s
+          )
+        }))
+      },
+
+      renameSession: (sessionId: string, title: string) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? { ...s, title: title.trim() || s.title } : s
           )
         }))
       },

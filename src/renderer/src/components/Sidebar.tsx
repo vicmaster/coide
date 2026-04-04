@@ -208,7 +208,16 @@ function SectionLabel({ label }: { label: string }): React.JSX.Element {
 function SessionsList(): React.JSX.Element {
   const sessions = useSessionsStore((state) => state.sessions)
   const activeSessionId = useSessionsStore((state) => state.activeSessionId)
-  const { setActiveSession, deleteSession } = useSessionsStore()
+  const { setActiveSession, deleteSession, renameSession } = useSessionsStore()
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+
+  const commitRename = (): void => {
+    if (renamingId && renameValue.trim()) {
+      renameSession(renamingId, renameValue.trim())
+    }
+    setRenamingId(null)
+  }
 
   if (sessions.length === 0) {
     return (
@@ -226,13 +235,33 @@ function SessionsList(): React.JSX.Element {
         <div key={session.id} className="group relative">
           <button
             onClick={() => setActiveSession(session.id)}
+            onDoubleClick={() => {
+              setRenamingId(session.id)
+              setRenameValue(session.title)
+            }}
             className={`w-full rounded-md px-2 py-1.5 text-left transition-colors ${
               session.id === activeSessionId
                 ? 'bg-white/10 text-white/90'
                 : 'text-white/50 hover:bg-white/5 hover:text-white/70'
             }`}
           >
-            <p className="text-xs truncate pr-5">{session.title}</p>
+            {renamingId === session.id ? (
+              <input
+                autoFocus
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitRename()
+                  if (e.key === 'Escape') setRenamingId(null)
+                  e.stopPropagation()
+                }}
+                onBlur={commitRename}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full bg-transparent text-xs text-white/90 outline-none border-b border-blue-400/50 pr-5"
+              />
+            ) : (
+              <p className="text-xs truncate pr-5">{session.title}</p>
+            )}
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="text-[10px] text-white/25 font-mono truncate">
                 {session.cwd.split('/').pop()}

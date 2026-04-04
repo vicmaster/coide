@@ -13,6 +13,7 @@ export const BUILT_IN_COMMANDS = [
   { name: '/model', description: 'Switch Claude model' },
   { name: '/permissions', description: 'Manage tool permissions' },
   { name: '/pr-review', description: 'Review a pull request' },
+  { name: '/rename', description: 'Rename the current session' },
   { name: '/restart', description: 'Restart Claude session (reconnects MCP servers)' },
   { name: '/review', description: 'Review recent changes' },
   { name: '/stats', description: 'Show session statistics and usage' },

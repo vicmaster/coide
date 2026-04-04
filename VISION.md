@@ -416,5 +416,5 @@ Electron Renderer Process (React)
 - [ ] Message stash (Ctrl+S) — save current input as draft, restore later with keyboard shortcut
 - [ ] `/context` optimization tips — forward to CLI and display actionable suggestions for reducing context usage
 - [x] `/stats` usage statistics — token/cost stats view with detailed breakdown per session
-- [ ] `/rename` sessions — inline rename in sidebar to edit session title on demand
+- [x] `/rename` sessions — inline rename in sidebar to edit session title on demand
 - [ ] `/color` prompt customization — let users set prompt bar accent color for visual personalization
