@@ -14,6 +14,7 @@ import { findMatches } from '../utils/inSessionSearch'
 import { useHighlightMatches } from '../hooks/useHighlightMatches'
 import { parseMcpFromInit } from '../utils/mcpParsing'
 import { useRateLimitStore } from '../store/rateLimit'
+import { useLoopsStore } from '../store/loops'
 
 const EMPTY_MESSAGES: Message[] = []
 const BOUNCE_DOTS = [0, 1, 2]
@@ -48,6 +49,8 @@ export default function Chat({
   terminalOpen?: boolean
 }): React.JSX.Element {
   const [loadingSessions, setLoadingSessions] = useState<Set<string>>(new Set())
+  const loadingSessionsRef = useRef<Set<string>>(new Set())
+  loadingSessionsRef.current = loadingSessions
   const [permissionQueue, setPermissionQueue] = useState<(PermissionRequest & { coideSessionId?: string })[]>([])
   const messagesRef = useRef<HTMLDivElement>(null)
   const [showJumpBottom, setShowJumpBottom] = useState(false)
@@ -94,6 +97,70 @@ export default function Chat({
     const handler = (): void => setCopyBlocksOpen(true)
     window.addEventListener('coide:open-copy', handler)
     return () => window.removeEventListener('coide:open-copy', handler)
+  }, [])
+
+  useEffect(() => {
+    const handleStart = (e: Event): void => {
+      const { prompt, intervalMs } = (e as CustomEvent).detail
+      const sid = useSessionsStore.getState().activeSessionId
+      if (!sid) return
+
+      // Stop existing loop for this session
+      useLoopsStore.getState().removeLoop(sid)
+
+      // Info message
+      const fmt = intervalMs < 60_000 ? `${intervalMs / 1000}s` : intervalMs < 3_600_000 ? `${intervalMs / 60_000}m` : `${intervalMs / 3_600_000}h`
+      useSessionsStore.getState().addMessage(sid, {
+        id: Date.now().toString(), role: 'assistant',
+        text: `Loop started: **"${prompt}"** every ${fmt}. Type \`/loop stop\` to cancel.`
+      })
+
+      // Fire first iteration immediately
+      sendMessageRef.current?.(prompt)
+
+      const intervalId = setInterval(() => {
+        if (loadingSessionsRef.current.has(sid)) {
+          useLoopsStore.getState().skipLoop(sid)
+          return
+        }
+        useLoopsStore.getState().tickLoop(sid)
+        sendMessageRef.current?.(prompt)
+      }, intervalMs)
+
+      useLoopsStore.getState().addLoop({
+        sessionId: sid, prompt, intervalMs, intervalId,
+        runCount: 1, skippedCount: 0, startedAt: Date.now()
+      })
+    }
+
+    const handleStop = (): void => {
+      const sid = useSessionsStore.getState().activeSessionId
+      if (!sid) return
+      const loops = useLoopsStore.getState()
+      if (loops.loops.has(sid)) {
+        loops.removeLoop(sid)
+        useSessionsStore.getState().addMessage(sid, {
+          id: Date.now().toString(), role: 'assistant', text: 'Loop stopped.'
+        })
+      }
+    }
+
+    window.addEventListener('coide:start-loop', handleStart)
+    window.addEventListener('coide:stop-loop', handleStop)
+    return () => {
+      window.removeEventListener('coide:start-loop', handleStart)
+      window.removeEventListener('coide:stop-loop', handleStop)
+    }
+  }, [])
+
+  // Clean up loops when sessions are deleted
+  useEffect(() => {
+    return useSessionsStore.subscribe((state, prev) => {
+      const removed = prev.sessions.filter((s) => !state.sessions.find((ns) => ns.id === s.id))
+      for (const s of removed) {
+        useLoopsStore.getState().removeLoop(s.id)
+      }
+    })
   }, [])
 
   // Sync all settings to main process on mount and whenever any setting changes
@@ -267,6 +334,26 @@ export default function Chat({
           cacheCreationTokens: event.cache_creation_input_tokens,
           cacheReadTokens: event.cache_read_input_tokens
         })
+
+        // Auto-compaction check
+        const { autoCompact, autoCompactThreshold } = useSettingsStore.getState()
+        if (autoCompact) {
+          const sess = useSessionsStore.getState().sessions.find((s) => s.id === sid)
+          if (sess && sess.claudeSessionId && !sess.autoCompacted) {
+            const total = sess.usage.inputTokens + sess.usage.outputTokens
+            const pct = (total / 1_000_000) * 100
+            if (pct >= autoCompactThreshold) {
+              const isBusy = loadingSessionsRef.current.has(sid)
+              if (isBusy) {
+                useSessionsStore.getState().setPendingAutoCompact(sid, true)
+              } else {
+                useSessionsStore.getState().setAutoCompacted(sid, true)
+                addMessage(sid, { id: Date.now().toString(), role: 'assistant', text: 'Context approaching limit — auto-compacting…' })
+                setTimeout(() => sendMessageRef.current?.('/compact'), 150)
+              }
+            }
+          }
+        }
         return
       }
 
@@ -423,6 +510,15 @@ export default function Chat({
         const queued = useSessionsStore.getState().clearQueuedMessage(sid)
         if (queued && !event.is_error && sendMessageRef.current) {
           setTimeout(() => sendMessageRef.current?.(queued.text, queued.images, queued.files), 100)
+        }
+
+        // Deferred auto-compaction (was busy when threshold was hit)
+        const resultSess = useSessionsStore.getState().sessions.find((s) => s.id === sid)
+        if (resultSess?.pendingAutoCompact && !event.is_error && sendMessageRef.current) {
+          useSessionsStore.getState().setPendingAutoCompact(sid, false)
+          useSessionsStore.getState().setAutoCompacted(sid, true)
+          addMessage(sid, { id: Date.now().toString(), role: 'assistant', text: 'Context approaching limit — auto-compacting…' })
+          setTimeout(() => sendMessageRef.current?.('/compact'), 150)
         }
       }
 

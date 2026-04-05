@@ -103,6 +103,8 @@ export type Session = {
   usage: SessionUsage
   mcpServers?: McpServerInfo[]
   queuedMessage?: QueuedMessage | null
+  autoCompacted?: boolean
+  pendingAutoCompact?: boolean
 }
 
 export type PendingAction = { type: 'send' | 'insert'; text: string }
@@ -135,6 +137,8 @@ type SessionsStore = {
   setQueuedMessage: (sessionId: string, msg: QueuedMessage) => void
   clearQueuedMessage: (sessionId: string) => QueuedMessage | null
   truncateAtMessage: (sessionId: string, messageId: string) => void
+  setAutoCompacted: (sessionId: string, value: boolean) => void
+  setPendingAutoCompact: (sessionId: string, value: boolean) => void
   setPendingAction: (action: PendingAction) => void
   clearPendingAction: () => void
 }
@@ -217,7 +221,7 @@ export const useSessionsStore = create<SessionsStore>()(
       clearMessages: (sessionId: string) => {
         set((state) => ({
           sessions: state.sessions.map((s) =>
-            s.id === sessionId ? { ...s, messages: [], tasks: [], agents: [], usage: { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 }, title: 'New session' } : s
+            s.id === sessionId ? { ...s, messages: [], tasks: [], agents: [], usage: { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 }, title: 'New session', autoCompacted: false, pendingAutoCompact: false } : s
           )
         }))
       },
@@ -225,7 +229,7 @@ export const useSessionsStore = create<SessionsStore>()(
       restartSession: (sessionId: string) => {
         set((state) => ({
           sessions: state.sessions.map((s) =>
-            s.id === sessionId ? { ...s, claudeSessionId: null } : s
+            s.id === sessionId ? { ...s, claudeSessionId: null, autoCompacted: false, pendingAutoCompact: false } : s
           )
         }))
       },
@@ -401,6 +405,22 @@ export const useSessionsStore = create<SessionsStore>()(
               usage: { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 }
             }
           })
+        }))
+      },
+
+      setAutoCompacted: (sessionId: string, value: boolean) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? { ...s, autoCompacted: value } : s
+          )
+        }))
+      },
+
+      setPendingAutoCompact: (sessionId: string, value: boolean) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? { ...s, pendingAutoCompact: value } : s
+          )
         }))
       },
 

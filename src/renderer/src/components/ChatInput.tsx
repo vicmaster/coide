@@ -4,6 +4,7 @@ import { useSettingsStore } from '../store/settings'
 import SlashAutocomplete, { useSlashItems, type AutocompleteItem } from './SlashAutocomplete'
 import AtMentionAutocomplete, { useAtMentionItems, type MentionItem } from './AtMentionAutocomplete'
 import HistorySearch, { type HistoryItem } from './HistorySearch'
+import { useLoopsStore } from '../store/loops'
 
 const SUPPORTED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
 
@@ -195,6 +196,9 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
       case 'copy':
         window.dispatchEvent(new CustomEvent('coide:open-copy'))
         break
+      case 'loop stop':
+        window.dispatchEvent(new CustomEvent('coide:stop-loop'))
+        break
       default:
         sendMessage(name)
         break
@@ -233,6 +237,8 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
     return session?.queuedMessage ?? null
   })
 
+  const activeLoop = useLoopsStore((s) => activeSessionId ? s.loops.get(activeSessionId) ?? null : null)
+
   // Send handler: if loading, queue the message; otherwise send immediately
   const handleSend = useCallback(async (): Promise<void> => {
     const text = input
@@ -240,6 +246,26 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
     const files = [...stagedFiles]
 
     if (!text.trim() && images.length === 0 && files.length === 0) return
+
+    // Intercept /loop <interval> <prompt>
+    const loopMatch = text.trim().match(/^\/loop\s+(\d+(?:\.\d+)?)(s|m|h)\s+(.+)$/i)
+    if (loopMatch) {
+      const value = parseFloat(loopMatch[1])
+      const unit = loopMatch[2].toLowerCase()
+      const loopPrompt = loopMatch[3].trim()
+      const multiplier = unit === 's' ? 1000 : unit === 'm' ? 60_000 : 3_600_000
+      const intervalMs = Math.round(value * multiplier)
+      setInput('')
+      window.dispatchEvent(new CustomEvent('coide:start-loop', { detail: { prompt: loopPrompt, intervalMs } }))
+      return
+    }
+
+    // Intercept /loop stop
+    if (text.trim().toLowerCase() === '/loop stop') {
+      setInput('')
+      window.dispatchEvent(new CustomEvent('coide:stop-loop'))
+      return
+    }
 
     // Intercept /rename <title> before sending to CLI
     if (text.trim().startsWith('/rename ')) {
@@ -519,6 +545,25 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
             className="text-indigo-400/40 hover:text-indigo-400 ml-2 flex-shrink-0"
           >
             ×
+          </button>
+        </div>
+      )}
+      {activeLoop && (
+        <div className="mb-2 rounded-lg border border-green-500/20 bg-green-500/10 px-3 py-2 text-[12px] text-green-400/80 flex items-center justify-between">
+          <span className="truncate">
+            <span className="font-medium">Loop active:</span>{' '}
+            {activeLoop.prompt.slice(0, 40)}{activeLoop.prompt.length > 40 ? '…' : ''}{' '}
+            <span className="text-green-400/50">
+              every {activeLoop.intervalMs < 60_000 ? `${activeLoop.intervalMs / 1000}s` : activeLoop.intervalMs < 3_600_000 ? `${activeLoop.intervalMs / 60_000}m` : `${activeLoop.intervalMs / 3_600_000}h`}
+              {' '}— run #{activeLoop.runCount}
+              {activeLoop.skippedCount > 0 && ` (${activeLoop.skippedCount} skipped)`}
+            </span>
+          </span>
+          <button
+            onClick={() => { if (activeSessionId) useLoopsStore.getState().removeLoop(activeSessionId) }}
+            className="text-green-400/40 hover:text-green-400 ml-2 flex-shrink-0 text-[11px] font-medium"
+          >
+            Stop
           </button>
         </div>
       )}

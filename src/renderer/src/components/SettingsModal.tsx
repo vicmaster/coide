@@ -72,6 +72,13 @@ export default function SettingsModal({ onClose }: { onClose: () => void }): Rea
           />
         </SettingRow>
 
+        <SettingRow label="Auto-compact">
+          <Toggle
+            checked={settings.autoCompact}
+            onChange={(v) => update({ autoCompact: v })}
+          />
+        </SettingRow>
+
         <div className="mb-4">
           <label className="block text-xs text-white/50 mb-1.5">System Prompt</label>
           <textarea

@@ -407,9 +407,9 @@ Electron Renderer Process (React)
 - [ ] Vim mode — vim keybindings for the chat input textarea
 - [x] Vitest test suite — unit tests for store actions, utilities, and event parsing with `npm test`
 - [x] Onboarding wizard — CLI detection, folder picker, and getting-started tips for first-time users
-- [ ] `/loop` recurring tasks — cron-like scheduled prompts on intervals (e.g. every 5m), reuses PTY runner on a timer
+- [x] `/loop` recurring tasks — cron-like scheduled prompts on intervals (e.g. every 5m), reuses PTY runner on a timer
 - [x] `/compact` context compression — send compact command to CLI to compress conversation context mid-session
-- [ ] Auto-compaction — detect context approaching token limit and auto-compress without user intervention
+- [x] Auto-compaction — detect context approaching token limit and auto-compress without user intervention
 - [x] `/copy` code block picker — interactive UI to pick and copy specific code blocks from the conversation
 - [x] Rate limit display — show rate limit usage percentage and reset countdown in status bar
 - [x] Message stash (Ctrl+S) — save current input as draft, restore later with keyboard shortcut

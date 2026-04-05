@@ -9,6 +9,8 @@ export type CoideSettings = {
   effort: '' | 'low' | 'medium' | 'high' | 'max'
   planMode: boolean
   compactMode: boolean
+  autoCompact: boolean
+  autoCompactThreshold: number
   onboardingComplete: boolean
 }
 
@@ -23,5 +25,7 @@ export const DEFAULT_SETTINGS: CoideSettings = {
   effort: '',
   planMode: false,
   compactMode: false,
+  autoCompact: true,
+  autoCompactThreshold: 90,
   onboardingComplete: false
 }
