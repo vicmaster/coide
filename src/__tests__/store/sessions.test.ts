@@ -154,6 +154,41 @@ describe('Sessions Store', () => {
     })
   })
 
+  describe('forkSession', () => {
+    it('creates a forked session with copied messages and null claudeSessionId', () => {
+      const id = createTestSession()
+      useSessionsStore.getState().addMessage(id, { id: 'msg-1', role: 'user', text: 'Hello' })
+      useSessionsStore.getState().addMessage(id, { id: 'msg-2', role: 'assistant', text: 'Hi!' })
+      useSessionsStore.getState().updateClaudeSessionId(id, 'cli-123')
+
+      const forkId = useSessionsStore.getState().forkSession(id)
+      const state = useSessionsStore.getState()
+      const forked = state.sessions.find((s) => s.id === forkId)!
+
+      expect(forked).toBeDefined()
+      expect(forked.claudeSessionId).toBeNull()
+      expect(forked.messages).toHaveLength(2)
+      expect(forked.messages[0].id).not.toBe('msg-1') // new IDs
+      expect((forked.messages[0] as { text: string }).text).toBe('Hello')
+      expect(forked.forkOf?.sessionId).toBe(id)
+      expect(state.activeSessionId).toBe(forkId)
+    })
+
+    it('forks up to a specific message', () => {
+      const id = createTestSession()
+      useSessionsStore.getState().addMessage(id, { id: 'msg-1', role: 'user', text: 'First' })
+      useSessionsStore.getState().addMessage(id, { id: 'msg-2', role: 'assistant', text: 'Response' })
+      useSessionsStore.getState().addMessage(id, { id: 'msg-3', role: 'user', text: 'Second' })
+
+      const forkId = useSessionsStore.getState().forkSession(id, 'msg-2')
+      const forked = useSessionsStore.getState().sessions.find((s) => s.id === forkId)!
+
+      // Should only have messages before msg-2 (index 1), so 1 message
+      expect(forked.messages).toHaveLength(1)
+      expect((forked.messages[0] as { text: string }).text).toBe('First')
+    })
+  })
+
   describe('deleteSession', () => {
     it('removes the session and switches active to first remaining', () => {
       const id1 = createTestSession()

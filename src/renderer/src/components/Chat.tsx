@@ -772,6 +772,20 @@ export default function Chat({
     setEditText(text)
   }, [])
 
+  const handleForkFromMessage = useCallback((messageId: string) => {
+    const sid = useSessionsStore.getState().activeSessionId
+    if (!sid) return
+    const newId = useSessionsStore.getState().forkSession(sid, messageId)
+    if (newId) {
+      const forkInfo = useSessionsStore.getState().sessions.find((s) => s.id === newId)?.forkOf
+      useSessionsStore.getState().addMessage(newId, {
+        id: Date.now().toString(),
+        role: 'assistant',
+        text: `⑂ Forked from **"${forkInfo?.title ?? 'previous session'}"**. History copied up to this point.\n\nOriginal session is unchanged. The next message starts a fresh Claude session.`
+      })
+    }
+  }, [])
+
   // Only show permission dialogs for the currently viewed session
   const currentPermission = permissionQueue.find((p) => p.coideSessionId === activeSessionId) ?? null
 
@@ -1196,6 +1210,7 @@ export default function Chat({
                       message={msg}
                       isLoading={isLoading}
                       onEdit={msg.role === 'user' && !isLoading ? handleStartEdit : undefined}
+                      onFork={msg.role === 'user' && !isLoading ? handleForkFromMessage : undefined}
                     />
                   </div>
                 </div>
@@ -1323,7 +1338,7 @@ function ThinkingIndicator({ startTime, compact }: { startTime: number; compact:
   )
 }
 
-const MessageRow = React.memo(function MessageRow({ message, isLoading, onEdit }: { message: Message; isLoading?: boolean; onEdit?: (id: string, text: string) => void }): React.JSX.Element {
+const MessageRow = React.memo(function MessageRow({ message, isLoading, onEdit, onFork }: { message: Message; isLoading?: boolean; onEdit?: (id: string, text: string) => void; onFork?: (id: string) => void }): React.JSX.Element {
   const [copied, setCopied] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
   const compact = useSettingsStore((s) => s.compactMode)
@@ -1346,6 +1361,20 @@ const MessageRow = React.memo(function MessageRow({ message, isLoading, onEdit }
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+            </button>
+          )}
+          {onFork && (
+            <button
+              onClick={() => onFork(textMsg.id)}
+              className="absolute -left-14 top-2 rounded-md p-1 text-white/0 group-hover/msg:text-blue-400/40 hover:!text-blue-400/70 transition-colors"
+              title="Fork from this message"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="18" cy="18" r="3" />
+                <circle cx="6" cy="6" r="3" />
+                <circle cx="18" cy="6" r="3" />
+                <path d="M6 9v6c0 3 6 3 12 0" />
               </svg>
             </button>
           )}

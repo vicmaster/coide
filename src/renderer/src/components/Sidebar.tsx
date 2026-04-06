@@ -278,6 +278,9 @@ function SessionsList(): React.JSX.Element {
               {session.worktree && (
                 <span className="text-[8px] font-medium text-purple-400/40 flex-shrink-0">wt</span>
               )}
+              {session.forkOf && (
+                <span className="text-[9px] font-medium text-white/40 flex-shrink-0" title={`Forked from "${session.forkOf.title}"`}>⑂</span>
+              )}
             </div>
           </button>
           <button

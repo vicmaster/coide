@@ -8,6 +8,7 @@ export const BUILT_IN_COMMANDS = [
   { name: '/cost', description: 'Show token usage and cost' },
   { name: '/doctor', description: 'Check Claude Code health' },
   { name: '/fast', description: 'Toggle fast output mode' },
+  { name: '/fork', description: 'Branch this conversation into a new session' },
   { name: '/init', description: 'Initialize project with CLAUDE.md' },
   { name: '/loop', description: 'Run a prompt on a schedule, e.g. /loop 5m check the deploy' },
   { name: '/loop stop', description: 'Stop the active loop in this session' },

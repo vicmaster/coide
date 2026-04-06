@@ -105,6 +105,7 @@ export type Session = {
   queuedMessage?: QueuedMessage | null
   autoCompacted?: boolean
   pendingAutoCompact?: boolean
+  forkOf?: { sessionId: string; messageId: string; title: string }
 }
 
 export type PendingAction = { type: 'send' | 'insert'; text: string }
@@ -136,6 +137,7 @@ type SessionsStore = {
   setMcpServers: (sessionId: string, servers: McpServerInfo[]) => void
   setQueuedMessage: (sessionId: string, msg: QueuedMessage) => void
   clearQueuedMessage: (sessionId: string) => QueuedMessage | null
+  forkSession: (sourceSessionId: string, upToMessageId?: string) => string
   truncateAtMessage: (sessionId: string, messageId: string) => void
   setAutoCompacted: (sessionId: string, value: boolean) => void
   setPendingAutoCompact: (sessionId: string, value: boolean) => void
@@ -388,6 +390,49 @@ export const useSessionsStore = create<SessionsStore>()(
           })
         }))
         return queued
+      },
+
+      forkSession: (sourceSessionId: string, upToMessageId?: string) => {
+        let newId = ''
+        set((state) => {
+          const source = state.sessions.find((s) => s.id === sourceSessionId)
+          if (!source) return state
+
+          const cutIndex = upToMessageId
+            ? source.messages.findIndex((m) => m.id === upToMessageId)
+            : source.messages.length
+          const sliceEnd = cutIndex === -1 ? source.messages.length : cutIndex
+
+          const messages = source.messages.slice(0, sliceEnd).map((m) => ({
+            ...m,
+            id: crypto.randomUUID()
+          }))
+
+          const lastMsgId = messages.length > 0 ? source.messages[sliceEnd - 1]?.id ?? '' : ''
+
+          newId = crypto.randomUUID()
+          const forked: Session = {
+            id: newId,
+            claudeSessionId: null,
+            title: `${source.title.slice(0, 30)} – fork`,
+            cwd: source.cwd,
+            createdAt: Date.now(),
+            messages,
+            tasks: [],
+            agents: [],
+            branch: source.branch,
+            isGitRepo: source.isGitRepo,
+            worktree: null,
+            usage: { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 },
+            mcpServers: source.mcpServers ? [...source.mcpServers] : undefined,
+            forkOf: { sessionId: sourceSessionId, messageId: lastMsgId, title: source.title }
+          }
+          return {
+            sessions: [forked, ...state.sessions],
+            activeSessionId: newId
+          }
+        })
+        return newId
       },
 
       truncateAtMessage: (sessionId: string, messageId: string) => {

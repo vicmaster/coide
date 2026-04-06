@@ -199,6 +199,24 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
       case 'loop stop':
         window.dispatchEvent(new CustomEvent('coide:stop-loop'))
         break
+      case 'fork': {
+        const store = useSessionsStore.getState()
+        const currentSid = store.activeSessionId
+        if (!currentSid) {
+          addInfo('No active session to fork.')
+          break
+        }
+        const newId = store.forkSession(currentSid)
+        if (newId) {
+          const forkInfo = useSessionsStore.getState().sessions.find((s) => s.id === newId)?.forkOf
+          useSessionsStore.getState().addMessage(newId, {
+            id: Date.now().toString(),
+            role: 'assistant',
+            text: `⑂ Forked from **"${forkInfo?.title ?? 'previous session'}"**. History copied up to this point.\n\nOriginal session is unchanged. The next message starts a fresh Claude session.`
+          })
+        }
+        break
+      }
       default:
         sendMessage(name)
         break

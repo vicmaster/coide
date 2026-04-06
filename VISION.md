@@ -402,7 +402,7 @@ Electron Renderer Process (React)
 - [x] Compact mode — toggle for denser chat layout with reduced spacing and smaller text
 - [ ] Voice mode — speech-to-text input and text-to-speech responses via Web Speech API
 - [x] History search — Ctrl+R style recall of past user prompts for quick re-use
-- [ ] Session forking — branch current conversation into a new session with shared history
+- [x] Session forking — branch current conversation into a new session with shared history
 - [x] Git worktrees — UI for `--worktree` flag to run isolated parallel sessions on separate branches
 - [ ] Vim mode — vim keybindings for the chat input textarea
 - [x] Vitest test suite — unit tests for store actions, utilities, and event parsing with `npm test`
