@@ -71,10 +71,12 @@ const FILE_TOOLS = new Set(['Read', 'Edit', 'Write'])
 
 function ToolCallCardInner({
   message,
-  isLoading
+  isLoading,
+  nested
 }: {
   message: ToolCallMessage
   isLoading?: boolean
+  nested?: boolean
 }): React.JSX.Element {
   const compact = useSettingsStore((s) => s.compactMode)
   const isFileOp = message.tool_name === 'Edit' || message.tool_name === 'Write'
@@ -118,7 +120,7 @@ function ToolCallCardInner({
         : 'border-white/[0.07] bg-white/[0.025]'
 
   return (
-    <div className={`${compact ? 'my-0.5' : 'my-1'} rounded-lg border overflow-hidden text-xs ${borderClass}`}>
+    <div className={`${nested ? 'my-0' : compact ? 'my-0.5' : 'my-1'} ${nested ? 'rounded-md border-white/[0.05] bg-white/[0.015]' : borderClass} rounded-lg border overflow-hidden text-xs`}>
       {/* Header row */}
       <button
         onClick={() => setExpanded((v) => !v)}
@@ -247,5 +249,5 @@ function ToolCallCardInner({
   )
 }
 
-const ToolCallCard = React.memo(ToolCallCardInner)
+const ToolCallCard = React.memo(ToolCallCardInner) as React.MemoExoticComponent<typeof ToolCallCardInner>
 export default ToolCallCard

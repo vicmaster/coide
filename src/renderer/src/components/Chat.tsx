@@ -4,6 +4,7 @@ import { useSessionsStore, type Message, type TextMessage, type ToolCallMessage,
 import { useSettingsStore } from '../store/settings'
 import MarkdownRenderer from './MarkdownRenderer'
 import ToolCallCard from './ToolCallCard'
+import ToolCallGroup from './ToolCallGroup'
 import PermissionDialog, { type PermissionRequest } from './PermissionDialog'
 import ChatInput from './ChatInput'
 import SettingsModal from './SettingsModal'
@@ -188,7 +189,12 @@ export default function Chat({
   const usagePct = usage ? Math.min(((usage.inputTokens + usage.outputTokens) / CONTEXT_LIMIT) * 100, 100) : 0
 
   // Build virtual items: interleave date separators with messages, plus loading indicator
-  type VirtualItem = { kind: 'separator'; label: string } | { kind: 'message'; msg: Message; idx: number } | { kind: 'loading' }
+  type VirtualItem =
+    | { kind: 'separator'; label: string }
+    | { kind: 'message'; msg: Message; idx: number }
+    | { kind: 'tool_group'; messages: ToolCallMessage[]; firstId: string }
+    | { kind: 'loading' }
+
   const virtualItems = useMemo((): VirtualItem[] => {
     const items: VirtualItem[] = []
     for (let idx = 0; idx < messages.length; idx++) {
@@ -208,7 +214,24 @@ export default function Chat({
           items.push({ kind: 'separator', label })
         }
       }
-      items.push({ kind: 'message', msg, idx })
+
+      // Group consecutive tool_call messages
+      if (msg.role === 'tool_call') {
+        const tc = msg as ToolCallMessage
+        // Denied calls get their own group for visibility
+        if (tc.denied) {
+          items.push({ kind: 'tool_group', messages: [tc], firstId: tc.id })
+        } else {
+          const last = items[items.length - 1]
+          if (last?.kind === 'tool_group' && !last.messages.some((m) => m.denied)) {
+            last.messages.push(tc)
+          } else {
+            items.push({ kind: 'tool_group', messages: [tc], firstId: tc.id })
+          }
+        }
+      } else {
+        items.push({ kind: 'message', msg, idx })
+      }
     }
     if (isLoading) items.push({ kind: 'loading' })
     return items
@@ -224,6 +247,7 @@ export default function Chat({
       const item = virtualItems[index]
       if (item.kind === 'separator') return `sep-${index}`
       if (item.kind === 'loading') return 'loading'
+      if (item.kind === 'tool_group') return `tg-${item.firstId}`
       return item.msg.id
     },
   })
@@ -1149,6 +1173,19 @@ export default function Chat({
                         </div>
                       )}
                     </div>
+                  </div>
+                )
+              }
+
+              if (item.kind === 'tool_group') {
+                return (
+                  <div
+                    key={vItem.key}
+                    data-index={vItem.index}
+                    ref={virtualizer.measureElement}
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vItem.start}px)` }}
+                  >
+                    <ToolCallGroup messages={item.messages} isLoading={isLoading} />
                   </div>
                 )
               }
