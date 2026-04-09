@@ -102,6 +102,10 @@ Electron Renderer Process (React)
 | Markdown | react-markdown, shiki |
 | State | Zustand with persist middleware |
 
+## Windows Support
+
+Looking for Windows? Check out [coide-main](https://github.com/yexi-fun/coide-main) by [@yexi-fun](https://github.com/yexi-fun) — a Windows-adapted fork of coide with full Windows compatibility.
+
 ## License
 
 MIT
