@@ -10,6 +10,28 @@ import { processFile, FILES_DIR } from './fileExtractor'
 import { type CoideSettings, DEFAULT_SETTINGS } from '../shared/types'
 
 type SkillInfo = { name: string; description: string; scope: 'global' | 'project'; filePath: string }
+type AgentInfo = { name: string; description: string; scope: 'global' | 'project' }
+
+async function scanAgentsDir(dir: string, scope: 'global' | 'project'): Promise<AgentInfo[]> {
+  try {
+    const entries = await readdir(dir, { withFileTypes: true })
+    const agents: AgentInfo[] = []
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith('.md')) continue
+      const name = entry.name.replace(/\.md$/, '')
+      try {
+        const content = await readFile(join(dir, entry.name), 'utf-8')
+        const { description } = parseSkillFrontmatter(content)
+        agents.push({ name, description, scope })
+      } catch {
+        agents.push({ name, description: '', scope })
+      }
+    }
+    return agents
+  } catch {
+    return []
+  }
+}
 
 function parseSkillFrontmatter(content: string): { description: string; body: string } {
   const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/)
@@ -217,6 +239,16 @@ ipcMain.handle('skills:list', async (_event, { cwd }: { cwd: string }) => {
   const [global, project] = await Promise.all([
     scanSkillsDir(globalDir, 'global'),
     scanSkillsDir(projectDir, 'project')
+  ])
+  return { global, project }
+})
+
+ipcMain.handle('agents:list', async (_event, { cwd }: { cwd: string }) => {
+  const globalDir = join(homedir(), '.claude', 'agents')
+  const projectDir = join(cwd, '.claude', 'agents')
+  const [global, project] = await Promise.all([
+    scanAgentsDir(globalDir, 'global'),
+    scanAgentsDir(projectDir, 'project')
   ])
   return { global, project }
 })

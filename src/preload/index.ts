@@ -43,6 +43,9 @@ const api = {
     saveFile: (defaultName: string, content: string): Promise<{ success?: boolean; canceled?: boolean; error?: string }> =>
       ipcRenderer.invoke('dialog:saveFile', { defaultName, content })
   },
+  agents: {
+    list: (cwd: string) => ipcRenderer.invoke('agents:list', { cwd })
+  },
   skills: {
     list: (cwd: string) => ipcRenderer.invoke('skills:list', { cwd }),
     write: (scope: string, name: string, content: string, cwd: string) =>

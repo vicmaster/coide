@@ -121,9 +121,24 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
     const session = s.sessions.find((sess) => sess.id === s.activeSessionId)
     return session?.agents ?? EMPTY_AGENTS
   })
+
+  // Load agent definitions from .claude/agents/ directories
+  const [agentDefs, setAgentDefs] = useState<{ name: string; description: string }[]>([])
+  useEffect(() => {
+    window.api.agents.list(cwd).then((result: { global: { name: string; description: string }[]; project: { name: string; description: string }[] }) => {
+      const all = [...result.project, ...result.global]
+      // Deduplicate by name (project overrides global)
+      const seen = new Set<string>()
+      const deduped = all.filter((a) => { if (seen.has(a.name)) return false; seen.add(a.name); return true })
+      setAgentDefs(deduped)
+    })
+  }, [cwd])
+
   const mentionItems = useMemo((): MentionItem[] => {
     const q = mentionQuery?.toLowerCase() ?? ''
-    const agentItems: MentionItem[] = sessionAgents
+
+    // Running/completed agents from this session
+    const liveAgentItems: MentionItem[] = sessionAgents
       .filter((a) => a.name && a.name.toLowerCase().includes(q))
       .map((a) => ({
         path: `agent:${a.name}`,
@@ -131,8 +146,20 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
         type: 'agent' as const,
         meta: a.status
       }))
-    return [...agentItems, ...fsMentionItems]
-  }, [mentionQuery, sessionAgents, fsMentionItems])
+
+    // Agent definitions from .claude/agents/
+    const liveNames = new Set(sessionAgents.map((a) => a.name))
+    const defAgentItems: MentionItem[] = agentDefs
+      .filter((a) => !liveNames.has(a.name) && a.name.toLowerCase().includes(q))
+      .map((a) => ({
+        path: `agent:${a.name}`,
+        label: a.name,
+        type: 'agent' as const,
+        meta: 'agent'
+      }))
+
+    return [...liveAgentItems, ...defAgentItems, ...fsMentionItems]
+  }, [mentionQuery, sessionAgents, agentDefs, fsMentionItems])
   const mentionVisible = mentionQuery !== null && mentionQuery.length > 0 && !isLoading && mentionItems.length > 0
 
   useEffect(() => {
