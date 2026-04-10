@@ -416,3 +416,10 @@ Electron Renderer Process (React)
 - [x] `/context` optimization tips — forward to CLI and display actionable suggestions for reducing context usage
 - [x] `/stats` usage statistics — token/cost stats view with detailed breakdown per session
 - [x] `/rename` sessions — inline rename in sidebar to edit session title on demand
+- [ ] `/cost` per-model breakdown — enhance /stats with per-model cost and cache-hit breakdown
+- [ ] Focus view — reader mode toggle that hides tool calls and shows only prompts + responses
+- [ ] Image compression — resize large images before sending to reduce token usage
+- [ ] Refreshing status line — tick rate limit countdown and stats live every second
+- [ ] `/release-notes` — show changelog/what's new per coide version in a modal
+- [ ] Named subagents in @-mention — autocomplete shows running agents by name in chat input
+- [ ] Monitor tool — stream events from background scripts and processes via IPC
