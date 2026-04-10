@@ -5,6 +5,7 @@ import SlashAutocomplete, { useSlashItems, type AutocompleteItem } from './Slash
 import AtMentionAutocomplete, { useAtMentionItems, type MentionItem } from './AtMentionAutocomplete'
 import HistorySearch, { type HistoryItem } from './HistorySearch'
 import { useLoopsStore } from '../store/loops'
+import { compressImage } from '../utils/imageCompression'
 import type { Agent } from '../store/sessions'
 
 const EMPTY_AGENTS: Agent[] = []
@@ -462,9 +463,11 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
       reader.onload = () => resolve(reader.result as string)
       reader.readAsDataURL(file)
     })
-    const base64 = dataUrl.split(',')[1]
-    const path = await window.api.claude.saveImage(base64, file.type)
-    setStagedImages((prev) => [...prev, { path, mediaType: file.type, dataUrl }])
+    const rawBase64 = dataUrl.split(',')[1]
+    const compressed = await compressImage(rawBase64, file.type)
+    const path = await window.api.claude.saveImage(compressed.base64, compressed.mediaType)
+    const finalDataUrl = `data:${compressed.mediaType};base64,${compressed.base64}`
+    setStagedImages((prev) => [...prev, { path, mediaType: compressed.mediaType, dataUrl: finalDataUrl }])
   }, [])
 
   // File processing
@@ -504,9 +507,11 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
           reader.onload = () => resolve(reader.result as string)
           reader.readAsDataURL(file)
         })
-        const base64 = dataUrl.split(',')[1]
-        const path = await window.api.claude.saveImage(base64, file.type)
-        setStagedImages((prev) => [...prev, { path, mediaType: file.type, dataUrl }])
+        const rawBase64 = dataUrl.split(',')[1]
+        const compressed = await compressImage(rawBase64, file.type)
+        const path = await window.api.claude.saveImage(compressed.base64, compressed.mediaType)
+        const finalDataUrl = `data:${compressed.mediaType};base64,${compressed.base64}`
+        setStagedImages((prev) => [...prev, { path, mediaType: compressed.mediaType, dataUrl: finalDataUrl }])
       } else {
         setStagedFiles((prev) => [...prev, result as FileAttachment])
       }
@@ -530,9 +535,10 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
           return
         }
         if (result.category === 'image' && result.base64 && result.mediaType) {
-          const savedPath = await window.api.claude.saveImage(result.base64, result.mediaType)
-          const dataUrl = `data:${result.mediaType};base64,${result.base64}`
-          setStagedImages((prev) => [...prev, { path: savedPath, mediaType: result.mediaType!, dataUrl }])
+          const compressed = await compressImage(result.base64, result.mediaType)
+          const savedPath = await window.api.claude.saveImage(compressed.base64, compressed.mediaType)
+          const dataUrl = `data:${compressed.mediaType};base64,${compressed.base64}`
+          setStagedImages((prev) => [...prev, { path: savedPath, mediaType: compressed.mediaType, dataUrl }])
         } else {
           setStagedFiles((prev) => [...prev, result as FileAttachment])
         }

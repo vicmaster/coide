@@ -418,7 +418,7 @@ Electron Renderer Process (React)
 - [x] `/rename` sessions — inline rename in sidebar to edit session title on demand
 - [ ] `/cost` per-model breakdown — enhance /stats with per-model cost and cache-hit breakdown
 - [ ] Focus view — reader mode toggle that hides tool calls and shows only prompts + responses
-- [ ] Image compression — resize large images before sending to reduce token usage
+- [x] Image compression — resize large images before sending to reduce token usage
 - [ ] Refreshing status line — tick rate limit countdown and stats live every second
 - [ ] `/release-notes` — show changelog/what's new per coide version in a modal
 - [x] Named subagents in @-mention — autocomplete shows running agents by name in chat input
