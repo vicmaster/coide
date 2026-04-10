@@ -476,13 +476,25 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
     const paths = await window.api.dialog.pickFiles()
     if (!paths) return
     for (const filePath of paths) {
-      const result = await window.api.claude.processFile(filePath)
-      if (result.error) {
-        setFileError(result.error)
+      try {
+        const result = await window.api.claude.processFile(filePath)
+        if (result.error) {
+          setFileError(result.error)
+          setTimeout(() => setFileError(null), 5000)
+          return
+        }
+        if (result.category === 'image' && result.base64 && result.mediaType) {
+          const savedPath = await window.api.claude.saveImage(result.base64, result.mediaType)
+          const dataUrl = `data:${result.mediaType};base64,${result.base64}`
+          setStagedImages((prev) => [...prev, { path: savedPath, mediaType: result.mediaType!, dataUrl }])
+        } else {
+          setStagedFiles((prev) => [...prev, result as FileAttachment])
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to attach file'
+        setFileError(message)
         setTimeout(() => setFileError(null), 5000)
-        return
       }
-      setStagedFiles((prev) => [...prev, result as FileAttachment])
     }
   }, [])
 

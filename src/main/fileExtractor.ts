@@ -54,6 +54,8 @@ export type FileResult = {
   size: number
   category: 'image' | 'document' | 'text'
   extractedText?: string
+  base64?: string
+  mediaType?: string
 }
 
 function truncateText(text: string, maxLen: number): string {
@@ -64,12 +66,13 @@ function truncateText(text: string, maxLen: number): string {
 async function extractPdf(filePath: string): Promise<string> {
   const buffer = await readFile(filePath)
   const { PDFParse } = getPdfParse()
-  const parser = new PDFParse({ data: buffer })
-  await parser.load()
+  const parser = new PDFParse({ data: new Uint8Array(buffer) })
   const result = await parser.getText()
-  // v2 returns { pages: [{ text }] }
   if (result?.pages) {
     return result.pages.map((p: { text: string }) => p.text).join('\n\n')
+  }
+  if (result?.text) {
+    return result.text
   }
   return ''
 }
@@ -144,9 +147,15 @@ export async function processFile(filePath: string): Promise<FileResult> {
   const tempPath = join(FILES_DIR, `${id}-${name}`)
   await copyFile(filePath, tempPath)
 
-  // Images — return without text extraction
+  // Images — return with base64 for file picker path
   if (IMAGE_EXTENSIONS.has(ext)) {
-    return { id, name, path: tempPath, size: stats.size, category: 'image' }
+    const base64 = (await readFile(filePath)).toString('base64')
+    const mediaTypeMap: Record<string, string> = {
+      '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon'
+    }
+    const mediaType = mediaTypeMap[ext] ?? 'image/png'
+    return { id, name, path: tempPath, size: stats.size, category: 'image', base64, mediaType }
   }
 
   // Text files — read directly
