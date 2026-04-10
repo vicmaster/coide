@@ -5,6 +5,9 @@ import SlashAutocomplete, { useSlashItems, type AutocompleteItem } from './Slash
 import AtMentionAutocomplete, { useAtMentionItems, type MentionItem } from './AtMentionAutocomplete'
 import HistorySearch, { type HistoryItem } from './HistorySearch'
 import { useLoopsStore } from '../store/loops'
+import type { Agent } from '../store/sessions'
+
+const EMPTY_AGENTS: Agent[] = []
 
 const SUPPORTED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
 
@@ -116,7 +119,7 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
   const fsMentionItems = useAtMentionItems(mentionQuery, cwd)
   const sessionAgents = useSessionsStore((s) => {
     const session = s.sessions.find((sess) => sess.id === s.activeSessionId)
-    return session?.agents ?? []
+    return session?.agents ?? EMPTY_AGENTS
   })
   const mentionItems = useMemo((): MentionItem[] => {
     const q = mentionQuery?.toLowerCase() ?? ''
