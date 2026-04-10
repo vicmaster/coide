@@ -421,5 +421,5 @@ Electron Renderer Process (React)
 - [ ] Image compression — resize large images before sending to reduce token usage
 - [ ] Refreshing status line — tick rate limit countdown and stats live every second
 - [ ] `/release-notes` — show changelog/what's new per coide version in a modal
-- [ ] Named subagents in @-mention — autocomplete shows running agents by name in chat input
+- [x] Named subagents in @-mention — autocomplete shows running agents by name in chat input
 - [ ] Monitor tool — stream events from background scripts and processes via IPC

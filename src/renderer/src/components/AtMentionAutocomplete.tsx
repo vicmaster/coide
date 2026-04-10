@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 
 export type MentionItem = {
   path: string
-  type: 'file' | 'folder' | 'url'
+  type: 'file' | 'folder' | 'url' | 'agent'
+  label?: string
+  meta?: string
 }
 
 export function useAtMentionItems(query: string | null, cwd: string): MentionItem[] {
@@ -42,10 +44,11 @@ type Props = {
   anchorLeft: number
 }
 
-const TYPE_STYLES = {
+const TYPE_STYLES: Record<string, string> = {
   file: 'bg-blue-500/20 text-blue-400',
   folder: 'bg-purple-500/20 text-purple-400',
-  url: 'bg-green-500/20 text-green-400'
+  url: 'bg-green-500/20 text-green-400',
+  agent: 'bg-amber-500/20 text-amber-400'
 }
 
 export default function AtMentionAutocomplete({
@@ -84,11 +87,11 @@ export default function AtMentionAutocomplete({
               i === selectedIndex ? 'bg-white/[0.08]' : 'hover:bg-white/[0.04]'
             }`}
           >
-            <span className="text-xs text-white/80 font-mono truncate flex-1">{item.path}</span>
+            <span className="text-xs text-white/80 font-mono truncate flex-1">{item.label ?? item.path}</span>
             <span
-              className={`text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded flex-shrink-0 ${TYPE_STYLES[item.type]}`}
+              className={`text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded flex-shrink-0 ${TYPE_STYLES[item.type] ?? ''}`}
             >
-              {item.type}
+              {item.meta ?? item.type}
             </span>
           </button>
         ))}

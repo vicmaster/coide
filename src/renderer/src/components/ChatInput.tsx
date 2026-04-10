@@ -113,7 +113,23 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
     return [query, atIdx]
   }, [input, autocompleteVisible])
 
-  const mentionItems = useAtMentionItems(mentionQuery, cwd)
+  const fsMentionItems = useAtMentionItems(mentionQuery, cwd)
+  const sessionAgents = useSessionsStore((s) => {
+    const session = s.sessions.find((sess) => sess.id === s.activeSessionId)
+    return session?.agents ?? []
+  })
+  const mentionItems = useMemo((): MentionItem[] => {
+    const q = mentionQuery?.toLowerCase() ?? ''
+    const agentItems: MentionItem[] = sessionAgents
+      .filter((a) => a.name && a.name.toLowerCase().includes(q))
+      .map((a) => ({
+        path: `agent:${a.name}`,
+        label: a.name,
+        type: 'agent' as const,
+        meta: a.status
+      }))
+    return [...agentItems, ...fsMentionItems]
+  }, [mentionQuery, sessionAgents, fsMentionItems])
   const mentionVisible = mentionQuery !== null && mentionQuery.length > 0 && !isLoading && mentionItems.length > 0
 
   useEffect(() => {
