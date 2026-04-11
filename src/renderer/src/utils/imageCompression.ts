@@ -22,9 +22,10 @@ export async function compressImage(base64: string, mediaType: string): Promise<
   const img = await loadImage(base64, mediaType)
 
   const needsResize = img.width > MAX_DIMENSION || img.height > MAX_DIMENSION
-  const needsCompress = originalBytes > SKIP_THRESHOLD_BYTES
 
-  if (!needsResize && !needsCompress) {
+  // Only compress if resizing is needed — re-encoding without resize degrades quality
+  // (especially PNGs with text/screenshots) without meaningful size savings
+  if (!needsResize) {
     return { base64, mediaType, compressed: false, originalBytes, compressedBytes: originalBytes }
   }
 
