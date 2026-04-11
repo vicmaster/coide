@@ -10,6 +10,7 @@ import ChatInput from './ChatInput'
 import SettingsModal from './SettingsModal'
 import StatsModal from './StatsModal'
 import CopyBlocksModal from './CopyBlocksModal'
+import ReleaseNotesModal from './ReleaseNotesModal'
 import InSessionSearchBar from './InSessionSearchBar'
 import { findMatches } from '../utils/inSessionSearch'
 import { useHighlightMatches } from '../hooks/useHighlightMatches'
@@ -63,6 +64,7 @@ export default function Chat({
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [statsOpen, setStatsOpen] = useState(false)
   const [copyBlocksOpen, setCopyBlocksOpen] = useState(false)
+  const [releaseNotesOpen, setReleaseNotesOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
@@ -98,6 +100,12 @@ export default function Chat({
     const handler = (): void => setCopyBlocksOpen(true)
     window.addEventListener('coide:open-copy', handler)
     return () => window.removeEventListener('coide:open-copy', handler)
+  }, [])
+
+  useEffect(() => {
+    const handler = (): void => setReleaseNotesOpen(true)
+    window.addEventListener('coide:open-release-notes', handler)
+    return () => window.removeEventListener('coide:open-release-notes', handler)
   }, [])
 
   useEffect(() => {
@@ -1306,6 +1314,7 @@ export default function Chat({
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
       {statsOpen && <StatsModal onClose={() => setStatsOpen(false)} />}
       {copyBlocksOpen && <CopyBlocksModal onClose={() => setCopyBlocksOpen(false)} />}
+      {releaseNotesOpen && <ReleaseNotesModal onClose={() => setReleaseNotesOpen(false)} />}
     </div>
   )
 }
@@ -1316,7 +1325,7 @@ function RateLimitPill(): React.JSX.Element | null {
 
   useEffect(() => {
     if (!fiveHour) return
-    const id = setInterval(() => setNow(Date.now()), 60_000)
+    const id = setInterval(() => setNow(Date.now()), 1_000)
     return () => clearInterval(id)
   }, [fiveHour])
 
@@ -1324,10 +1333,11 @@ function RateLimitPill(): React.JSX.Element | null {
 
   const isThrottled = fiveHour.status !== 'allowed'
   const resetsInMs = fiveHour.resetsAt * 1000 - now
-  const resetsInMin = Math.max(0, Math.ceil(resetsInMs / 60_000))
-  const hours = Math.floor(resetsInMin / 60)
-  const mins = resetsInMin % 60
-  const resetStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`
+  const resetsInSec = Math.max(0, Math.ceil(resetsInMs / 1_000))
+  const hours = Math.floor(resetsInSec / 3600)
+  const mins = Math.floor((resetsInSec % 3600) / 60)
+  const secs = resetsInSec % 60
+  const resetStr = hours > 0 ? `${hours}h ${mins}m` : mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
 
   if (isThrottled) {
     return <span className="text-red-400/80 animate-pulse">5h: LIMIT · resets {resetStr}</span>

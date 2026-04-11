@@ -488,7 +488,7 @@ function RateLimitCard(): React.JSX.Element | null {
 
   useEffect(() => {
     if (entries.length === 0) return
-    const id = setInterval(() => setNow(Date.now()), 60_000)
+    const id = setInterval(() => setNow(Date.now()), 1_000)
     return () => clearInterval(id)
   }, [entries.length])
 

@@ -243,6 +243,9 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
       case 'copy':
         window.dispatchEvent(new CustomEvent('coide:open-copy'))
         break
+      case 'release-notes':
+        window.dispatchEvent(new CustomEvent('coide:open-release-notes'))
+        break
       case 'loop stop':
         window.dispatchEvent(new CustomEvent('coide:stop-loop'))
         break
