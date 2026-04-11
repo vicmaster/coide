@@ -16,7 +16,8 @@
     "release": "npm test && npm version patch && npm run package && git push && git push --tags && npm run gh-release",
     "release:minor": "npm test && npm version minor && npm run package && git push && git push --tags && npm run gh-release",
     "release:major": "npm test && npm version major && npm run package && git push && git push --tags && npm run gh-release",
-    "gh-release": "gh release create v$(node -p \"require('./package.json').version\") --title v$(node -p \"require('./package.json').version\") --generate-notes dist/*.dmg dist/*-mac.zip"
+    "gh-release": "gh release create v$(node -p \"require('./package.json').version\") --title v$(node -p \"require('./package.json').version\") --generate-notes dist/*.dmg dist/*-mac.zip",
+    "version": "node scripts/add-release-note.js"
   },
   "build": {
     "appId": "com.coide",
