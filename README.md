@@ -1,5 +1,9 @@
 # Coide
 
+[![CI](https://github.com/vicmaster/coide/actions/workflows/ci.yml/badge.svg)](https://github.com/vicmaster/coide/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![node](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org)
+
 A desktop GUI client for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) that wraps the CLI you already use — same account, same subscription, no API key needed.
 
 Built with Electron, React, and TypeScript. Talks to Claude through `node-pty`, giving it a real TTY so everything works exactly like the terminal, but with a proper UI on top.
