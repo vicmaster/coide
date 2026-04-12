@@ -8,7 +8,11 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     version: '0.15.0',
     date: '2026-04-11',
-    notes: []
+    notes: [
+      'Visual Agent Workflows — React Flow canvas for orchestrating Claude agents',
+      '/release-notes modal with version history',
+      'Live-ticking rate limit countdown (every second)'
+    ]
   },
   {
     version: '0.14.0',

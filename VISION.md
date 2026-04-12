@@ -161,16 +161,16 @@ src/renderer/src/store/workflow.ts               — Zustand store for workflow 
 ***Implementation Phases:***
 
 **Phase 1 — MVP (1-2 weeks)**
-- [ ] React Flow canvas with Prompt, Condition, and Script node types
-- [ ] Sequential execution only (no parallel/loops yet)
-- [ ] Each Prompt node spawns Claude CLI via existing `runClaude()` with configurable prompt + system prompt
-- [ ] Output of node N injected as context into node N+1
-- [ ] Real-time node state visualization (pending → running → done/failed)
-- [ ] Node click to see full output in side panel
-- [ ] Save/load workflows as JSON files
-- [ ] 2-3 built-in templates (PR Review, Bug Fix)
-- [ ] New tab in Sidebar: "Workflows" alongside Sessions/Skills/Commands
-- [ ] Keyboard shortcut: Cmd+W to open workflow canvas
+- [x] React Flow canvas with Prompt, Condition, and Script node types
+- [x] Sequential execution only (no parallel/loops yet)
+- [x] Each Prompt node spawns Claude CLI via existing `runClaude()` with configurable prompt + system prompt
+- [x] Output of node N injected as context into node N+1
+- [x] Real-time node state visualization (pending → running → done/failed)
+- [x] Node click to see full output in side panel
+- [x] Save/load workflows as JSON files
+- [x] 2-3 built-in templates (PR Review, Bug Fix)
+- [x] New tab in Sidebar: "Workflows" alongside Sessions/Skills/Commands
+- [x] Keyboard shortcut: Cmd+W to open workflow canvas
 
 **Phase 2 — Powerful (2-3 weeks)**
 - [ ] Parallel branches (fork/join nodes)
