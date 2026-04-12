@@ -27,9 +27,7 @@ Wrap up a completed feature: ensure tests exist and pass, commit all changes, ma
    - If no match is found, list the unchecked items and ask which one to mark
 5. Change `- [ ]` to `- [x]` for the matched item in VISION.md
 6. **Update release notes** in `src/renderer/src/data/releaseNotes.ts`:
-   - Read the current version from `package.json`
-   - If the first entry in `RELEASE_NOTES` matches the current version, **append** a one-line description of the feature to its `notes` array
-   - If the first entry is a different version, **do NOT create a new entry** — just append to the existing latest entry (new version entries are created during `npm run release:*`)
+   - **Always append** a one-line description to the **first entry's** `notes` array (regardless of what version it shows — the release script renames it on release)
    - Keep note descriptions concise (under 80 chars), user-facing language (not implementation details)
 7. Stage all relevant changed files (including the VISION.md update, release notes update, and any new test files)
 8. Write a commit message that describes the feature work done (based on the actual code changes), NOT just "mark as done"
