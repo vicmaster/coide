@@ -73,10 +73,10 @@
     "mammoth": "^1.11.0",
     "node-pty": "^1.1.0",
     "pdf-parse": "^2.4.5",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "@xyflow/react": "^12.6.0"
   },
   "devDependencies": {
-    "@xyflow/react": "^12.6.0",
     "@electron-toolkit/eslint-config-ts": "^3.0.0",
     "@electron-toolkit/tsconfig": "^1.0.1",
     "@electron/rebuild": "^4.0.3",
