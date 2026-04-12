@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useSessionsStore } from '../store/sessions'
+import { useWorkflowStore } from '../store/workflow'
 
 export function useKeyboardShortcuts(): void {
   useEffect(() => {
@@ -34,6 +35,15 @@ export function useKeyboardShortcuts(): void {
           const currentSession = store.sessions.find((s) => s.id === store.activeSessionId)
           const cwd = currentSession?.cwd ?? localStorage.getItem('cwd') ?? ''
           store.createSession(cwd)
+          return
+        }
+
+        // Cmd+Shift+W — Toggle workflow canvas
+        if (e.key === 'w' && e.shiftKey) {
+          e.preventDefault()
+          const { isCanvasOpen, openCanvas, closeCanvas } = useWorkflowStore.getState()
+          if (isCanvasOpen) closeCanvas()
+          else openCanvas()
           return
         }
 

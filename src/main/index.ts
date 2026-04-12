@@ -8,6 +8,9 @@ import { runClaude, abortClaude, respondPermission, resolveClaudeBinary } from '
 import { spawnTerminal, writeTerminal, resizeTerminal, killTerminal, killAllTerminals } from './terminal'
 import { processFile, FILES_DIR } from './fileExtractor'
 import { type CoideSettings, DEFAULT_SETTINGS } from '../shared/types'
+import type { WorkflowDefinition } from '../shared/workflow-types'
+import { listWorkflows, loadWorkflow, saveWorkflow, deleteWorkflow, getBuiltInTemplates } from './workflowStore'
+import { executeWorkflow, abortWorkflow } from './workflow'
 
 type SkillInfo = { name: string; description: string; scope: 'global' | 'project'; filePath: string }
 type AgentInfo = { name: string; description: string; scope: 'global' | 'project' }
@@ -546,6 +549,44 @@ ipcMain.handle(
     }
   }
 )
+
+// Workflow IPC handlers
+ipcMain.handle('workflow:list', async () => {
+  return listWorkflows()
+})
+
+ipcMain.handle('workflow:load', async (_event, { id }: { id: string }) => {
+  return loadWorkflow(id)
+})
+
+ipcMain.handle('workflow:save', async (_event, { workflow }: { workflow: WorkflowDefinition }) => {
+  await saveWorkflow(workflow)
+  return { success: true }
+})
+
+ipcMain.handle('workflow:delete', async (_event, { id }: { id: string }) => {
+  await deleteWorkflow(id)
+  return { success: true }
+})
+
+ipcMain.handle('workflow:templates', () => {
+  return getBuiltInTemplates()
+})
+
+ipcMain.handle('workflow:run', async (_event, { workflowId, cwd, inputValues }: { workflowId: string; cwd: string; inputValues?: Record<string, string> }) => {
+  if (!mainWindow) return { error: 'No window' }
+  try {
+    const executionId = await executeWorkflow(workflowId, cwd, mainWindow, currentSettings, inputValues)
+    return { executionId }
+  } catch (err) {
+    return { error: String(err) }
+  }
+})
+
+ipcMain.handle('workflow:abort', (_event, { executionId }: { executionId: string }) => {
+  abortWorkflow(executionId)
+  return { success: true }
+})
 
 // Terminal IPC handlers
 ipcMain.handle(

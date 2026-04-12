@@ -5,9 +5,11 @@ import RightPanel from './components/RightPanel'
 import SessionSearch from './components/SessionSearch'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useSessionsStore } from './store/sessions'
+import { useWorkflowStore } from './store/workflow'
 
-// Lazy-load heavy components — TerminalPanel (~6.1 MB xterm), modals with Monaco
+// Lazy-load heavy components — TerminalPanel (~6.1 MB xterm), modals with Monaco, WorkflowCanvas with React Flow
 const TerminalPanel = React.lazy(() => import('./components/TerminalPanel'))
+const WorkflowCanvas = React.lazy(() => import('./components/WorkflowCanvas'))
 const FilePreviewModal = React.lazy(() => import('./components/FilePreviewModal'))
 const SkillEditorModal = React.lazy(() => import('./components/SkillEditorModal'))
 const HookEditorModal = React.lazy(() => import('./components/HookEditorModal'))
@@ -20,6 +22,7 @@ export default function App(): React.JSX.Element {
   const resizingRef = useRef(false)
   const startYRef = useRef(0)
   const startHeightRef = useRef(250)
+  const isCanvasOpen = useWorkflowStore((s) => s.isCanvasOpen)
   useKeyboardShortcuts()
 
   useEffect(() => {
@@ -77,15 +80,21 @@ export default function App(): React.JSX.Element {
       {/* Left Sidebar */}
       <Sidebar />
 
-      {/* Center: Chat + Terminal */}
+      {/* Center: Chat/Workflow + Terminal */}
       <main className="flex flex-1 flex-col overflow-hidden min-w-0">
         <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-          <Chat
-            onToggleRightPanel={() => setRightPanelOpen((v) => !v)}
-            rightPanelOpen={rightPanelOpen}
-            onToggleTerminal={() => setTerminalOpen((v) => !v)}
-            terminalOpen={terminalOpen}
-          />
+          {isCanvasOpen ? (
+            <Suspense fallback={<div className="flex items-center justify-center h-full text-white/20 text-xs">Loading workflow canvas…</div>}>
+              <WorkflowCanvas />
+            </Suspense>
+          ) : (
+            <Chat
+              onToggleRightPanel={() => setRightPanelOpen((v) => !v)}
+              rightPanelOpen={rightPanelOpen}
+              onToggleTerminal={() => setTerminalOpen((v) => !v)}
+              terminalOpen={terminalOpen}
+            />
+          )}
         </div>
         {terminalOpen && (
           <>

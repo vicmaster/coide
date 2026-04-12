@@ -57,6 +57,16 @@ export function resolveClaudeBinary(configured: string): string {
 
 let notificationsEnabled = true
 
+// Workflow engine result callbacks — keyed by coideSessionId
+const resultCallbacks = new Map<string, (result: string, isError: boolean) => void>()
+
+export function onClaudeResult(
+  coideSessionId: string,
+  cb: (result: string, isError: boolean) => void
+): void {
+  resultCallbacks.set(coideSessionId, cb)
+}
+
 // Keep a reference to prevent garbage collection from destroying notifications before they fire
 let activeNotification: Notification | null = null
 
@@ -128,17 +138,21 @@ type PtySession = {
 const ptySessions = new Map<string, PtySession>()
 
 export function abortClaude(coideSessionId?: string): void {
+  const killSession = (session: PtySession, id: string): void => {
+    try { session.pty.kill('SIGTERM') } catch {}
+    // Force-kill after 500ms if still alive
+    setTimeout(() => {
+      try { session.pty.kill('SIGKILL') } catch {}
+    }, 500)
+    ptySessions.delete(id)
+  }
+
   if (coideSessionId) {
     const session = ptySessions.get(coideSessionId)
-    if (session) {
-      try { session.pty.kill('SIGTERM') } catch {}
-      ptySessions.delete(coideSessionId)
-    }
+    if (session) killSession(session, coideSessionId)
   } else {
-    // Kill all sessions (app shutdown)
     for (const [id, session] of ptySessions) {
-      try { session.pty.kill('SIGTERM') } catch {}
-      ptySessions.delete(id)
+      killSession(session, id)
     }
   }
 }
@@ -277,6 +291,13 @@ function handleEvent(raw: Record<string, unknown>, win: BrowserWindow, coideSess
   }
 
   if (type === 'result') {
+    // Notify workflow engine if a callback is registered for this session
+    const resultCb = resultCallbacks.get(coideSessionId)
+    if (resultCb) {
+      resultCb(String(raw.result ?? ''), Boolean(raw.is_error))
+      resultCallbacks.delete(coideSessionId)
+    }
+
     win.webContents.send('claude:event', {
       ...tag,
       type: 'result',
@@ -318,7 +339,10 @@ export function runClaude(
   worktreeName?: string
 ): Promise<string | null> {
   return new Promise((resolve, reject) => {
-    // No longer kills other sessions — each runs independently
+    if (!prompt || !prompt.trim()) {
+      reject(new Error('Empty prompt'))
+      return
+    }
 
     const skipPermissions = settings.skipPermissions
     notificationsEnabled = settings.notifications

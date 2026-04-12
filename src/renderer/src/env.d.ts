@@ -54,6 +54,16 @@ interface Window {
       readFile: (filePath: string) => Promise<{ content?: string; error?: string }>
       revertFile: (filePath: string, originalContent: string | null) => Promise<{ success?: boolean; error?: string }>
     }
+    workflow: {
+      list: () => Promise<unknown[]>
+      load: (id: string) => Promise<unknown>
+      save: (workflow: unknown) => Promise<{ success?: boolean; error?: string }>
+      delete: (id: string) => Promise<{ success?: boolean; error?: string }>
+      run: (workflowId: string, cwd: string, inputValues?: Record<string, string>) => Promise<{ executionId?: string; error?: string }>
+      abort: (executionId: string) => Promise<void>
+      templates: () => Promise<unknown[]>
+      onEvent: (callback: (event: unknown) => void) => () => void
+    }
     hooks: {
       read: (scope: 'global' | 'project', cwd: string) => Promise<{ hooks: Record<string, unknown> }>
       write: (scope: 'global' | 'project', hooks: Record<string, unknown>, cwd: string) => Promise<{ success?: boolean; error?: string }>

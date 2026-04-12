@@ -85,6 +85,21 @@ const api = {
     write: (scope: string, hooks: unknown, cwd: string) =>
       ipcRenderer.invoke('hooks:write', { scope, hooks, cwd })
   },
+  workflow: {
+    list: () => ipcRenderer.invoke('workflow:list'),
+    load: (id: string) => ipcRenderer.invoke('workflow:load', { id }),
+    save: (workflow: unknown) => ipcRenderer.invoke('workflow:save', { workflow }),
+    delete: (id: string) => ipcRenderer.invoke('workflow:delete', { id }),
+    run: (workflowId: string, cwd: string, inputValues?: Record<string, string>): Promise<{ executionId?: string; error?: string }> =>
+      ipcRenderer.invoke('workflow:run', { workflowId, cwd, inputValues }),
+    abort: (executionId: string) => ipcRenderer.invoke('workflow:abort', { executionId }),
+    templates: () => ipcRenderer.invoke('workflow:templates'),
+    onEvent: (callback: (event: unknown) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: unknown): void => callback(data)
+      ipcRenderer.on('workflow:event', handler)
+      return () => ipcRenderer.removeListener('workflow:event', handler)
+    }
+  },
   terminal: {
     spawn: (id: string, cwd: string): Promise<{ pid: number }> =>
       ipcRenderer.invoke('terminal:spawn', { id, cwd }),

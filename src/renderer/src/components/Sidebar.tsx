@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useSessionsStore } from '../store/sessions'
 import { useSkillEditorStore } from '../store/skillEditor'
+import { useWorkflowStore } from '../store/workflow'
 import { BUILT_IN_COMMANDS } from '../data/commands'
 import WorktreeDialog from './WorktreeDialog'
+import type { WorkflowDefinition } from '../../../shared/workflow-types'
 
-type Tab = 'sessions' | 'skills' | 'commands'
+type Tab = 'sessions' | 'skills' | 'commands' | 'workflows'
 
 export default function Sidebar(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<Tab>('sessions')
@@ -37,7 +39,7 @@ export default function Sidebar(): React.JSX.Element {
   }
 
   return (
-    <aside className="flex h-full w-56 flex-col bg-[#111111] border-r border-white/[0.06]">
+    <aside className="flex h-full w-64 flex-col bg-[#111111] border-r border-white/[0.06]">
       {/* Title — offset for macOS traffic lights */}
       <div className="flex items-center justify-between px-4 pt-[46px] pb-3">
         <span className="text-sm font-semibold tracking-tight text-white/80">coide</span>
@@ -55,19 +57,27 @@ export default function Sidebar(): React.JSX.Element {
 
       {/* Tabs */}
       <div className="flex px-2 gap-0.5 mb-2">
-        {(['sessions', 'skills', 'commands'] as Tab[]).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-1.5 rounded-md text-[11px] font-medium capitalize transition-colors ${
-              activeTab === tab
-                ? 'bg-white/10 text-white'
-                : 'text-white/35 hover:text-white/60 hover:bg-white/5'
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
+        {(['sessions', 'skills', 'commands', 'workflows'] as Tab[]).map((tab) => {
+          const label: Record<Tab, string> = {
+            sessions: 'Sessions',
+            skills: 'Skills',
+            commands: 'Cmds',
+            workflows: 'Flows'
+          }
+          return (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
+                activeTab === tab
+                  ? 'bg-white/10 text-white'
+                  : 'text-white/35 hover:text-white/60 hover:bg-white/5'
+              }`}
+            >
+              {label[tab]}
+            </button>
+          )
+        })}
       </div>
 
       {/* Content */}
@@ -75,6 +85,7 @@ export default function Sidebar(): React.JSX.Element {
         {activeTab === 'sessions' && <SessionsList />}
         {activeTab === 'skills' && <SkillsList />}
         {activeTab === 'commands' && <CommandsList />}
+        {activeTab === 'workflows' && <WorkflowsList />}
       </div>
 
       {/* Git branch */}
@@ -137,6 +148,38 @@ export default function Sidebar(): React.JSX.Element {
             }
           }}
         />
+      )}
+      {activeTab === 'workflows' && (
+        <div className="p-2 border-t border-white/[0.06] flex gap-1.5">
+          <button
+            onClick={() => {
+              const { openCanvas, setCurrentWorkflow } = useWorkflowStore.getState()
+              const id = `wf-${Date.now()}`
+              setCurrentWorkflow({
+                id,
+                name: 'New Workflow',
+                nodes: [],
+                edges: [],
+                createdAt: Date.now(),
+                updatedAt: Date.now()
+              })
+              openCanvas()
+            }}
+            className="flex-1 rounded-md bg-blue-600/90 hover:bg-blue-600 py-1.5 text-xs font-medium text-white transition-colors"
+          >
+            + New
+          </button>
+          <button
+            onClick={() => {
+              const { openCanvas, setCurrentWorkflow } = useWorkflowStore.getState()
+              setCurrentWorkflow(null) // will show templates view
+              openCanvas()
+            }}
+            className="flex-1 rounded-md border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] py-1.5 text-xs font-medium text-white/60 hover:text-white/80 transition-colors"
+          >
+            Templates
+          </button>
+        </div>
       )}
       {activeTab === 'skills' && (
         <div className="p-2 border-t border-white/[0.06] flex gap-1.5">
@@ -471,6 +514,72 @@ const SkillRow = React.memo(function SkillRow({
     </div>
   )
 })
+
+function WorkflowsList(): React.JSX.Element {
+  const { workflows, setWorkflows, setCurrentWorkflow, openCanvas, setExecution } =
+    useWorkflowStore()
+
+  useEffect(() => {
+    window.api.workflow.list().then((wfs) => setWorkflows(wfs as WorkflowDefinition[]))
+  }, [])
+
+  const handleOpen = async (id: string): Promise<void> => {
+    const wf = (await window.api.workflow.load(id)) as WorkflowDefinition | null
+    if (wf) {
+      setCurrentWorkflow(wf)
+      setExecution(null)
+      openCanvas()
+    }
+  }
+
+  const handleDelete = async (id: string): Promise<void> => {
+    await window.api.workflow.delete(id)
+    const wfs = await window.api.workflow.list()
+    setWorkflows(wfs as WorkflowDefinition[])
+  }
+
+  if (workflows.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 px-4">
+        <p className="text-[11px] text-white/25 text-center mb-3">
+          No saved workflows yet
+        </p>
+        <p className="text-[10px] text-white/15 text-center">
+          Create a new workflow or start from a template
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-0.5">
+      {workflows.map((wf) => (
+        <div
+          key={wf.id}
+          className="group flex items-center rounded-md px-2 py-2 hover:bg-white/[0.04] cursor-pointer transition-colors"
+          onClick={() => handleOpen(wf.id)}
+        >
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-medium text-white/70 truncate">{wf.name}</div>
+            <div className="text-[10px] text-white/25">
+              {wf.nodes.length} nodes
+            </div>
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              handleDelete(wf.id)
+            }}
+            className="opacity-0 group-hover:opacity-100 text-white/20 hover:text-red-400 text-xs transition-opacity ml-1"
+            title="Delete workflow"
+          >
+            ×
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 function CommandsList(): React.JSX.Element {
   const [search, setSearch] = useState('')

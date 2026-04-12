@@ -76,6 +76,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@xyflow/react": "^12.6.0",
     "@electron-toolkit/eslint-config-ts": "^3.0.0",
     "@electron-toolkit/tsconfig": "^1.0.1",
     "@electron/rebuild": "^4.0.3",
