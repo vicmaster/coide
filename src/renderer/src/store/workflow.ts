@@ -2,7 +2,9 @@ import { create } from 'zustand'
 import type {
   WorkflowDefinition,
   WorkflowExecutionState,
-  WorkflowNodeRunState
+  WorkflowNodeRunState,
+  WorkflowExecutionRecord,
+  ReviewRequest
 } from '../../../shared/workflow-types'
 
 type WorkflowStore = {
@@ -20,6 +22,12 @@ type WorkflowStore = {
   execution: WorkflowExecutionState | null
   setExecution: (exec: WorkflowExecutionState | null) => void
   updateNodeState: (nodeId: string, patch: Partial<WorkflowNodeRunState>) => void
+  setVariable: (name: string, value: string) => void
+
+  // Review queue
+  reviewQueue: ReviewRequest[]
+  pushReview: (req: ReviewRequest) => void
+  popReview: (nodeId: string) => void
 
   // Selected node (for config panel)
   selectedNodeId: string | null
@@ -28,6 +36,10 @@ type WorkflowStore = {
   // Saved workflow list
   workflows: WorkflowDefinition[]
   setWorkflows: (wfs: WorkflowDefinition[]) => void
+
+  // Execution history
+  executions: WorkflowExecutionRecord[]
+  setExecutions: (recs: WorkflowExecutionRecord[]) => void
 }
 
 export const useWorkflowStore = create<WorkflowStore>()((set) => ({
@@ -63,10 +75,28 @@ export const useWorkflowStore = create<WorkflowStore>()((set) => ({
         }
       }
     }),
+  setVariable: (name, value) =>
+    set((state) => {
+      if (!state.execution) return state
+      return {
+        execution: {
+          ...state.execution,
+          vars: { ...(state.execution.vars ?? {}), [name]: value }
+        }
+      }
+    }),
+
+  reviewQueue: [],
+  pushReview: (req) => set((state) => ({ reviewQueue: [...state.reviewQueue, req] })),
+  popReview: (nodeId) =>
+    set((state) => ({ reviewQueue: state.reviewQueue.filter((r) => r.nodeId !== nodeId) })),
 
   selectedNodeId: null,
   setSelectedNodeId: (id) => set({ selectedNodeId: id }),
 
   workflows: [],
-  setWorkflows: (wfs) => set({ workflows: wfs })
+  setWorkflows: (wfs) => set({ workflows: wfs }),
+
+  executions: [],
+  setExecutions: (recs) => set({ executions: recs })
 }))

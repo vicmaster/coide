@@ -363,6 +363,9 @@ export function runClaude(
       : coideSystemPrompt
     args.push('--append-system-prompt', fullSystemPrompt)
     if (settings.effort) args.push('--effort', settings.effort)
+    if (settings.allowedTools && settings.allowedTools.length > 0) {
+      args.push('--allowed-tools', settings.allowedTools.join(','))
+    }
     // Permission mode: plan mode takes priority, otherwise bypass permissions
     // (coide handles its own permission UI via the skipPermissions setting)
     if (settings.planMode) args.push('--permission-mode', 'plan')

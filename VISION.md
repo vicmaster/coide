@@ -173,14 +173,14 @@ src/renderer/src/store/workflow.ts               — Zustand store for workflow 
 - [x] Keyboard shortcut: Cmd+W to open workflow canvas
 
 **Phase 2 — Powerful (2-3 weeks)**
-- [ ] Parallel branches (fork/join nodes)
-- [ ] Loop nodes with max iterations and exit condition
-- [ ] Variables system (`{{vars.name}}` templates in prompts)
-- [ ] Tool filter per node (`--allowedTools`)
-- [ ] Model selection per node
-- [ ] Human Review node (pause and show approval dialog)
-- [ ] Execution history with replay
-- [ ] Import/export workflow JSON files
+- [x] Parallel branches (fork/join nodes)
+- [x] Loop nodes with max iterations and exit condition
+- [x] Variables system (`{{vars.name}}` templates in prompts)
+- [x] Tool filter per node (`--allowedTools`)
+- [x] Model selection per node
+- [x] Human Review node (pause and show approval dialog)
+- [x] Execution history with replay
+- [x] Import/export workflow JSON files
 
 **Phase 3 — Platform (ongoing)**
 - [ ] Triggers: file watcher, git hooks, cron schedule, manual

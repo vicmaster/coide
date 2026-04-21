@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ReactFlow,
   Background,
@@ -25,8 +25,18 @@ import type {
   WorkflowEdge,
   WorkflowEvent,
   WorkflowNodeStatus,
-  WorkflowInputVar
+  WorkflowInputVar,
+  WorkflowNodeData,
+  WorkflowExecutionRecord,
+  ReviewRequest,
+  SetVarSpec
 } from '../../../shared/workflow-types'
+
+// --- Constants ---
+const AVAILABLE_TOOLS = [
+  'Read', 'Edit', 'Write', 'Glob', 'Grep', 'Bash', 'WebFetch', 'WebSearch',
+  'Task', 'TaskCreate', 'TaskUpdate'
+]
 
 // --- Custom Node Components ---
 
@@ -40,6 +50,8 @@ function statusColor(status: WorkflowNodeStatus): string {
       return 'bg-red-500'
     case 'skipped':
       return 'bg-yellow-500/50'
+    case 'awaiting_review':
+      return 'bg-orange-400 animate-pulse'
     default:
       return 'bg-white/20'
   }
@@ -53,6 +65,8 @@ function statusBorderColor(status: WorkflowNodeStatus): string {
       return 'border-green-500/60'
     case 'failed':
       return 'border-red-500/60'
+    case 'awaiting_review':
+      return 'border-orange-400/60'
     default:
       return 'border-white/[0.08]'
   }
@@ -83,15 +97,17 @@ function PromptNode({ data, selected }: NodeProps): React.JSX.Element {
       <div className="text-[10px] text-white/35 truncate mt-0.5">
         {(data.prompt as string)?.slice(0, 40)}...
       </div>
-      {status === 'done' && (
-        <div className="text-[9px] text-green-500/70 font-mono mt-1">
-          ✓ done
+      {Array.isArray(data.allowedTools) && (data.allowedTools as string[]).length > 0 && (
+        <div className="text-[8px] text-emerald-400/60 font-mono mt-1 truncate">
+          🔒 {(data.allowedTools as string[]).slice(0, 3).join(', ')}
+          {(data.allowedTools as string[]).length > 3 ? '…' : ''}
         </div>
       )}
+      {status === 'done' && (
+        <div className="text-[9px] text-green-500/70 font-mono mt-1">✓ done</div>
+      )}
       {status === 'running' && (
-        <div className="text-[9px] text-blue-400/70 font-mono mt-1">
-          ⟳ running...
-        </div>
+        <div className="text-[9px] text-blue-400/70 font-mono mt-1">⟳ running...</div>
       )}
       {status === 'failed' && (
         <div className="text-[9px] text-red-400/70 font-mono mt-1 truncate">
@@ -170,85 +186,229 @@ function ScriptNode({ data, selected }: NodeProps): React.JSX.Element {
   )
 }
 
+function ParallelNode({ data, selected }: NodeProps): React.JSX.Element {
+  const status: WorkflowNodeStatus = (data.status as WorkflowNodeStatus) || 'idle'
+  return (
+    <div
+      className={`bg-[#111111] rounded-[10px] border-2 px-3 py-2.5 w-[160px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-cyan-500/40' : ''}`}
+    >
+      <Handle type="target" position={Position.Left} className="!bg-white/20 !w-2 !h-2" />
+      <div className="flex items-center gap-1.5 mb-1">
+        <div className={`w-[7px] h-[7px] rounded-full ${statusColor(status)}`} />
+        <span className="text-[9px] font-bold tracking-wider text-cyan-400 font-mono">
+          PARALLEL
+        </span>
+      </div>
+      <div className="text-xs font-medium text-white/80 truncate">{data.label as string}</div>
+      <div className="text-[9px] text-white/30 font-mono mt-0.5">⇉ fan-out to all branches</div>
+      <Handle type="source" position={Position.Right} className="!bg-cyan-500/60 !w-2 !h-2" />
+    </div>
+  )
+}
+
+function JoinNode({ data, selected }: NodeProps): React.JSX.Element {
+  const status: WorkflowNodeStatus = (data.status as WorkflowNodeStatus) || 'idle'
+  return (
+    <div
+      className={`bg-[#111111] rounded-[10px] border-2 px-3 py-2.5 w-[160px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-cyan-500/40' : ''}`}
+    >
+      <Handle type="target" position={Position.Left} className="!bg-cyan-500/60 !w-2 !h-2" />
+      <div className="flex items-center gap-1.5 mb-1">
+        <div className={`w-[7px] h-[7px] rounded-full ${statusColor(status)}`} />
+        <span className="text-[9px] font-bold tracking-wider text-cyan-400 font-mono">JOIN</span>
+      </div>
+      <div className="text-xs font-medium text-white/80 truncate">{data.label as string}</div>
+      <div className="text-[9px] text-white/30 font-mono mt-0.5">⇇ wait for all</div>
+      <Handle type="source" position={Position.Right} className="!bg-white/20 !w-2 !h-2" />
+    </div>
+  )
+}
+
+function LoopNode({ data, selected }: NodeProps): React.JSX.Element {
+  const status: WorkflowNodeStatus = (data.status as WorkflowNodeStatus) || 'idle'
+  const iteration = data.iteration as number | undefined
+  return (
+    <div
+      className={`bg-[#111111] rounded-[10px] border-2 px-3 py-2.5 w-[192px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-pink-500/40' : ''}`}
+    >
+      <Handle type="target" position={Position.Left} className="!bg-white/20 !w-2 !h-2" />
+      <div className="flex items-center gap-1.5 mb-1">
+        <div className={`w-[7px] h-[7px] rounded-full ${statusColor(status)}`} />
+        <span className="text-[9px] font-bold tracking-wider text-pink-400 font-mono">LOOP</span>
+        {iteration ? (
+          <span className="bg-pink-500/10 text-pink-400 text-[8px] px-1.5 py-0.5 rounded font-mono">
+            #{iteration}
+          </span>
+        ) : null}
+      </div>
+      <div className="text-xs font-medium text-white/80 truncate">{data.label as string}</div>
+      <div className="text-[9px] text-white/30 truncate mt-0.5 font-mono">
+        while {(data.condition as string)?.slice(0, 24)}
+      </div>
+      <div className="text-[9px] text-white/25 font-mono mt-0.5">
+        max {(data.maxIterations as number) ?? 10}
+      </div>
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="body"
+        style={{ left: '25%' }}
+        className="!bg-pink-500/60 !w-2 !h-2"
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="exit"
+        className="!bg-white/20 !w-2 !h-2"
+      />
+    </div>
+  )
+}
+
+function HumanReviewNode({ data, selected }: NodeProps): React.JSX.Element {
+  const status: WorkflowNodeStatus = (data.status as WorkflowNodeStatus) || 'idle'
+  return (
+    <div
+      className={`bg-[#111111] rounded-[10px] border-2 px-3 py-2.5 w-[192px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-orange-400/40' : ''}`}
+    >
+      <Handle type="target" position={Position.Left} className="!bg-white/20 !w-2 !h-2" />
+      <div className="flex items-center gap-1.5 mb-1">
+        <div className={`w-[7px] h-[7px] rounded-full ${statusColor(status)}`} />
+        <span className="text-[9px] font-bold tracking-wider text-orange-400 font-mono">
+          REVIEW
+        </span>
+      </div>
+      <div className="text-xs font-medium text-white/80 truncate">{data.label as string}</div>
+      <div className="text-[10px] text-white/35 truncate mt-0.5">
+        {(data.message as string)?.slice(0, 40) || 'Requires human approval'}
+      </div>
+      {status === 'awaiting_review' && (
+        <div className="text-[9px] text-orange-400 font-mono mt-1">⏸ awaiting review</div>
+      )}
+      <Handle type="source" position={Position.Right} className="!bg-white/20 !w-2 !h-2" />
+    </div>
+  )
+}
+
 const nodeTypes: NodeTypes = {
   prompt: PromptNode,
   condition: ConditionNode,
-  script: ScriptNode
+  script: ScriptNode,
+  parallel: ParallelNode,
+  join: JoinNode,
+  loop: LoopNode,
+  humanReview: HumanReviewNode
 }
 
 // --- Converters between WorkflowDefinition and React Flow format ---
 
 function toFlowNodes(
   wfNodes: WorkflowNode[],
-  nodeStates: Record<string, { status: WorkflowNodeStatus; output?: string }>
+  nodeStates: Record<string, { status: WorkflowNodeStatus; output?: string; iteration?: number }>
 ): Node[] {
-  return wfNodes.map((n) => ({
-    id: n.id,
-    type: n.data.type,
-    position: n.position,
-    selected: false,
-    data: {
+  return wfNodes.map((n) => {
+    const d = n.data
+    const base = {
       label: n.label,
       status: nodeStates[n.id]?.status ?? 'idle',
       output: nodeStates[n.id]?.output ?? '',
-      ...(n.data.type === 'prompt'
-        ? { prompt: n.data.prompt, model: n.data.model, systemPrompt: n.data.systemPrompt }
-        : n.data.type === 'condition'
-          ? { expression: n.data.expression }
-          : { command: n.data.command })
+      iteration: nodeStates[n.id]?.iteration
     }
-  }))
+    let extra: Record<string, unknown> = {}
+    if (d.type === 'prompt') {
+      extra = {
+        prompt: d.prompt,
+        model: d.model,
+        systemPrompt: d.systemPrompt,
+        allowedTools: d.allowedTools,
+        setVars: d.setVars
+      }
+    } else if (d.type === 'condition') extra = { expression: d.expression }
+    else if (d.type === 'script') extra = { command: d.command }
+    else if (d.type === 'join') extra = { separator: d.separator }
+    else if (d.type === 'loop') extra = { condition: d.condition, maxIterations: d.maxIterations }
+    else if (d.type === 'humanReview') extra = { message: d.message }
+    return {
+      id: n.id,
+      type: d.type,
+      position: n.position,
+      selected: false,
+      data: { ...base, ...extra }
+    }
+  })
 }
 
 function toFlowEdges(wfEdges: WorkflowEdge[]): Edge[] {
-  return wfEdges.map((e) => ({
-    id: e.id,
-    source: e.source,
-    target: e.target,
-    sourceHandle: e.label || undefined,
-    label: e.label || undefined,
-    style: {
-      stroke:
-        e.label === 'yes'
-          ? '#22c55e60'
-          : e.label === 'no'
-            ? '#ef444460'
-            : '#ffffff20'
-    },
-    labelStyle: {
-      fill: e.label === 'yes' ? '#22c55e' : e.label === 'no' ? '#ef4444' : '#ffffff60',
-      fontSize: 10,
-      fontFamily: 'JetBrains Mono, monospace'
-    },
-    labelBgStyle: {
-      fill: e.label === 'yes' ? '#22c55e15' : e.label === 'no' ? '#ef444415' : '#ffffff08'
+  return wfEdges.map((e) => {
+    const handle = e.sourceHandle ?? e.label
+    const color =
+      handle === 'yes'
+        ? '#22c55e60'
+        : handle === 'no'
+          ? '#ef444460'
+          : handle === 'body'
+            ? '#ec489960'
+            : handle === 'exit'
+              ? '#ffffff30'
+              : '#ffffff20'
+    const labelColor =
+      handle === 'yes' ? '#22c55e'
+        : handle === 'no' ? '#ef4444'
+          : handle === 'body' ? '#ec4899'
+            : handle === 'exit' ? '#ffffff80'
+              : '#ffffff60'
+    return {
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      sourceHandle: e.sourceHandle || undefined,
+      label: e.label || undefined,
+      style: { stroke: color },
+      labelStyle: { fill: labelColor, fontSize: 10, fontFamily: 'JetBrains Mono, monospace' },
+      labelBgStyle: { fill: `${labelColor}15` }
     }
-  }))
+  })
 }
 
 function fromFlowNodes(nodes: Node[]): WorkflowNode[] {
-  return nodes.map((n) => ({
-    id: n.id,
-    label: (n.data.label as string) || n.id,
-    position: n.position,
-    data:
-      n.type === 'prompt'
-        ? {
-            type: 'prompt' as const,
-            prompt: (n.data.prompt as string) || '',
-            systemPrompt: (n.data.systemPrompt as string) || undefined,
-            model: (n.data.model as string) || undefined
-          }
-        : n.type === 'condition'
-          ? {
-              type: 'condition' as const,
-              expression: (n.data.expression as string) || ''
-            }
-          : {
-              type: 'script' as const,
-              command: (n.data.command as string) || ''
-            }
-  }))
+  return nodes.map((n) => {
+    const t = n.type as string
+    let data: WorkflowNodeData
+    if (t === 'prompt') {
+      data = {
+        type: 'prompt',
+        prompt: (n.data.prompt as string) || '',
+        systemPrompt: (n.data.systemPrompt as string) || undefined,
+        model: (n.data.model as string) || undefined,
+        allowedTools: (n.data.allowedTools as string[]) || undefined,
+        setVars: (n.data.setVars as SetVarSpec[]) || undefined
+      }
+    } else if (t === 'condition') {
+      data = { type: 'condition', expression: (n.data.expression as string) || '' }
+    } else if (t === 'script') {
+      data = { type: 'script', command: (n.data.command as string) || '' }
+    } else if (t === 'parallel') {
+      data = { type: 'parallel' }
+    } else if (t === 'join') {
+      data = { type: 'join', separator: (n.data.separator as string) || undefined }
+    } else if (t === 'loop') {
+      data = {
+        type: 'loop',
+        condition: (n.data.condition as string) || '',
+        maxIterations: (n.data.maxIterations as number) ?? 10
+      }
+    } else if (t === 'humanReview') {
+      data = { type: 'humanReview', message: (n.data.message as string) || undefined }
+    } else {
+      data = { type: 'prompt', prompt: '' }
+    }
+    return {
+      id: n.id,
+      label: (n.data.label as string) || n.id,
+      position: n.position,
+      data
+    }
+  })
 }
 
 function fromFlowEdges(edges: Edge[]): WorkflowEdge[] {
@@ -256,7 +416,8 @@ function fromFlowEdges(edges: Edge[]): WorkflowEdge[] {
     id: e.id,
     source: e.source,
     target: e.target,
-    label: (e.label as string) || undefined
+    sourceHandle: (e.sourceHandle as string) || undefined,
+    label: (e.label as string) || (e.sourceHandle as string) || undefined
   }))
 }
 
@@ -290,22 +451,23 @@ function NodeConfigPanel(): React.JSX.Element | null {
     updateCurrentWorkflow({ nodes: updatedNodes })
   }
 
+  const nodeTypeLabel = node.data.type.toUpperCase()
+  const typeColor =
+    node.data.type === 'prompt' ? 'bg-blue-500/15 text-blue-400'
+      : node.data.type === 'condition' ? 'bg-amber-500/15 text-amber-400'
+        : node.data.type === 'script' ? 'bg-purple-500/15 text-purple-400'
+          : node.data.type === 'parallel' || node.data.type === 'join' ? 'bg-cyan-500/15 text-cyan-400'
+            : node.data.type === 'loop' ? 'bg-pink-500/15 text-pink-400'
+              : 'bg-orange-500/15 text-orange-400'
+
   return (
-    <div className="w-[272px] flex-shrink-0 bg-[#111111] border-l border-white/[0.06] flex flex-col overflow-hidden">
+    <div className="w-[320px] flex-shrink-0 bg-[#111111] border-l border-white/[0.06] flex flex-col overflow-hidden">
       {/* Header */}
       <div className="h-11 flex items-center justify-between px-4 border-b border-white/[0.06]">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-white/90">Node Config</span>
-          <span
-            className={`text-[8px] font-bold font-mono px-1.5 py-0.5 rounded ${
-              node.data.type === 'prompt'
-                ? 'bg-blue-500/15 text-blue-400'
-                : node.data.type === 'condition'
-                  ? 'bg-amber-500/15 text-amber-400'
-                  : 'bg-purple-500/15 text-purple-400'
-            }`}
-          >
-            {node.data.type.toUpperCase()}
+          <span className={`text-[8px] font-bold font-mono px-1.5 py-0.5 rounded ${typeColor}`}>
+            {nodeTypeLabel}
           </span>
         </div>
         <button
@@ -331,44 +493,7 @@ function NodeConfigPanel(): React.JSX.Element | null {
 
         {/* Prompt-specific fields */}
         {node.data.type === 'prompt' && (
-          <>
-            <div>
-              <label className="text-[10px] font-medium text-white/40 block mb-1">Model</label>
-              <select
-                value={node.data.model || ''}
-                onChange={(e) => updateNodeData({ model: e.target.value || undefined })}
-                disabled={isRunning}
-                className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2.5 py-1.5 text-xs text-white/90 font-mono focus:border-blue-500/40 focus:outline-none"
-              >
-                <option value="">default</option>
-                <option value="opus">opus</option>
-                <option value="sonnet">sonnet</option>
-                <option value="haiku">haiku</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-[10px] font-medium text-white/40 block mb-1">Prompt</label>
-              <textarea
-                value={node.data.prompt}
-                onChange={(e) => updateNodeData({ prompt: e.target.value })}
-                disabled={isRunning}
-                rows={5}
-                className="w-full bg-[#0a0a0a] border border-blue-500/30 rounded-md px-2.5 py-2 text-[11px] text-white/80 font-mono leading-relaxed resize-none focus:border-blue-500/50 focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-medium text-white/40 block mb-1">
-                System Prompt (optional)
-              </label>
-              <textarea
-                value={node.data.systemPrompt || ''}
-                onChange={(e) => updateNodeData({ systemPrompt: e.target.value || undefined })}
-                disabled={isRunning}
-                rows={2}
-                className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2.5 py-2 text-[11px] text-white/60 font-mono resize-none focus:border-blue-500/40 focus:outline-none"
-              />
-            </div>
-          </>
+          <PromptNodeConfig node={node.data} update={updateNodeData} disabled={isRunning} />
         )}
 
         {/* Condition-specific fields */}
@@ -383,8 +508,9 @@ function NodeConfigPanel(): React.JSX.Element | null {
               className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2.5 py-2 text-[11px] text-white/80 font-mono resize-none focus:border-blue-500/40 focus:outline-none"
             />
             <p className="text-[9px] text-white/25 mt-1 font-mono">
-              Variable: <code className="text-amber-400/60">output</code> = previous node&apos;s
-              result
+              Vars: <code className="text-amber-400/60">output</code>,{' '}
+              <code className="text-amber-400/60">vars</code>,{' '}
+              <code className="text-amber-400/60">iteration</code>
             </p>
           </div>
         )}
@@ -400,6 +526,96 @@ function NodeConfigPanel(): React.JSX.Element | null {
               rows={3}
               className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2.5 py-2 text-[11px] text-white/80 font-mono resize-none focus:border-blue-500/40 focus:outline-none"
             />
+          </div>
+        )}
+
+        {/* Parallel: no config */}
+        {node.data.type === 'parallel' && (
+          <div className="text-[10px] text-white/35 leading-relaxed">
+            Pure fan-out node. Each outgoing edge becomes a concurrent branch. Use a
+            <span className="text-cyan-400"> Join </span>
+            node downstream to merge their outputs.
+          </div>
+        )}
+
+        {/* Join: separator */}
+        {node.data.type === 'join' && (
+          <div>
+            <label className="text-[10px] font-medium text-white/40 block mb-1">
+              Separator (between branch outputs)
+            </label>
+            <input
+              value={node.data.separator ?? ''}
+              placeholder={'\\n\\n---\\n\\n'}
+              onChange={(e) => updateNodeData({ separator: e.target.value })}
+              disabled={isRunning}
+              className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2.5 py-1.5 text-[11px] text-white/80 font-mono focus:border-blue-500/40 focus:outline-none"
+            />
+            <p className="text-[9px] text-white/25 mt-1">
+              Join waits for ALL incoming edges before running. Note: if any upstream branch is
+              skipped (condition false), the Join will wait forever.
+            </p>
+          </div>
+        )}
+
+        {/* Loop: condition + maxIterations */}
+        {node.data.type === 'loop' && (
+          <>
+            <div>
+              <label className="text-[10px] font-medium text-white/40 block mb-1">
+                Continue While (expression)
+              </label>
+              <textarea
+                value={node.data.condition}
+                onChange={(e) => updateNodeData({ condition: e.target.value })}
+                disabled={isRunning}
+                rows={3}
+                className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2.5 py-2 text-[11px] text-white/80 font-mono resize-none focus:border-blue-500/40 focus:outline-none"
+              />
+              <p className="text-[9px] text-white/25 mt-1 font-mono">
+                Vars: <code className="text-pink-400/60">output</code>,{' '}
+                <code className="text-pink-400/60">vars</code>,{' '}
+                <code className="text-pink-400/60">iteration</code>
+              </p>
+            </div>
+            <div>
+              <label className="text-[10px] font-medium text-white/40 block mb-1">
+                Max Iterations
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={1000}
+                value={node.data.maxIterations}
+                onChange={(e) => updateNodeData({ maxIterations: parseInt(e.target.value, 10) || 1 })}
+                disabled={isRunning}
+                className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2.5 py-1.5 text-xs text-white/90 font-mono focus:border-blue-500/40 focus:outline-none"
+              />
+            </div>
+            <div className="text-[10px] text-white/35 leading-relaxed">
+              <div><span className="text-pink-400">body</span> handle (bottom): linear chain that runs each iteration.</div>
+              <div><span className="text-white/70">exit</span> handle (right): continues after loop ends.</div>
+            </div>
+          </>
+        )}
+
+        {/* Human review */}
+        {node.data.type === 'humanReview' && (
+          <div>
+            <label className="text-[10px] font-medium text-white/40 block mb-1">
+              Message for reviewer
+            </label>
+            <textarea
+              value={node.data.message ?? ''}
+              onChange={(e) => updateNodeData({ message: e.target.value })}
+              disabled={isRunning}
+              rows={3}
+              placeholder="What should the reviewer check?"
+              className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2.5 py-2 text-[11px] text-white/80 resize-none focus:border-blue-500/40 focus:outline-none"
+            />
+            <p className="text-[9px] text-white/25 mt-1">
+              Pauses execution. Approve → continue; Reject → ends this branch.
+            </p>
           </div>
         )}
 
@@ -425,6 +641,158 @@ function NodeConfigPanel(): React.JSX.Element | null {
   )
 }
 
+function PromptNodeConfig({
+  node,
+  update,
+  disabled
+}: {
+  node: Extract<WorkflowNodeData, { type: 'prompt' }>
+  update: (patch: Record<string, unknown>) => void
+  disabled: boolean
+}): React.JSX.Element {
+  const allowedTools = node.allowedTools ?? []
+  const setVars = node.setVars ?? []
+
+  const toggleTool = (tool: string): void => {
+    const current = new Set(allowedTools)
+    if (current.has(tool)) current.delete(tool)
+    else current.add(tool)
+    update({ allowedTools: current.size === 0 ? undefined : Array.from(current) })
+  }
+
+  const addSetVar = (): void => {
+    update({ setVars: [...setVars, { name: '', extractor: '' }] })
+  }
+  const updateSetVar = (i: number, patch: Partial<SetVarSpec>): void => {
+    const next = setVars.map((v, idx) => (idx === i ? { ...v, ...patch } : v))
+    update({ setVars: next })
+  }
+  const removeSetVar = (i: number): void => {
+    const next = setVars.filter((_, idx) => idx !== i)
+    update({ setVars: next.length === 0 ? undefined : next })
+  }
+
+  return (
+    <>
+      <div>
+        <label className="text-[10px] font-medium text-white/40 block mb-1">Model</label>
+        <select
+          value={node.model || ''}
+          onChange={(e) => update({ model: e.target.value || undefined })}
+          disabled={disabled}
+          className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2.5 py-1.5 text-xs text-white/90 font-mono focus:border-blue-500/40 focus:outline-none"
+        >
+          <option value="">default</option>
+          <option value="opus">opus</option>
+          <option value="sonnet">sonnet</option>
+          <option value="haiku">haiku</option>
+        </select>
+      </div>
+      <div>
+        <label className="text-[10px] font-medium text-white/40 block mb-1">Prompt</label>
+        <textarea
+          value={node.prompt}
+          onChange={(e) => update({ prompt: e.target.value })}
+          disabled={disabled}
+          rows={5}
+          className="w-full bg-[#0a0a0a] border border-blue-500/30 rounded-md px-2.5 py-2 text-[11px] text-white/80 font-mono leading-relaxed resize-none focus:border-blue-500/50 focus:outline-none"
+        />
+        <p className="text-[9px] text-white/25 mt-1 font-mono">
+          Use <code className="text-blue-400/60">{'{{prev.output}}'}</code>,{' '}
+          <code className="text-blue-400/60">{'{{input.key}}'}</code>,{' '}
+          <code className="text-blue-400/60">{'{{vars.name}}'}</code>
+        </p>
+      </div>
+      <div>
+        <label className="text-[10px] font-medium text-white/40 block mb-1">
+          System Prompt (optional)
+        </label>
+        <textarea
+          value={node.systemPrompt || ''}
+          onChange={(e) => update({ systemPrompt: e.target.value || undefined })}
+          disabled={disabled}
+          rows={2}
+          className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2.5 py-2 text-[11px] text-white/60 font-mono resize-none focus:border-blue-500/40 focus:outline-none"
+        />
+      </div>
+
+      {/* Allowed tools */}
+      <div>
+        <label className="text-[10px] font-medium text-white/40 block mb-1">
+          Allowed Tools{' '}
+          <span className="text-white/25 font-normal">
+            ({allowedTools.length === 0 ? 'all' : allowedTools.length})
+          </span>
+        </label>
+        <div className="flex flex-wrap gap-1">
+          {AVAILABLE_TOOLS.map((tool) => {
+            const on = allowedTools.includes(tool)
+            return (
+              <button
+                key={tool}
+                onClick={() => toggleTool(tool)}
+                disabled={disabled}
+                className={`text-[9px] font-mono px-1.5 py-0.5 rounded border transition-colors ${
+                  on
+                    ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                    : 'bg-[#0a0a0a] text-white/40 border-white/[0.08] hover:border-white/[0.15]'
+                }`}
+              >
+                {tool}
+              </button>
+            )
+          })}
+        </div>
+        <p className="text-[9px] text-white/25 mt-1">
+          None selected = all tools allowed. Select any to restrict to those only.
+        </p>
+      </div>
+
+      {/* Set vars */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-[10px] font-medium text-white/40">Set Variables from Output</label>
+          <button
+            onClick={addSetVar}
+            disabled={disabled}
+            className="text-[9px] text-blue-400 hover:text-blue-300"
+          >
+            + add
+          </button>
+        </div>
+        {setVars.length === 0 && (
+          <p className="text-[9px] text-white/25">Capture output into workflow variables</p>
+        )}
+        {setVars.map((v, i) => (
+          <div key={i} className="flex gap-1 mt-1 items-start">
+            <input
+              value={v.name}
+              placeholder="name"
+              onChange={(e) => updateSetVar(i, { name: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') })}
+              disabled={disabled}
+              className="flex-1 bg-[#0a0a0a] border border-white/[0.08] rounded px-2 py-1 text-[10px] text-white/80 font-mono focus:outline-none focus:border-blue-500/40"
+            />
+            <input
+              value={v.extractor}
+              placeholder="raw | json:path | regex:pat | lines:1-5"
+              onChange={(e) => updateSetVar(i, { extractor: e.target.value })}
+              disabled={disabled}
+              className="flex-[2] bg-[#0a0a0a] border border-white/[0.08] rounded px-2 py-1 text-[10px] text-white/70 font-mono focus:outline-none focus:border-blue-500/40"
+            />
+            <button
+              onClick={() => removeSetVar(i)}
+              disabled={disabled}
+              className="text-[10px] text-red-400/60 hover:text-red-400 px-1"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
 // --- Main Workflow Canvas ---
 
 let nodeCounter = 0
@@ -436,12 +804,14 @@ export default function WorkflowCanvas(): React.JSX.Element {
     updateCurrentWorkflow,
     execution,
     setExecution,
-    updateNodeState,
     selectedNodeId,
     setSelectedNodeId,
     closeCanvas,
     workflows,
-    setWorkflows
+    setWorkflows,
+    reviewQueue,
+    executions,
+    setExecutions
   } = useWorkflowStore()
 
   const cwd = useSessionsStore((s) => {
@@ -453,12 +823,14 @@ export default function WorkflowCanvas(): React.JSX.Element {
   const [saveFlash, setSaveFlash] = useState(false)
   const [showRunDialog, setShowRunDialog] = useState(false)
   const [showInputsEditor, setShowInputsEditor] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const [showVars, setShowVars] = useState(false)
 
   // Convert workflow to React Flow format
   const nodeStates = execution?.nodeStates ?? {}
   const initialNodes = useMemo(
     () => (currentWorkflow ? toFlowNodes(currentWorkflow.nodes, nodeStates) : []),
-    [currentWorkflow?.id] // only recompute on workflow switch
+    [currentWorkflow?.id]
   )
   const initialEdges = useMemo(
     () => (currentWorkflow ? toFlowEdges(currentWorkflow.edges) : []),
@@ -484,7 +856,12 @@ export default function WorkflowCanvas(): React.JSX.Element {
         if (!ns) return n
         return {
           ...n,
-          data: { ...n.data, status: ns.status, output: ns.output || ns.error || '' }
+          data: {
+            ...n.data,
+            status: ns.status,
+            output: ns.output || ns.error || '',
+            iteration: ns.iteration
+          }
         }
       })
     )
@@ -497,13 +874,18 @@ export default function WorkflowCanvas(): React.JSX.Element {
       const store = useWorkflowStore.getState()
       switch (e.type) {
         case 'node:start':
-          store.updateNodeState(e.nodeId, { status: 'running', startedAt: Date.now() })
+          store.updateNodeState(e.nodeId, {
+            status: 'running',
+            startedAt: Date.now(),
+            iteration: e.iteration
+          })
           break
         case 'node:done':
           store.updateNodeState(e.nodeId, {
             status: 'done',
             output: e.output,
-            finishedAt: Date.now()
+            finishedAt: Date.now(),
+            iteration: e.iteration
           })
           break
         case 'node:failed':
@@ -516,19 +898,38 @@ export default function WorkflowCanvas(): React.JSX.Element {
         case 'node:skipped':
           store.updateNodeState(e.nodeId, { status: 'skipped' })
           break
+        case 'node:awaiting-review':
+          store.updateNodeState(e.nodeId, { status: 'awaiting_review' })
+          store.pushReview(e.request)
+          break
+        case 'variable:set':
+          store.setVariable(e.name, e.value)
+          break
+        case 'loop:iterate':
+          store.updateNodeState(e.nodeId, { iteration: e.iteration })
+          break
         case 'execution:done': {
           const exec = store.execution
           store.setExecution(exec ? { ...exec, status: 'done', finishedAt: Date.now() } : null)
+          if (e.record) {
+            store.setExecutions([e.record, ...store.executions.filter((r) => r.id !== e.record!.id)])
+          }
           break
         }
         case 'execution:failed': {
           const exec = store.execution
           store.setExecution(exec ? { ...exec, status: 'failed', finishedAt: Date.now() } : null)
+          if (e.record) {
+            store.setExecutions([e.record, ...store.executions.filter((r) => r.id !== e.record!.id)])
+          }
           break
         }
         case 'execution:aborted': {
           const exec = store.execution
           store.setExecution(exec ? { ...exec, status: 'aborted', finishedAt: Date.now() } : null)
+          if (e.record) {
+            store.setExecutions([e.record, ...store.executions.filter((r) => r.id !== e.record!.id)])
+          }
           break
         }
       }
@@ -541,6 +942,14 @@ export default function WorkflowCanvas(): React.JSX.Element {
     window.api.workflow.list().then((wfs) => setWorkflows(wfs as WorkflowDefinition[]))
   }, [])
 
+  // Load executions for current workflow
+  useEffect(() => {
+    if (!currentWorkflow) return
+    window.api.workflow
+      .listExecutions(currentWorkflow.id)
+      .then((recs) => setExecutions(recs as WorkflowExecutionRecord[]))
+  }, [currentWorkflow?.id])
+
   const onConnect = useCallback(
     (connection: Connection) => setEdges((eds) => addEdge(connection, eds)),
     [setEdges]
@@ -550,41 +959,50 @@ export default function WorkflowCanvas(): React.JSX.Element {
     (_: React.MouseEvent, node: Node) => {
       setSelectedNodeId(node.id)
       setShowInputsEditor(false)
+      setShowHistory(false)
+      setShowVars(false)
     },
     [setSelectedNodeId]
   )
 
-  // Sync node position changes back to workflow definition
   const onNodeDragStop = useCallback(() => {
     if (!currentWorkflow) return
     const updatedNodes = fromFlowNodes(nodes)
     updateCurrentWorkflow({ nodes: updatedNodes })
   }, [nodes, currentWorkflow])
 
-  // Add a new node
-  const addNode = (type: 'prompt' | 'condition' | 'script'): void => {
+  const addNode = (
+    type: 'prompt' | 'condition' | 'script' | 'parallel' | 'join' | 'loop' | 'humanReview'
+  ): void => {
     if (!currentWorkflow) return
     const id = `node-${++nodeCounter}-${Date.now()}`
+    const labels: Record<string, string> = {
+      prompt: 'New Prompt',
+      condition: 'New Condition',
+      script: 'New Script',
+      parallel: 'Fork',
+      join: 'Join',
+      loop: 'Loop',
+      humanReview: 'Human Review'
+    }
+    let data: WorkflowNodeData
+    if (type === 'prompt') data = { type: 'prompt', prompt: '' }
+    else if (type === 'condition') data = { type: 'condition', expression: '' }
+    else if (type === 'script') data = { type: 'script', command: '' }
+    else if (type === 'parallel') data = { type: 'parallel' }
+    else if (type === 'join') data = { type: 'join' }
+    else if (type === 'loop') data = { type: 'loop', condition: 'iteration < 3', maxIterations: 10 }
+    else data = { type: 'humanReview' }
+
     const newNode: WorkflowNode = {
       id,
-      label:
-        type === 'prompt'
-          ? 'New Prompt'
-          : type === 'condition'
-            ? 'New Condition'
-            : 'New Script',
+      label: labels[type],
       position: { x: 200 + Math.random() * 200, y: 100 + Math.random() * 200 },
-      data:
-        type === 'prompt'
-          ? { type: 'prompt', prompt: '' }
-          : type === 'condition'
-            ? { type: 'condition', expression: '' }
-            : { type: 'script', command: '' }
+      data
     }
     updateCurrentWorkflow({ nodes: [...currentWorkflow.nodes, newNode] })
   }
 
-  // Delete selected node
   const deleteSelectedNode = (): void => {
     if (!selectedNodeId || !currentWorkflow) return
     updateCurrentWorkflow({
@@ -596,24 +1014,19 @@ export default function WorkflowCanvas(): React.JSX.Element {
     setSelectedNodeId(null)
   }
 
-  // Save workflow
   const handleSave = async (): Promise<void> => {
     if (!currentWorkflow) return
-    // Sync positions from React Flow
     const updatedNodes = fromFlowNodes(nodes)
     const updatedEdges = fromFlowEdges(edges)
     const wf = { ...currentWorkflow, nodes: updatedNodes, edges: updatedEdges }
     await window.api.workflow.save(wf)
     setCurrentWorkflow(wf)
-    // Refresh list
     const wfs = await window.api.workflow.list()
     setWorkflows(wfs as WorkflowDefinition[])
-    // Flash saved confirmation
     setSaveFlash(true)
     setTimeout(() => setSaveFlash(false), 2000)
   }
 
-  // Run workflow — show input dialog if workflow has inputs, otherwise run directly
   const handleRun = (): void => {
     if (!currentWorkflow) return
     if (currentWorkflow.inputs && currentWorkflow.inputs.length > 0) {
@@ -630,9 +1043,7 @@ export default function WorkflowCanvas(): React.JSX.Element {
       return
     }
     setShowRunDialog(false)
-    // Save first to ensure engine reads latest
     await handleSave()
-    // Init execution state
     const nodeStatesInit: Record<string, { nodeId: string; status: WorkflowNodeStatus }> = {}
     for (const n of currentWorkflow.nodes) {
       nodeStatesInit[n.id] = { nodeId: n.id, status: 'idle' }
@@ -642,25 +1053,20 @@ export default function WorkflowCanvas(): React.JSX.Element {
       workflowId: currentWorkflow.id,
       status: 'running',
       nodeStates: nodeStatesInit,
+      vars: {},
       startedAt: Date.now()
     })
     const result = await window.api.workflow.run(currentWorkflow.id, cwd, inputValues)
     if (result.executionId) {
       const current = useWorkflowStore.getState().execution
-      if (current) {
-        setExecution({ ...current, id: result.executionId })
-      }
+      if (current) setExecution({ ...current, id: result.executionId })
     }
   }
 
-  // Abort
   const handleAbort = (): void => {
-    if (execution?.id) {
-      window.api.workflow.abort(execution.id)
-    }
+    if (execution?.id) window.api.workflow.abort(execution.id)
   }
 
-  // Create new blank workflow
   const createNew = (): void => {
     const id = `wf-${Date.now()}`
     const wf: WorkflowDefinition = {
@@ -676,7 +1082,6 @@ export default function WorkflowCanvas(): React.JSX.Element {
     setExecution(null)
   }
 
-  // Use a template
   const useTemplate = (tpl: WorkflowDefinition): void => {
     const id = `wf-${Date.now()}`
     const wf: WorkflowDefinition = {
@@ -691,7 +1096,6 @@ export default function WorkflowCanvas(): React.JSX.Element {
     setExecution(null)
   }
 
-  // Open existing workflow
   const openWorkflow = async (id: string): Promise<void> => {
     const wf = (await window.api.workflow.load(id)) as WorkflowDefinition | null
     if (wf) {
@@ -701,17 +1105,45 @@ export default function WorkflowCanvas(): React.JSX.Element {
     }
   }
 
+  const handleImport = async (): Promise<void> => {
+    const result = await window.api.workflow.importWorkflow()
+    if (result.canceled) return
+    if (result.error) {
+      alert(`Import failed: ${result.error}`)
+      return
+    }
+    if (result.workflow) {
+      const wf = result.workflow as WorkflowDefinition
+      setCurrentWorkflow(wf)
+      setShowTemplates(false)
+      setExecution(null)
+      const wfs = await window.api.workflow.list()
+      setWorkflows(wfs as WorkflowDefinition[])
+    }
+  }
+
+  const handleExport = async (): Promise<void> => {
+    if (!currentWorkflow) return
+    const updatedNodes = fromFlowNodes(nodes)
+    const updatedEdges = fromFlowEdges(edges)
+    const wf = { ...currentWorkflow, nodes: updatedNodes, edges: updatedEdges }
+    const result = await window.api.workflow.exportWorkflow(wf)
+    if (result.error) alert(`Export failed: ${result.error}`)
+  }
+
   const isRunning = execution?.status === 'running'
 
-  // Templates view
   if (showTemplates || !currentWorkflow) {
-    return <TemplatesView
-      onUseTemplate={useTemplate}
-      onCreateNew={createNew}
-      workflows={workflows}
-      onOpenWorkflow={openWorkflow}
-      onClose={closeCanvas}
-    />
+    return (
+      <TemplatesView
+        onUseTemplate={useTemplate}
+        onCreateNew={createNew}
+        onImport={handleImport}
+        workflows={workflows}
+        onOpenWorkflow={openWorkflow}
+        onClose={closeCanvas}
+      />
+    )
   }
 
   const runningNodeCount = currentWorkflow.nodes.length
@@ -722,67 +1154,89 @@ export default function WorkflowCanvas(): React.JSX.Element {
   const currentRunningNode = currentRunning
     ? currentWorkflow.nodes.find((n) => n.id === currentRunning.nodeId)
     : null
+  const varsCount = execution?.vars ? Object.keys(execution.vars).length : 0
+
+  const closeSidePanels = (): void => {
+    setSelectedNodeId(null)
+    setShowInputsEditor(false)
+    setShowHistory(false)
+    setShowVars(false)
+  }
 
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
-      <div className="h-[46px] bg-[#111111] border-b border-white/[0.06] flex items-center px-4 gap-3 flex-shrink-0">
+      <div className="h-[46px] bg-[#111111] border-b border-white/[0.06] flex items-center px-3 gap-2 flex-shrink-0">
         <button
           onClick={closeCanvas}
-          className="text-white/40 hover:text-white/70 text-sm mr-1"
+          className="text-white/40 hover:text-white/70 text-sm flex-shrink-0"
+          title="Back to workflow list"
         >
           ←
         </button>
         <input
           value={currentWorkflow.name}
           onChange={(e) => updateCurrentWorkflow({ name: e.target.value })}
-          className="bg-transparent text-sm font-semibold text-white/90 focus:outline-none border-b border-transparent focus:border-blue-500/40 w-48"
+          className="bg-transparent text-sm font-semibold text-white/90 focus:outline-none border-b border-transparent focus:border-blue-500/40 min-w-0 flex-1 max-w-[240px]"
         />
-        <div className="flex-1" />
-        <button
-          onClick={() => addNode('prompt')}
-          disabled={isRunning}
-          className="text-[10px] text-white/60 bg-white/[0.04] border border-white/[0.08] px-2.5 py-1 rounded hover:bg-white/[0.08] disabled:opacity-40"
-        >
-          + Prompt
-        </button>
-        <button
-          onClick={() => addNode('condition')}
-          disabled={isRunning}
-          className="text-[10px] text-white/60 bg-white/[0.04] border border-white/[0.08] px-2.5 py-1 rounded hover:bg-white/[0.08] disabled:opacity-40"
-        >
-          + Condition
-        </button>
-        <button
-          onClick={() => addNode('script')}
-          disabled={isRunning}
-          className="text-[10px] text-white/60 bg-white/[0.04] border border-white/[0.08] px-2.5 py-1 rounded hover:bg-white/[0.08] disabled:opacity-40"
-        >
-          + Script
-        </button>
-        <button
-          onClick={() => { setShowInputsEditor((v) => !v); setSelectedNodeId(null) }}
-          disabled={isRunning}
-          className={`text-[10px] px-2.5 py-1 rounded disabled:opacity-40 ${
-            showInputsEditor
-              ? 'text-blue-400 bg-blue-500/15'
-              : 'text-white/60 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08]'
-          }`}
-        >
-          Inputs{currentWorkflow.inputs?.length ? ` (${currentWorkflow.inputs.length})` : ''}
-        </button>
+
+        <div className="w-px h-5 bg-white/[0.08]" />
+
+        {/* Add-node dropdown */}
+        <AddNodeMenu onAdd={addNode} disabled={isRunning} />
+
+        <div className="w-px h-5 bg-white/[0.08]" />
+
+        {/* Panel toggles — segmented */}
+        <div className="flex items-center bg-[#0a0a0a] border border-white/[0.08] rounded overflow-hidden">
+          <SegButton
+            active={showInputsEditor}
+            onClick={() => { closeSidePanels(); setShowInputsEditor(true) }}
+            disabled={isRunning}
+            activeTone="blue"
+            title="Workflow inputs"
+          >
+            Inputs{currentWorkflow.inputs?.length ? ` · ${currentWorkflow.inputs.length}` : ''}
+          </SegButton>
+          <div className="w-px h-4 bg-white/[0.08]" />
+          <SegButton
+            active={showVars}
+            onClick={() => { closeSidePanels(); setShowVars(true) }}
+            activeTone="emerald"
+            title="Runtime variables"
+          >
+            Vars{varsCount > 0 ? ` · ${varsCount}` : ''}
+          </SegButton>
+          <div className="w-px h-4 bg-white/[0.08]" />
+          <SegButton
+            active={showHistory}
+            onClick={() => { closeSidePanels(); setShowHistory(true) }}
+            activeTone="white"
+            title="Execution history"
+          >
+            History{executions.length ? ` · ${executions.length}` : ''}
+          </SegButton>
+        </div>
+
+        <div className="flex-1 min-w-1" />
+
         {selectedNodeId && !isRunning && (
           <button
             onClick={deleteSelectedNode}
-            className="text-[10px] text-red-400/70 bg-red-500/10 px-2.5 py-1 rounded hover:bg-red-500/20"
+            className="text-[10px] text-red-400/70 bg-red-500/10 px-2.5 py-1 rounded hover:bg-red-500/20 flex-shrink-0"
+            title="Delete selected node"
           >
             Delete
           </button>
         )}
+
+        {/* Overflow menu: Import / Export */}
+        <OverflowMenu onImport={handleImport} onExport={handleExport} disabled={isRunning} />
+
         <button
           onClick={handleSave}
           disabled={isRunning}
-          className={`text-[10px] font-medium px-3 py-1 rounded transition-colors disabled:opacity-40 ${
+          className={`text-[10px] font-medium px-3 py-1 rounded transition-colors disabled:opacity-40 flex-shrink-0 ${
             saveFlash
               ? 'text-green-400 bg-green-500/15'
               : 'text-white/70 bg-white/[0.06] hover:bg-white/[0.1]'
@@ -793,7 +1247,7 @@ export default function WorkflowCanvas(): React.JSX.Element {
         {isRunning ? (
           <button
             onClick={handleAbort}
-            className="text-[10px] font-semibold text-white bg-red-600 px-3 py-1 rounded hover:bg-red-700"
+            className="text-[10px] font-semibold text-white bg-red-600 px-3 py-1 rounded hover:bg-red-700 flex-shrink-0"
           >
             ■ Stop
           </button>
@@ -801,14 +1255,14 @@ export default function WorkflowCanvas(): React.JSX.Element {
           <button
             onClick={handleRun}
             disabled={currentWorkflow.nodes.length === 0}
-            className="text-[10px] font-semibold text-white bg-green-600 px-3 py-1 rounded hover:bg-green-700 disabled:opacity-40"
+            className="text-[10px] font-semibold text-white bg-green-600 px-3 py-1 rounded hover:bg-green-700 disabled:opacity-40 flex-shrink-0"
           >
             ▶ Run
           </button>
         )}
       </div>
 
-      {/* Canvas + Config panel */}
+      {/* Canvas + side panel */}
       <div className="flex-1 flex min-h-0">
         <div className="flex-1 min-w-0">
           <ReactFlow
@@ -836,12 +1290,21 @@ export default function WorkflowCanvas(): React.JSX.Element {
           </ReactFlow>
         </div>
 
-        {selectedNodeId && !showInputsEditor && <NodeConfigPanel />}
+        {selectedNodeId && !showInputsEditor && !showHistory && !showVars && <NodeConfigPanel />}
         {showInputsEditor && (
           <InputsEditor
             inputs={currentWorkflow.inputs ?? []}
             onChange={(inputs) => updateCurrentWorkflow({ inputs })}
             onClose={() => setShowInputsEditor(false)}
+          />
+        )}
+        {showVars && (
+          <VarsPanel vars={execution?.vars ?? {}} onClose={() => setShowVars(false)} />
+        )}
+        {showHistory && currentWorkflow && (
+          <HistoryPanel
+            workflowId={currentWorkflow.id}
+            onClose={() => setShowHistory(false)}
           />
         )}
       </div>
@@ -855,11 +1318,14 @@ export default function WorkflowCanvas(): React.JSX.Element {
         />
       )}
 
+      {/* Human review dialog */}
+      {reviewQueue.length > 0 && <ReviewDialog request={reviewQueue[0]} />}
+
       {/* Status bar */}
       <div className="h-7 bg-[#0f0f0f] border-t border-white/[0.06] flex items-center px-4 gap-4 flex-shrink-0">
         {isRunning ? (
           <span className="text-[10px] text-blue-400 font-mono">
-            ⟳ Running node {doneCount + 1}/{runningNodeCount}
+            ⟳ Running {doneCount}/{runningNodeCount}
             {currentRunningNode ? ` · ${currentRunningNode.label}` : ''}
           </span>
         ) : execution?.status === 'done' ? (
@@ -868,6 +1334,8 @@ export default function WorkflowCanvas(): React.JSX.Element {
           </span>
         ) : execution?.status === 'failed' ? (
           <span className="text-[10px] text-red-400 font-mono">✗ Failed</span>
+        ) : execution?.status === 'aborted' ? (
+          <span className="text-[10px] text-amber-400 font-mono">⏹ Aborted</span>
         ) : (
           <span className="text-[10px] text-white/25 font-mono">Ready</span>
         )}
@@ -878,7 +1346,378 @@ export default function WorkflowCanvas(): React.JSX.Element {
   )
 }
 
-// --- Run Dialog (input variables) ---
+// --- Toolbar helpers ---
+
+function useOutsideClose(ref: React.RefObject<HTMLElement | null>, onClose: () => void): void {
+  useEffect(() => {
+    const handler = (e: MouseEvent): void => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [ref, onClose])
+}
+
+type AddKind = 'prompt' | 'condition' | 'script' | 'parallel' | 'join' | 'loop' | 'humanReview'
+
+function AddNodeMenu({
+  onAdd,
+  disabled
+}: {
+  onAdd: (type: AddKind) => void
+  disabled: boolean
+}): React.JSX.Element {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useOutsideClose(ref, () => setOpen(false))
+
+  const items: { group: string; nodes: { type: AddKind; label: string; desc: string; dot: string }[] }[] = [
+    {
+      group: 'Core',
+      nodes: [
+        { type: 'prompt', label: 'Prompt', desc: 'Run Claude with a prompt', dot: 'bg-blue-400' },
+        { type: 'script', label: 'Script', desc: 'Run a shell command', dot: 'bg-purple-400' },
+        { type: 'condition', label: 'Condition', desc: 'Branch yes / no', dot: 'bg-amber-400' }
+      ]
+    },
+    {
+      group: 'Flow',
+      nodes: [
+        { type: 'parallel', label: 'Fork', desc: 'Fan out to all branches', dot: 'bg-cyan-400' },
+        { type: 'join', label: 'Join', desc: 'Wait for all branches', dot: 'bg-cyan-400' },
+        { type: 'loop', label: 'Loop', desc: 'Repeat while condition', dot: 'bg-pink-400' },
+        { type: 'humanReview', label: 'Review', desc: 'Pause for approval', dot: 'bg-orange-400' }
+      ]
+    }
+  ]
+
+  return (
+    <div ref={ref} className="relative flex-shrink-0">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        disabled={disabled}
+        className={`text-[10px] px-2.5 py-1 rounded border disabled:opacity-40 flex items-center gap-1 ${
+          open
+            ? 'text-white bg-white/[0.08] border-white/[0.12]'
+            : 'text-white/70 bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.08]'
+        }`}
+      >
+        <span className="font-semibold">+ Add</span>
+        <span className="text-white/40">▾</span>
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 bg-[#0f0f0f] border border-white/[0.1] rounded-lg shadow-2xl z-20 w-[240px] py-1">
+          {items.map((group, gi) => (
+            <div key={group.group}>
+              {gi > 0 && <div className="h-px bg-white/[0.06] my-1" />}
+              <div className="text-[9px] font-mono uppercase tracking-wider text-white/30 px-3 py-1">
+                {group.group}
+              </div>
+              {group.nodes.map((n) => (
+                <button
+                  key={n.type}
+                  onClick={() => {
+                    onAdd(n.type)
+                    setOpen(false)
+                  }}
+                  className="w-full text-left px-3 py-1.5 hover:bg-white/[0.04] flex items-center gap-2"
+                >
+                  <div className={`w-1.5 h-1.5 rounded-full ${n.dot}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11px] text-white/85">{n.label}</div>
+                    <div className="text-[9px] text-white/35 truncate">{n.desc}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SegButton({
+  active,
+  onClick,
+  disabled,
+  children,
+  activeTone,
+  title
+}: {
+  active: boolean
+  onClick: () => void
+  disabled?: boolean
+  children: React.ReactNode
+  activeTone: 'blue' | 'emerald' | 'white'
+  title?: string
+}): React.JSX.Element {
+  const activeClass =
+    activeTone === 'blue'
+      ? 'text-blue-400 bg-blue-500/15'
+      : activeTone === 'emerald'
+        ? 'text-emerald-400 bg-emerald-500/15'
+        : 'text-white bg-white/[0.1]'
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className={`text-[10px] px-2.5 py-1 disabled:opacity-40 ${
+        active ? activeClass : 'text-white/60 hover:bg-white/[0.04]'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function OverflowMenu({
+  onImport,
+  onExport,
+  disabled
+}: {
+  onImport: () => void
+  onExport: () => void
+  disabled: boolean
+}): React.JSX.Element {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useOutsideClose(ref, () => setOpen(false))
+
+  return (
+    <div ref={ref} className="relative flex-shrink-0">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        disabled={disabled}
+        className={`text-[12px] w-7 h-7 rounded border flex items-center justify-center disabled:opacity-40 ${
+          open
+            ? 'text-white bg-white/[0.08] border-white/[0.12]'
+            : 'text-white/60 bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.08]'
+        }`}
+        title="More actions"
+      >
+        ⋯
+      </button>
+      {open && (
+        <div className="absolute top-full right-0 mt-1 bg-[#0f0f0f] border border-white/[0.1] rounded-lg shadow-2xl z-20 w-[160px] py-1">
+          <button
+            onClick={() => { onImport(); setOpen(false) }}
+            className="w-full text-left px-3 py-1.5 text-[11px] text-white/75 hover:bg-white/[0.04]"
+          >
+            Import workflow…
+          </button>
+          <button
+            onClick={() => { onExport(); setOpen(false) }}
+            className="w-full text-left px-3 py-1.5 text-[11px] text-white/75 hover:bg-white/[0.04]"
+          >
+            Export workflow…
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// --- Vars Panel ---
+
+function VarsPanel({
+  vars,
+  onClose
+}: {
+  vars: Record<string, string>
+  onClose: () => void
+}): React.JSX.Element {
+  const entries = Object.entries(vars)
+  return (
+    <div className="w-[320px] flex-shrink-0 bg-[#111111] border-l border-white/[0.06] flex flex-col overflow-hidden">
+      <div className="h-11 flex items-center justify-between px-4 border-b border-white/[0.06]">
+        <span className="text-xs font-semibold text-white/90">Workflow Variables</span>
+        <button onClick={onClose} className="text-white/40 hover:text-white/70 text-sm">✕</button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <p className="text-[10px] text-white/30 leading-relaxed">
+          Variables set during execution via prompt node&apos;s <span className="text-blue-400">Set Variables</span> configuration.
+          Use <code className="text-blue-400/60">{'{{vars.name}}'}</code> to reference them.
+        </p>
+        {entries.length === 0 ? (
+          <p className="text-[10px] text-white/25 italic">No variables set yet.</p>
+        ) : (
+          entries.map(([name, value]) => (
+            <div key={name} className="bg-[#0a0a0a] border border-white/[0.06] rounded-md p-2.5">
+              <div className="text-[10px] font-mono text-emerald-400">{name}</div>
+              <pre className="text-[10px] text-white/55 font-mono whitespace-pre-wrap break-words mt-1 max-h-32 overflow-y-auto">
+                {value || '(empty)'}
+              </pre>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
+// --- History Panel ---
+
+function HistoryPanel({
+  workflowId,
+  onClose
+}: {
+  workflowId: string
+  onClose: () => void
+}): React.JSX.Element {
+  const { executions, setExecutions } = useWorkflowStore()
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selected = executions.find((r) => r.id === selectedId)
+
+  const refresh = async (): Promise<void> => {
+    const recs = (await window.api.workflow.listExecutions(workflowId)) as WorkflowExecutionRecord[]
+    setExecutions(recs)
+  }
+  useEffect(() => {
+    refresh()
+  }, [workflowId])
+
+  const del = async (id: string): Promise<void> => {
+    await window.api.workflow.deleteExecution(id)
+    if (selectedId === id) setSelectedId(null)
+    refresh()
+  }
+
+  return (
+    <div className="w-[360px] flex-shrink-0 bg-[#111111] border-l border-white/[0.06] flex flex-col overflow-hidden">
+      <div className="h-11 flex items-center justify-between px-4 border-b border-white/[0.06]">
+        <span className="text-xs font-semibold text-white/90">Execution History</span>
+        <button onClick={onClose} className="text-white/40 hover:text-white/70 text-sm">✕</button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        {executions.length === 0 && (
+          <p className="text-[10px] text-white/25 italic">No past executions.</p>
+        )}
+        {executions.map((rec) => (
+          <div
+            key={rec.id}
+            onClick={() => setSelectedId(rec.id)}
+            className={`bg-[#0a0a0a] border rounded-md p-2.5 cursor-pointer transition-colors ${
+              selectedId === rec.id
+                ? 'border-blue-500/40'
+                : 'border-white/[0.06] hover:border-white/[0.12]'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={`text-[9px] font-mono px-1.5 py-0.5 rounded ${
+                    rec.status === 'done'
+                      ? 'bg-green-500/15 text-green-400'
+                      : rec.status === 'failed'
+                        ? 'bg-red-500/15 text-red-400'
+                        : 'bg-amber-500/15 text-amber-400'
+                  }`}
+                >
+                  {rec.status}
+                </span>
+                <span className="text-[10px] text-white/55 font-mono">
+                  {new Date(rec.startedAt).toLocaleString()}
+                </span>
+              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); del(rec.id) }}
+                className="text-[10px] text-red-400/60 hover:text-red-400"
+              >
+                ×
+              </button>
+            </div>
+            <div className="text-[9px] text-white/30 mt-1 font-mono">
+              {Math.round((rec.finishedAt - rec.startedAt) / 1000)}s ·{' '}
+              {Object.keys(rec.nodeStates).length} nodes
+              {Object.keys(rec.finalVars).length > 0
+                ? ` · ${Object.keys(rec.finalVars).length} vars`
+                : ''}
+            </div>
+            {rec.error && (
+              <div className="text-[9px] text-red-400/70 mt-1 truncate">{rec.error}</div>
+            )}
+          </div>
+        ))}
+
+        {selected && (
+          <div className="mt-3 bg-[#0a0a0a] border border-white/[0.08] rounded-md p-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-semibold text-white/80">Details</span>
+              <button
+                onClick={() => replayIntoCurrent(selected)}
+                className="text-[9px] text-blue-400 hover:text-blue-300 font-mono"
+              >
+                load inputs/vars →
+              </button>
+            </div>
+            {Object.keys(selected.inputValues).length > 0 && (
+              <div>
+                <div className="text-[9px] text-white/40 mb-1">Inputs</div>
+                {Object.entries(selected.inputValues).map(([k, v]) => (
+                  <div key={k} className="text-[9px] font-mono text-white/60">
+                    <span className="text-blue-400">{k}</span>={v.slice(0, 60)}
+                    {v.length > 60 ? '…' : ''}
+                  </div>
+                ))}
+              </div>
+            )}
+            {Object.keys(selected.finalVars).length > 0 && (
+              <div>
+                <div className="text-[9px] text-white/40 mb-1">Final Variables</div>
+                {Object.entries(selected.finalVars).map(([k, v]) => (
+                  <div key={k} className="text-[9px] font-mono text-white/60">
+                    <span className="text-emerald-400">{k}</span>=
+                    {v.slice(0, 60)}
+                    {v.length > 60 ? '…' : ''}
+                  </div>
+                ))}
+              </div>
+            )}
+            <div>
+              <div className="text-[9px] text-white/40 mb-1">Nodes</div>
+              {Object.values(selected.nodeStates).map((ns) => (
+                <div key={ns.nodeId} className="text-[9px] font-mono text-white/50 flex gap-2">
+                  <span
+                    className={
+                      ns.status === 'done'
+                        ? 'text-green-500'
+                        : ns.status === 'failed'
+                          ? 'text-red-500'
+                          : ns.status === 'skipped'
+                            ? 'text-yellow-500/60'
+                            : 'text-white/40'
+                    }
+                  >
+                    {ns.status}
+                  </span>
+                  <span>{ns.nodeId}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function replayIntoCurrent(rec: WorkflowExecutionRecord): void {
+  const { currentWorkflow, setExecution } = useWorkflowStore.getState()
+  if (!currentWorkflow || currentWorkflow.id !== rec.workflowId) return
+  setExecution({
+    id: rec.id,
+    workflowId: rec.workflowId,
+    status: rec.status === 'done' ? 'done' : rec.status === 'failed' ? 'failed' : 'aborted',
+    nodeStates: rec.nodeStates,
+    vars: rec.finalVars,
+    startedAt: rec.startedAt,
+    finishedAt: rec.finishedAt
+  })
+}
+
+// --- Run Dialog ---
 
 function RunDialog({
   inputs,
@@ -891,9 +1730,7 @@ function RunDialog({
 }): React.JSX.Element {
   const [values, setValues] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {}
-    for (const input of inputs) {
-      init[input.key] = input.defaultValue ?? ''
-    }
+    for (const input of inputs) init[input.key] = input.defaultValue ?? ''
     return init
   })
 
@@ -915,7 +1752,6 @@ function RunDialog({
           <h2 className="text-sm font-semibold text-white/90">Run Workflow</h2>
           <p className="text-[11px] text-white/35 mt-0.5">Fill in the inputs before running</p>
         </div>
-
         <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
           {inputs.map((input) => (
             <div key={input.key}>
@@ -934,7 +1770,6 @@ function RunDialog({
             </div>
           ))}
         </div>
-
         <div className="px-5 py-3 border-t border-white/[0.06] flex justify-end gap-2">
           <button
             type="button"
@@ -956,7 +1791,70 @@ function RunDialog({
   )
 }
 
-// --- Inputs Editor (define input variables for workflow) ---
+// --- Review Dialog ---
+
+function ReviewDialog({ request }: { request: ReviewRequest }): React.JSX.Element {
+  const { popReview } = useWorkflowStore()
+
+  const respond = async (approved: boolean): Promise<void> => {
+    await window.api.workflow.reviewResponse(request.executionId, request.nodeId, approved)
+    popReview(request.nodeId)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-[#111111] border border-orange-400/30 rounded-xl w-[560px] max-h-[80vh] flex flex-col shadow-2xl">
+        <div className="px-5 py-4 border-b border-white/[0.06]">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse" />
+            <h2 className="text-sm font-semibold text-white/90">Human Review Needed</h2>
+            <span className="text-[9px] font-mono text-orange-400/70">{request.label}</span>
+          </div>
+          {request.message && (
+            <p className="text-[11px] text-white/55 mt-1 leading-relaxed">{request.message}</p>
+          )}
+        </div>
+        <div className="px-5 py-3 border-b border-white/[0.06] space-y-2 overflow-y-auto flex-1 max-h-[50vh]">
+          <div>
+            <div className="text-[10px] font-medium text-white/40 mb-1">Previous Node Output</div>
+            <pre className="bg-[#0a0a0a] border border-white/[0.06] rounded-md p-3 text-[11px] text-white/70 font-mono whitespace-pre-wrap break-words max-h-60 overflow-y-auto">
+              {request.prevOutput || '(empty)'}
+            </pre>
+          </div>
+          {Object.keys(request.vars).length > 0 && (
+            <div>
+              <div className="text-[10px] font-medium text-white/40 mb-1">Workflow Variables</div>
+              <div className="bg-[#0a0a0a] border border-white/[0.06] rounded-md p-3">
+                {Object.entries(request.vars).map(([k, v]) => (
+                  <div key={k} className="text-[10px] font-mono text-white/60">
+                    <span className="text-emerald-400">{k}</span>={v.slice(0, 120)}
+                    {v.length > 120 ? '…' : ''}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="px-5 py-3 flex justify-end gap-2">
+          <button
+            onClick={() => respond(false)}
+            className="text-[11px] text-red-300 bg-red-500/15 border border-red-500/30 px-4 py-1.5 rounded-md hover:bg-red-500/25"
+          >
+            ✕ Reject
+          </button>
+          <button
+            onClick={() => respond(true)}
+            className="text-[11px] font-semibold text-white bg-green-600 px-4 py-1.5 rounded-md hover:bg-green-700"
+          >
+            ✓ Approve
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// --- Inputs Editor ---
 
 function InputsEditor({
   inputs,
@@ -971,12 +1869,10 @@ function InputsEditor({
     const key = `input_${Date.now()}`
     onChange([...inputs, { key, label: 'New Input', placeholder: '' }])
   }
-
   const updateInput = (index: number, patch: Partial<WorkflowInputVar>): void => {
     const updated = inputs.map((inp, i) => (i === index ? { ...inp, ...patch } : inp))
     onChange(updated)
   }
-
   const removeInput = (index: number): void => {
     onChange(inputs.filter((_, i) => i !== index))
   }
@@ -987,12 +1883,11 @@ function InputsEditor({
         <span className="text-xs font-semibold text-white/90">Workflow Inputs</span>
         <button onClick={onClose} className="text-white/40 hover:text-white/70 text-sm">✕</button>
       </div>
-
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         <p className="text-[10px] text-white/30 leading-relaxed">
-          Define inputs that users fill in before running. Use <code className="text-blue-400/60">{'{{input.key}}'}</code> in node prompts.
+          Define inputs that users fill in before running. Use{' '}
+          <code className="text-blue-400/60">{'{{input.key}}'}</code> in node prompts.
         </p>
-
         {inputs.map((inp, i) => (
           <div key={i} className="space-y-2 pb-3 border-b border-white/[0.04]">
             <div className="flex items-center justify-between">
@@ -1032,7 +1927,6 @@ function InputsEditor({
             </div>
           </div>
         ))}
-
         <button
           onClick={addInput}
           className="w-full text-[10px] font-medium text-blue-400 bg-blue-500/10 py-1.5 rounded-md hover:bg-blue-500/20"
@@ -1049,12 +1943,14 @@ function InputsEditor({
 function TemplatesView({
   onUseTemplate,
   onCreateNew,
+  onImport,
   workflows,
   onOpenWorkflow,
   onClose
 }: {
   onUseTemplate: (tpl: WorkflowDefinition) => void
   onCreateNew: () => void
+  onImport: () => void
   workflows: WorkflowDefinition[]
   onOpenWorkflow: (id: string) => void
   onClose: () => void
@@ -1073,6 +1969,12 @@ function TemplatesView({
         </button>
         <span className="text-sm font-semibold text-white/90">Workflow Templates</span>
         <div className="flex-1" />
+        <button
+          onClick={onImport}
+          className="text-[10px] text-white/70 bg-white/[0.06] border border-white/[0.08] px-3 py-1 rounded hover:bg-white/[0.1]"
+        >
+          Import…
+        </button>
         <button
           onClick={onCreateNew}
           className="text-[10px] font-semibold text-white bg-blue-600 px-3 py-1 rounded hover:bg-blue-700"
@@ -1096,9 +1998,7 @@ function TemplatesView({
               <div className="text-[11px] text-white/40 leading-relaxed flex-1">
                 {tpl.description}
               </div>
-              <div className="text-[9px] text-white/25 font-mono">
-                {tpl.nodes.length} nodes
-              </div>
+              <div className="text-[9px] text-white/25 font-mono">{tpl.nodes.length} nodes</div>
               <button
                 onClick={() => onUseTemplate(tpl)}
                 className="mt-1 text-[11px] font-medium text-white bg-blue-600 rounded-md py-1.5 hover:bg-blue-700"

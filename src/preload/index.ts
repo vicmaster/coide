@@ -94,6 +94,16 @@ const api = {
       ipcRenderer.invoke('workflow:run', { workflowId, cwd, inputValues }),
     abort: (executionId: string) => ipcRenderer.invoke('workflow:abort', { executionId }),
     templates: () => ipcRenderer.invoke('workflow:templates'),
+    reviewResponse: (executionId: string, nodeId: string, approved: boolean) =>
+      ipcRenderer.invoke('workflow:review-response', { executionId, nodeId, approved }),
+    listExecutions: (workflowId?: string) =>
+      ipcRenderer.invoke('workflow:executions:list', { workflowId }),
+    getExecution: (id: string) => ipcRenderer.invoke('workflow:executions:get', { id }),
+    deleteExecution: (id: string) => ipcRenderer.invoke('workflow:executions:delete', { id }),
+    exportWorkflow: (workflow: unknown): Promise<{ success?: boolean; canceled?: boolean; path?: string; error?: string }> =>
+      ipcRenderer.invoke('workflow:export', { workflow }),
+    importWorkflow: (): Promise<{ success?: boolean; canceled?: boolean; workflow?: unknown; error?: string }> =>
+      ipcRenderer.invoke('workflow:import'),
     onEvent: (callback: (event: unknown) => void) => {
       const handler = (_e: Electron.IpcRendererEvent, data: unknown): void => callback(data)
       ipcRenderer.on('workflow:event', handler)

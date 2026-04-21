@@ -12,6 +12,7 @@ export type CoideSettings = {
   autoCompact: boolean
   autoCompactThreshold: number
   onboardingComplete: boolean
+  allowedTools?: string[] // when set, passed as --allowed-tools to Claude CLI (used by workflow nodes)
 }
 
 export const DEFAULT_SETTINGS: CoideSettings = {

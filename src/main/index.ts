@@ -9,8 +9,17 @@ import { spawnTerminal, writeTerminal, resizeTerminal, killTerminal, killAllTerm
 import { processFile, FILES_DIR } from './fileExtractor'
 import { type CoideSettings, DEFAULT_SETTINGS } from '../shared/types'
 import type { WorkflowDefinition } from '../shared/workflow-types'
-import { listWorkflows, loadWorkflow, saveWorkflow, deleteWorkflow, getBuiltInTemplates } from './workflowStore'
-import { executeWorkflow, abortWorkflow } from './workflow'
+import {
+  listWorkflows,
+  loadWorkflow,
+  saveWorkflow,
+  deleteWorkflow,
+  getBuiltInTemplates,
+  listExecutionRecords,
+  loadExecutionRecord,
+  deleteExecutionRecord
+} from './workflowStore'
+import { executeWorkflow, abortWorkflow, respondToReview } from './workflow'
 
 type SkillInfo = { name: string; description: string; scope: 'global' | 'project'; filePath: string }
 type AgentInfo = { name: string; description: string; scope: 'global' | 'project' }
@@ -586,6 +595,72 @@ ipcMain.handle('workflow:run', async (_event, { workflowId, cwd, inputValues }: 
 ipcMain.handle('workflow:abort', (_event, { executionId }: { executionId: string }) => {
   abortWorkflow(executionId)
   return { success: true }
+})
+
+ipcMain.handle(
+  'workflow:review-response',
+  (_event, { executionId, nodeId, approved }: { executionId: string; nodeId: string; approved: boolean }) => {
+    return respondToReview(executionId, nodeId, approved)
+  }
+)
+
+ipcMain.handle(
+  'workflow:executions:list',
+  async (_event, { workflowId }: { workflowId?: string }) => {
+    return listExecutionRecords(workflowId)
+  }
+)
+
+ipcMain.handle('workflow:executions:get', async (_event, { id }: { id: string }) => {
+  return loadExecutionRecord(id)
+})
+
+ipcMain.handle('workflow:executions:delete', async (_event, { id }: { id: string }) => {
+  await deleteExecutionRecord(id)
+  return { success: true }
+})
+
+ipcMain.handle(
+  'workflow:export',
+  async (_event, { workflow }: { workflow: WorkflowDefinition }) => {
+    const result = await dialog.showSaveDialog({
+      title: 'Export Workflow',
+      defaultPath: `${workflow.name.replace(/[^a-z0-9_-]/gi, '_') || 'workflow'}.json`,
+      filters: [{ name: 'JSON', extensions: ['json'] }]
+    })
+    if (result.canceled || !result.filePath) return { canceled: true }
+    try {
+      await writeFile(result.filePath, JSON.stringify(workflow, null, 2), 'utf-8')
+      return { success: true, path: result.filePath }
+    } catch (err) {
+      return { error: String(err) }
+    }
+  }
+)
+
+ipcMain.handle('workflow:import', async () => {
+  const result = await dialog.showOpenDialog({
+    title: 'Import Workflow',
+    filters: [{ name: 'JSON', extensions: ['json'] }],
+    properties: ['openFile']
+  })
+  if (result.canceled || result.filePaths.length === 0) return { canceled: true }
+  try {
+    const raw = await readFile(result.filePaths[0], 'utf-8')
+    const parsed = JSON.parse(raw) as WorkflowDefinition
+    if (!parsed.id || !parsed.nodes || !parsed.edges) {
+      return { error: 'Invalid workflow file — missing id, nodes, or edges' }
+    }
+    // Assign a fresh id so it doesn't clobber an existing workflow
+    parsed.id = `wf-imported-${Date.now()}`
+    parsed.isTemplate = false
+    parsed.createdAt = Date.now()
+    parsed.updatedAt = Date.now()
+    await saveWorkflow(parsed)
+    return { success: true, workflow: parsed }
+  } catch (err) {
+    return { error: String(err) }
+  }
 })
 
 // Terminal IPC handlers

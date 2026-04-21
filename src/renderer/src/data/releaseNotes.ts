@@ -11,7 +11,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     notes: [
       'Visual Agent Workflows — React Flow canvas for orchestrating Claude agents',
       '/release-notes modal with version history',
-      'Live-ticking rate limit countdown (every second)'
+      'Live-ticking rate limit countdown (every second)',
+      'Workflows Phase 2 — parallel fork/join, loops, human review, variables, per-node allowed tools, execution history, import/export'
     ]
   },
   {
