@@ -13,7 +13,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       '/release-notes modal with version history',
       'Live-ticking rate limit countdown (every second)',
       'Workflows Phase 2 — parallel fork/join, loops, human review, variables, per-node allowed tools, execution history, import/export',
-      'Workflows Phase 3 — sub-workflows, multi-project run targets, metrics dashboard, and cron/file-watcher/webhook triggers'
+      'Workflows Phase 3 — sub-workflows, multi-project run targets, metrics dashboard, and cron/file-watcher/webhook triggers',
+      'Auto-recover when Claude CLI can\'t resume a stale conversation — retry transparently without --resume'
     ]
   },
   {

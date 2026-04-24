@@ -37,6 +37,7 @@ type ClaudeEvent = ClaudeEventBase & (
   | { type: 'stream_end' }
   | { type: 'system'; subtype: string; mcp_servers?: { name: string; status: string }[]; tools?: string[] }
   | { type: 'rate_limit'; status: string; resetsAt: number; rateLimitType: string }
+  | { type: 'session_reset'; reason: string }
 )
 
 export default function Chat({
@@ -527,6 +528,13 @@ export default function Chat({
           denied: true,
           originalContent: event.originalContent
         })
+      }
+
+      if (event.type === 'session_reset') {
+        // Main process dropped a stale --resume conversation; clear the local id so
+        // the retry's fresh session_id can replace it on the upcoming 'result'.
+        updateClaudeSessionId(sid, null)
+        return
       }
 
       if (event.type === 'result') {

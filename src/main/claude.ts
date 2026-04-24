@@ -421,6 +421,10 @@ export function runClaude(
     let lineBuffer = ''
     const MAX_LINE_BUFFER = 1024 * 1024 // 1 MB cap on line buffer
     const MAX_EVENT_BUFFER = 500 // Max buffered events while waiting for permission
+    // Stale-resume auto-recovery: when Claude CLI can't find the conversation we asked
+    // to resume, silently retry once without --resume so the user's message still lands.
+    let staleResumeDetected = false
+    let retryInFlight = false
 
     function settle(fn: () => void): void {
       if (sess.settled) return
@@ -430,6 +434,19 @@ export function runClaude(
         try { ptyProc.kill('SIGTERM') } catch {}
         ptySessions.delete(coideSessionId)
       }, 200)
+    }
+
+    function retryWithoutResume(): void {
+      if (retryInFlight) return
+      retryInFlight = true
+      sess.settled = true // suppress the current run's error-result from reaching the renderer
+      log(`Stale resume detected for [${coideSessionId.slice(0, 8)}] — retrying without --resume`)
+      try { ptyProc.kill('SIGTERM') } catch {}
+      ptySessions.delete(coideSessionId)
+      usageCallbacks.delete(coideSessionId)
+      // Inform renderer so it can clear the stale claudeSessionId in the store
+      win.webContents.send('claude:event', { ...tag, type: 'session_reset', reason: 'stale_resume' })
+      runClaude(prompt, cwd, null, coideSessionId, win, settings, worktreeName).then(resolve, reject)
     }
 
     async function processToolBlocks(
@@ -494,6 +511,13 @@ export function runClaude(
           log(`Event [${coideSessionId.slice(0, 8)}]: ${JSON.stringify(raw).slice(0, 200)}`)
 
           if (raw.type === 'result') {
+            // Auto-recover from stale --resume: if the CLI reported the conversation
+            // wasn't found, silently retry without --resume. Suppress the error result
+            // from propagating to the renderer.
+            if (sessionId && staleResumeDetected && raw.is_error) {
+              retryWithoutResume()
+              continue
+            }
             settle(() => resolve((raw.session_id as string) ?? null))
           }
 
@@ -570,6 +594,9 @@ export function runClaude(
             }
           }
 
+          // When stale-resume auto-recovery fires, suppress the doomed result event
+          // so the renderer never renders the "No conversation found" error.
+          if (retryInFlight) continue
           if (sess.waitingForPermission) {
             if (sess.pendingEventBuffer.length < MAX_EVENT_BUFFER) {
               sess.pendingEventBuffer.push(raw)
@@ -579,6 +606,9 @@ export function runClaude(
           }
         } catch {
           log(`Non-JSON line: ${trimmed.slice(0, 120)}`)
+          if (sessionId && /No conversation found with session ID/i.test(trimmed)) {
+            staleResumeDetected = true
+          }
         }
       }
     })
@@ -586,17 +616,36 @@ export function runClaude(
     ptyProc.onExit(({ exitCode }) => {
       log(`PTY [${coideSessionId.slice(0, 8)}] exited with code: ${exitCode}`)
 
+      // Auto-retry already took over — don't touch the outer promise
+      if (retryInFlight) return
+
       if (lineBuffer.trim()) {
         try {
           const raw = JSON.parse(lineBuffer.trim())
-          if (raw.type === 'result') settle(() => resolve((raw.session_id as string) ?? null))
+          if (raw.type === 'result') {
+            if (sessionId && staleResumeDetected && raw.is_error) {
+              retryWithoutResume()
+              return
+            }
+            settle(() => resolve((raw.session_id as string) ?? null))
+          }
           if (sess.waitingForPermission) {
             sess.pendingEventBuffer.push(raw)
-          } else {
+          } else if (!retryInFlight) {
             handleEvent(raw, win, coideSessionId)
           }
-        } catch {}
+        } catch {
+          if (sessionId && /No conversation found with session ID/i.test(lineBuffer)) {
+            staleResumeDetected = true
+          }
+        }
         lineBuffer = ''
+      }
+
+      // Line buffer was empty but exit code suggests error and we flagged stale resume earlier
+      if (sessionId && staleResumeDetected && exitCode !== 0 && !sess.settled) {
+        retryWithoutResume()
+        return
       }
 
       // If waiting for permission, keep the session alive so respondPermission

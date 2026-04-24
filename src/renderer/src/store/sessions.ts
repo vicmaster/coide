@@ -118,7 +118,7 @@ type SessionsStore = {
   setActiveSession: (id: string) => void
   addMessage: (sessionId: string, message: Message) => void
   updateToolResult: (sessionId: string, toolId: string, content: string) => void
-  updateClaudeSessionId: (sessionId: string, claudeSessionId: string) => void
+  updateClaudeSessionId: (sessionId: string, claudeSessionId: string | null) => void
   updateSessionCwd: (sessionId: string, cwd: string) => void
   clearMessages: (sessionId: string) => void
   restartSession: (sessionId: string) => void
@@ -204,7 +204,7 @@ export const useSessionsStore = create<SessionsStore>()(
         }))
       },
 
-      updateClaudeSessionId: (sessionId: string, claudeSessionId: string) => {
+      updateClaudeSessionId: (sessionId: string, claudeSessionId: string | null) => {
         set((state) => ({
           sessions: state.sessions.map((s) =>
             s.id === sessionId ? { ...s, claudeSessionId } : s
