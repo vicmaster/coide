@@ -25,3 +25,12 @@ Thumbs.db
 
 # electron-vite
 *.asar
+
+# TypeScript incremental build cache
+*.tsbuildinfo
+
+# Stray electron-vite main bundle left at repo root
+/index.js
+
+# Personal Claude Code config (per-user, not project)
+.claude/
