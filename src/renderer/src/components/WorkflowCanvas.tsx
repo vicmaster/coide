@@ -29,7 +29,9 @@ import type {
   WorkflowNodeData,
   WorkflowExecutionRecord,
   ReviewRequest,
-  SetVarSpec
+  SetVarSpec,
+  WorkflowMetrics,
+  WorkflowTrigger
 } from '../../../shared/workflow-types'
 
 // --- Constants ---
@@ -290,6 +292,35 @@ function HumanReviewNode({ data, selected }: NodeProps): React.JSX.Element {
   )
 }
 
+function SubworkflowNode({ data, selected }: NodeProps): React.JSX.Element {
+  const status: WorkflowNodeStatus = (data.status as WorkflowNodeStatus) || 'idle'
+  const wfName = (data.childName as string) || '(not selected)'
+  return (
+    <div
+      className={`bg-[#111111] rounded-[10px] border-2 px-3 py-2.5 w-[192px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-violet-500/40' : ''}`}
+    >
+      <Handle type="target" position={Position.Left} className="!bg-white/20 !w-2 !h-2" />
+      <div className="flex items-center gap-1.5 mb-1">
+        <div className={`w-[7px] h-[7px] rounded-full ${statusColor(status)}`} />
+        <span className="text-[9px] font-bold tracking-wider text-violet-400 font-mono">
+          SUB-FLOW
+        </span>
+      </div>
+      <div className="text-xs font-medium text-white/80 truncate">{data.label as string}</div>
+      <div className="text-[10px] text-white/35 truncate mt-0.5">
+        ↳ {wfName}
+      </div>
+      {status === 'done' && (
+        <div className="text-[9px] text-green-500/70 font-mono mt-1">✓ done</div>
+      )}
+      {status === 'running' && (
+        <div className="text-[9px] text-blue-400/70 font-mono mt-1">⟳ running...</div>
+      )}
+      <Handle type="source" position={Position.Right} className="!bg-white/20 !w-2 !h-2" />
+    </div>
+  )
+}
+
 const nodeTypes: NodeTypes = {
   prompt: PromptNode,
   condition: ConditionNode,
@@ -297,14 +328,16 @@ const nodeTypes: NodeTypes = {
   parallel: ParallelNode,
   join: JoinNode,
   loop: LoopNode,
-  humanReview: HumanReviewNode
+  humanReview: HumanReviewNode,
+  subworkflow: SubworkflowNode
 }
 
 // --- Converters between WorkflowDefinition and React Flow format ---
 
 function toFlowNodes(
   wfNodes: WorkflowNode[],
-  nodeStates: Record<string, { status: WorkflowNodeStatus; output?: string; iteration?: number }>
+  nodeStates: Record<string, { status: WorkflowNodeStatus; output?: string; iteration?: number }>,
+  workflowsById?: Map<string, string>
 ): Node[] {
   return wfNodes.map((n) => {
     const d = n.data
@@ -328,6 +361,14 @@ function toFlowNodes(
     else if (d.type === 'join') extra = { separator: d.separator }
     else if (d.type === 'loop') extra = { condition: d.condition, maxIterations: d.maxIterations }
     else if (d.type === 'humanReview') extra = { message: d.message }
+    else if (d.type === 'subworkflow') {
+      extra = {
+        workflowId: d.workflowId,
+        inputMapping: d.inputMapping,
+        captureVars: d.captureVars,
+        childName: workflowsById?.get(d.workflowId) ?? ''
+      }
+    }
     return {
       id: n.id,
       type: d.type,
@@ -399,6 +440,13 @@ function fromFlowNodes(nodes: Node[]): WorkflowNode[] {
       }
     } else if (t === 'humanReview') {
       data = { type: 'humanReview', message: (n.data.message as string) || undefined }
+    } else if (t === 'subworkflow') {
+      data = {
+        type: 'subworkflow',
+        workflowId: (n.data.workflowId as string) || '',
+        inputMapping: (n.data.inputMapping as Record<string, string>) || undefined,
+        captureVars: (n.data.captureVars as string[]) || undefined
+      }
     } else {
       data = { type: 'prompt', prompt: '' }
     }
@@ -451,14 +499,15 @@ function NodeConfigPanel(): React.JSX.Element | null {
     updateCurrentWorkflow({ nodes: updatedNodes })
   }
 
-  const nodeTypeLabel = node.data.type.toUpperCase()
+  const nodeTypeLabel = node.data.type === 'subworkflow' ? 'SUB-FLOW' : node.data.type.toUpperCase()
   const typeColor =
     node.data.type === 'prompt' ? 'bg-blue-500/15 text-blue-400'
       : node.data.type === 'condition' ? 'bg-amber-500/15 text-amber-400'
         : node.data.type === 'script' ? 'bg-purple-500/15 text-purple-400'
           : node.data.type === 'parallel' || node.data.type === 'join' ? 'bg-cyan-500/15 text-cyan-400'
             : node.data.type === 'loop' ? 'bg-pink-500/15 text-pink-400'
-              : 'bg-orange-500/15 text-orange-400'
+              : node.data.type === 'subworkflow' ? 'bg-violet-500/15 text-violet-400'
+                : 'bg-orange-500/15 text-orange-400'
 
   return (
     <div className="w-[320px] flex-shrink-0 bg-[#111111] border-l border-white/[0.06] flex flex-col overflow-hidden">
@@ -597,6 +646,16 @@ function NodeConfigPanel(): React.JSX.Element | null {
               <div><span className="text-white/70">exit</span> handle (right): continues after loop ends.</div>
             </div>
           </>
+        )}
+
+        {/* Sub-workflow */}
+        {node.data.type === 'subworkflow' && (
+          <SubworkflowNodeConfig
+            node={node.data}
+            currentWorkflowId={currentWorkflow.id}
+            update={updateNodeData}
+            disabled={isRunning}
+          />
         )}
 
         {/* Human review */}
@@ -793,6 +852,134 @@ function PromptNodeConfig({
   )
 }
 
+function SubworkflowNodeConfig({
+  node,
+  currentWorkflowId,
+  update,
+  disabled
+}: {
+  node: Extract<WorkflowNodeData, { type: 'subworkflow' }>
+  currentWorkflowId: string
+  update: (patch: Record<string, unknown>) => void
+  disabled: boolean
+}): React.JSX.Element {
+  const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([])
+  const [templates, setTemplates] = useState<WorkflowDefinition[]>([])
+  const [childInputs, setChildInputs] = useState<WorkflowInputVar[]>([])
+
+  useEffect(() => {
+    Promise.all([
+      window.api.workflow.list(),
+      window.api.workflow.templates()
+    ]).then(([wfs, tpls]) => {
+      const wfList = (wfs as WorkflowDefinition[]).filter((w) => w.id !== currentWorkflowId)
+      const tplList = (tpls as WorkflowDefinition[]).filter((t) => t.id !== currentWorkflowId)
+      setWorkflows(wfList)
+      setTemplates(tplList)
+    })
+  }, [currentWorkflowId])
+
+  useEffect(() => {
+    if (!node.workflowId) {
+      setChildInputs([])
+      return
+    }
+    window.api.workflow.load(node.workflowId).then((wf) => {
+      const w = wf as WorkflowDefinition | null
+      if (w) {
+        setChildInputs(w.inputs ?? [])
+        return
+      }
+      // Built-in template fallback (not saved on disk but resolvable at run-time)
+      const tpl = templates.find((t) => t.id === node.workflowId)
+      setChildInputs(tpl?.inputs ?? [])
+    })
+  }, [node.workflowId, templates])
+
+  const mapping = node.inputMapping ?? {}
+  const updateMapping = (key: string, value: string): void => {
+    const next = { ...mapping, [key]: value }
+    if (!value) delete next[key]
+    update({ inputMapping: next })
+  }
+
+  const captureVars = node.captureVars ?? []
+  const updateCapture = (text: string): void => {
+    const list = text.split(',').map((s) => s.trim()).filter(Boolean)
+    update({ captureVars: list.length > 0 ? list : undefined })
+  }
+
+  return (
+    <>
+      <div>
+        <label className="text-[10px] font-medium text-white/40 block mb-1">Target workflow</label>
+        <select
+          value={node.workflowId}
+          onChange={(e) => update({ workflowId: e.target.value })}
+          disabled={disabled}
+          className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2.5 py-1.5 text-xs text-white/90 focus:border-violet-500/40 focus:outline-none"
+        >
+          <option value="">— select —</option>
+          {workflows.length > 0 && (
+            <optgroup label="Saved workflows">
+              {workflows.map((w) => (
+                <option key={w.id} value={w.id}>{w.name}</option>
+              ))}
+            </optgroup>
+          )}
+          {templates.length > 0 && (
+            <optgroup label="Built-in templates">
+              {templates.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </optgroup>
+          )}
+        </select>
+      </div>
+
+      {childInputs.length > 0 && (
+        <div>
+          <label className="text-[10px] font-medium text-white/40 block mb-1">Input mapping</label>
+          <div className="space-y-1.5">
+            {childInputs.map((inp) => (
+              <div key={inp.key}>
+                <div className="text-[10px] text-white/60 font-mono">{inp.key}</div>
+                <input
+                  value={mapping[inp.key] ?? ''}
+                  onChange={(e) => updateMapping(inp.key, e.target.value)}
+                  placeholder={inp.placeholder || `{{input.${inp.key}}}`}
+                  disabled={disabled}
+                  className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2 py-1 text-[10px] text-white/80 font-mono focus:outline-none focus:border-violet-500/40"
+                />
+              </div>
+            ))}
+          </div>
+          <p className="text-[9px] text-white/25 mt-1">
+            Use <code className="text-amber-400/60">{'{{input.x}}'}</code>,{' '}
+            <code className="text-amber-400/60">{'{{vars.y}}'}</code>, or raw text.
+          </p>
+        </div>
+      )}
+
+      <div>
+        <label className="text-[10px] font-medium text-white/40 block mb-1">
+          Capture vars (comma-separated; blank = all)
+        </label>
+        <input
+          value={captureVars.join(', ')}
+          onChange={(e) => updateCapture(e.target.value)}
+          placeholder="e.g. draft, score"
+          disabled={disabled}
+          className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2 py-1.5 text-[11px] text-white/80 font-mono focus:outline-none focus:border-violet-500/40"
+        />
+        <p className="text-[9px] text-white/25 mt-1">
+          Child's final vars with these names are copied into this workflow's vars.
+        </p>
+      </div>
+    </>
+  )
+}
+
 // --- Main Workflow Canvas ---
 
 let nodeCounter = 0
@@ -825,11 +1012,24 @@ export default function WorkflowCanvas(): React.JSX.Element {
   const [showInputsEditor, setShowInputsEditor] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [showVars, setShowVars] = useState(false)
+  const [showMetrics, setShowMetrics] = useState(false)
+  const [showTriggers, setShowTriggers] = useState(false)
+
+  const [templateDefs, setTemplateDefs] = useState<WorkflowDefinition[]>([])
+  useEffect(() => {
+    window.api.workflow.templates().then((tpls) => setTemplateDefs(tpls as WorkflowDefinition[]))
+  }, [])
+  const workflowsById = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const t of templateDefs) map.set(t.id, t.name)
+    for (const w of workflows) map.set(w.id, w.name)
+    return map
+  }, [workflows, templateDefs])
 
   // Convert workflow to React Flow format
   const nodeStates = execution?.nodeStates ?? {}
   const initialNodes = useMemo(
-    () => (currentWorkflow ? toFlowNodes(currentWorkflow.nodes, nodeStates) : []),
+    () => (currentWorkflow ? toFlowNodes(currentWorkflow.nodes, nodeStates, workflowsById) : []),
     [currentWorkflow?.id]
   )
   const initialEdges = useMemo(
@@ -843,9 +1043,9 @@ export default function WorkflowCanvas(): React.JSX.Element {
   // Sync React Flow state when workflow changes
   useEffect(() => {
     if (!currentWorkflow) return
-    setNodes(toFlowNodes(currentWorkflow.nodes, nodeStates))
+    setNodes(toFlowNodes(currentWorkflow.nodes, nodeStates, workflowsById))
     setEdges(toFlowEdges(currentWorkflow.edges))
-  }, [currentWorkflow?.id, currentWorkflow?.nodes, currentWorkflow?.edges])
+  }, [currentWorkflow?.id, currentWorkflow?.nodes, currentWorkflow?.edges, workflowsById])
 
   // Update node status during execution
   useEffect(() => {
@@ -961,6 +1161,8 @@ export default function WorkflowCanvas(): React.JSX.Element {
       setShowInputsEditor(false)
       setShowHistory(false)
       setShowVars(false)
+      setShowMetrics(false)
+      setShowTriggers(false)
     },
     [setSelectedNodeId]
   )
@@ -972,7 +1174,7 @@ export default function WorkflowCanvas(): React.JSX.Element {
   }, [nodes, currentWorkflow])
 
   const addNode = (
-    type: 'prompt' | 'condition' | 'script' | 'parallel' | 'join' | 'loop' | 'humanReview'
+    type: 'prompt' | 'condition' | 'script' | 'parallel' | 'join' | 'loop' | 'humanReview' | 'subworkflow'
   ): void => {
     if (!currentWorkflow) return
     const id = `node-${++nodeCounter}-${Date.now()}`
@@ -983,7 +1185,8 @@ export default function WorkflowCanvas(): React.JSX.Element {
       parallel: 'Fork',
       join: 'Join',
       loop: 'Loop',
-      humanReview: 'Human Review'
+      humanReview: 'Human Review',
+      subworkflow: 'Sub-flow'
     }
     let data: WorkflowNodeData
     if (type === 'prompt') data = { type: 'prompt', prompt: '' }
@@ -992,6 +1195,7 @@ export default function WorkflowCanvas(): React.JSX.Element {
     else if (type === 'parallel') data = { type: 'parallel' }
     else if (type === 'join') data = { type: 'join' }
     else if (type === 'loop') data = { type: 'loop', condition: 'iteration < 3', maxIterations: 10 }
+    else if (type === 'subworkflow') data = { type: 'subworkflow', workflowId: '' }
     else data = { type: 'humanReview' }
 
     const newNode: WorkflowNode = {
@@ -1027,18 +1231,27 @@ export default function WorkflowCanvas(): React.JSX.Element {
     setTimeout(() => setSaveFlash(false), 2000)
   }
 
-  const handleRun = (): void => {
+  const [runTargetCwd, setRunTargetCwd] = useState<string>('')
+
+  const handleRun = (targetCwd?: string): void => {
     if (!currentWorkflow) return
+    const effective = targetCwd || cwd
+    if (!effective) {
+      alert('No working directory set. Please select a folder in your session first.')
+      return
+    }
+    setRunTargetCwd(effective)
     if (currentWorkflow.inputs && currentWorkflow.inputs.length > 0) {
       setShowRunDialog(true)
     } else {
-      startExecution({})
+      startExecution({}, effective)
     }
   }
 
-  const startExecution = async (inputValues: Record<string, string>): Promise<void> => {
+  const startExecution = async (inputValues: Record<string, string>, targetCwd?: string): Promise<void> => {
     if (!currentWorkflow) return
-    if (!cwd) {
+    const effective = targetCwd || runTargetCwd || cwd
+    if (!effective) {
       alert('No working directory set. Please select a folder in your session first.')
       return
     }
@@ -1056,11 +1269,19 @@ export default function WorkflowCanvas(): React.JSX.Element {
       vars: {},
       startedAt: Date.now()
     })
-    const result = await window.api.workflow.run(currentWorkflow.id, cwd, inputValues)
+    const result = await window.api.workflow.run(currentWorkflow.id, effective, inputValues)
     if (result.executionId) {
       const current = useWorkflowStore.getState().execution
       if (current) setExecution({ ...current, id: result.executionId })
     }
+    // Refresh workflow to pick up updated recentCwds
+    const refreshed = await window.api.workflow.load(currentWorkflow.id)
+    if (refreshed) setCurrentWorkflow(refreshed as WorkflowDefinition)
+  }
+
+  const pickCwdAndRun = async (): Promise<void> => {
+    const picked = await window.api.dialog.pickFolder()
+    if (picked) handleRun(picked)
   }
 
   const handleAbort = (): void => {
@@ -1161,6 +1382,8 @@ export default function WorkflowCanvas(): React.JSX.Element {
     setShowInputsEditor(false)
     setShowHistory(false)
     setShowVars(false)
+    setShowMetrics(false)
+    setShowTriggers(false)
   }
 
   return (
@@ -1216,6 +1439,24 @@ export default function WorkflowCanvas(): React.JSX.Element {
           >
             History{executions.length ? ` · ${executions.length}` : ''}
           </SegButton>
+          <div className="w-px h-4 bg-white/[0.08]" />
+          <SegButton
+            active={showMetrics}
+            onClick={() => { closeSidePanels(); setShowMetrics(true) }}
+            activeTone="white"
+            title="Execution metrics"
+          >
+            Metrics
+          </SegButton>
+          <div className="w-px h-4 bg-white/[0.08]" />
+          <SegButton
+            active={showTriggers}
+            onClick={() => { closeSidePanels(); setShowTriggers(true) }}
+            activeTone="white"
+            title="Triggers (cron / file watcher / webhook)"
+          >
+            Triggers{currentWorkflow.triggers?.length ? ` · ${currentWorkflow.triggers.length}` : ''}
+          </SegButton>
         </div>
 
         <div className="flex-1 min-w-1" />
@@ -1252,13 +1493,13 @@ export default function WorkflowCanvas(): React.JSX.Element {
             ■ Stop
           </button>
         ) : (
-          <button
-            onClick={handleRun}
+          <RunButton
             disabled={currentWorkflow.nodes.length === 0}
-            className="text-[10px] font-semibold text-white bg-green-600 px-3 py-1 rounded hover:bg-green-700 disabled:opacity-40 flex-shrink-0"
-          >
-            ▶ Run
-          </button>
+            currentCwd={cwd}
+            recentCwds={currentWorkflow.recentCwds ?? []}
+            onRun={handleRun}
+            onPickCwd={pickCwdAndRun}
+          />
         )}
       </div>
 
@@ -1290,7 +1531,7 @@ export default function WorkflowCanvas(): React.JSX.Element {
           </ReactFlow>
         </div>
 
-        {selectedNodeId && !showInputsEditor && !showHistory && !showVars && <NodeConfigPanel />}
+        {selectedNodeId && !showInputsEditor && !showHistory && !showVars && !showMetrics && !showTriggers && <NodeConfigPanel />}
         {showInputsEditor && (
           <InputsEditor
             inputs={currentWorkflow.inputs ?? []}
@@ -1305,6 +1546,22 @@ export default function WorkflowCanvas(): React.JSX.Element {
           <HistoryPanel
             workflowId={currentWorkflow.id}
             onClose={() => setShowHistory(false)}
+          />
+        )}
+        {showMetrics && currentWorkflow && (
+          <MetricsPanel
+            workflowId={currentWorkflow.id}
+            executions={executions}
+            onClose={() => setShowMetrics(false)}
+          />
+        )}
+        {showTriggers && currentWorkflow && (
+          <TriggersPanel
+            workflow={currentWorkflow}
+            currentCwd={cwd}
+            onChange={(triggers) => updateCurrentWorkflow({ triggers })}
+            onSave={handleSave}
+            onClose={() => setShowTriggers(false)}
           />
         )}
       </div>
@@ -1358,7 +1615,7 @@ function useOutsideClose(ref: React.RefObject<HTMLElement | null>, onClose: () =
   }, [ref, onClose])
 }
 
-type AddKind = 'prompt' | 'condition' | 'script' | 'parallel' | 'join' | 'loop' | 'humanReview'
+type AddKind = 'prompt' | 'condition' | 'script' | 'parallel' | 'join' | 'loop' | 'humanReview' | 'subworkflow'
 
 function AddNodeMenu({
   onAdd,
@@ -1387,6 +1644,12 @@ function AddNodeMenu({
         { type: 'join', label: 'Join', desc: 'Wait for all branches', dot: 'bg-cyan-400' },
         { type: 'loop', label: 'Loop', desc: 'Repeat while condition', dot: 'bg-pink-400' },
         { type: 'humanReview', label: 'Review', desc: 'Pause for approval', dot: 'bg-orange-400' }
+      ]
+    },
+    {
+      group: 'Compose',
+      nodes: [
+        { type: 'subworkflow', label: 'Sub-flow', desc: 'Call another workflow', dot: 'bg-violet-400' }
       ]
     }
   ]
@@ -1519,6 +1782,100 @@ function OverflowMenu({
   )
 }
 
+function RunButton({
+  disabled,
+  currentCwd,
+  recentCwds,
+  onRun,
+  onPickCwd
+}: {
+  disabled: boolean
+  currentCwd: string
+  recentCwds: string[]
+  onRun: (cwd?: string) => void
+  onPickCwd: () => void
+}): React.JSX.Element {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useOutsideClose(ref, () => setOpen(false))
+  const recents = recentCwds.filter((c) => c !== currentCwd).slice(0, 5)
+  const shortPath = (p: string): string => {
+    if (!p) return ''
+    const parts = p.split('/').filter(Boolean)
+    return parts.length > 2 ? '…/' + parts.slice(-2).join('/') : p
+  }
+  return (
+    <div ref={ref} className="relative flex-shrink-0 flex items-stretch">
+      <button
+        onClick={() => onRun()}
+        disabled={disabled}
+        className="text-[10px] font-semibold text-white bg-green-600 px-3 py-1 rounded-l hover:bg-green-700 disabled:opacity-40"
+        title={currentCwd ? `Run on ${currentCwd}` : 'Run'}
+      >
+        ▶ Run
+      </button>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        disabled={disabled}
+        className="text-[10px] font-semibold text-white bg-green-700 hover:bg-green-600 px-1.5 rounded-r border-l border-green-900/50 disabled:opacity-40"
+        title="Run on…"
+      >
+        ▾
+      </button>
+      {open && (
+        <div className="absolute top-full right-0 mt-1 bg-[#0f0f0f] border border-white/[0.1] rounded-lg shadow-2xl z-20 w-[280px] py-1">
+          {currentCwd && (
+            <>
+              <div className="text-[9px] font-mono uppercase tracking-wider text-white/30 px-3 py-1">
+                Current
+              </div>
+              <button
+                onClick={() => { setOpen(false); onRun(currentCwd) }}
+                className="w-full text-left px-3 py-1.5 hover:bg-white/[0.04] flex items-center gap-2"
+              >
+                <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-[11px] text-white/85 truncate">{shortPath(currentCwd)}</div>
+                </div>
+              </button>
+            </>
+          )}
+          {recents.length > 0 && (
+            <>
+              <div className="h-px bg-white/[0.06] my-1" />
+              <div className="text-[9px] font-mono uppercase tracking-wider text-white/30 px-3 py-1">
+                Recent
+              </div>
+              {recents.map((rc) => (
+                <button
+                  key={rc}
+                  onClick={() => { setOpen(false); onRun(rc) }}
+                  className="w-full text-left px-3 py-1.5 hover:bg-white/[0.04] flex items-center gap-2"
+                  title={rc}
+                >
+                  <div className="w-1.5 h-1.5 rounded-full bg-white/40" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11px] text-white/70 truncate font-mono">
+                      {shortPath(rc)}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </>
+          )}
+          <div className="h-px bg-white/[0.06] my-1" />
+          <button
+            onClick={() => { setOpen(false); onPickCwd() }}
+            className="w-full text-left px-3 py-1.5 hover:bg-white/[0.04] text-[11px] text-blue-400"
+          >
+            Run on other project…
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // --- Vars Panel ---
 
 function VarsPanel({
@@ -1552,6 +1909,495 @@ function VarsPanel({
             </div>
           ))
         )}
+      </div>
+    </div>
+  )
+}
+
+// --- Metrics Panel ---
+
+function formatDuration(ms: number): string {
+  if (ms <= 0) return '0s'
+  if (ms < 1000) return `${ms}ms`
+  const secs = Math.round(ms / 1000)
+  if (secs < 60) return `${secs}s`
+  const mins = Math.floor(secs / 60)
+  const rem = secs % 60
+  if (mins < 60) return `${mins}m ${rem}s`
+  const hrs = Math.floor(mins / 60)
+  return `${hrs}h ${mins % 60}m`
+}
+
+function formatTokens(n: number): string {
+  if (n < 1000) return String(n)
+  if (n < 1_000_000) return `${(n / 1000).toFixed(1)}k`
+  return `${(n / 1_000_000).toFixed(2)}M`
+}
+
+function MetricsPanel({
+  workflowId,
+  executions,
+  onClose
+}: {
+  workflowId: string
+  executions: WorkflowExecutionRecord[]
+  onClose: () => void
+}): React.JSX.Element {
+  const [metrics, setMetrics] = useState<WorkflowMetrics | null>(null)
+
+  useEffect(() => {
+    window.api.workflow.metrics(workflowId).then((m) => setMetrics(m as WorkflowMetrics | null))
+  }, [workflowId, executions.length])
+
+  const successRate = metrics && metrics.totalRuns > 0
+    ? Math.round((metrics.successRuns / metrics.totalRuns) * 100)
+    : 0
+
+  const tokens = metrics?.totalTokens ?? { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 }
+  const totalTok = tokens.input + tokens.output + tokens.cacheRead + tokens.cacheCreation
+
+  return (
+    <div className="w-[380px] flex-shrink-0 bg-[#111111] border-l border-white/[0.06] flex flex-col overflow-hidden">
+      <div className="h-11 flex items-center justify-between px-4 border-b border-white/[0.06]">
+        <span className="text-xs font-semibold text-white/90">Metrics</span>
+        <button onClick={onClose} className="text-white/40 hover:text-white/70 text-sm">✕</button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {!metrics || metrics.totalRuns === 0 ? (
+          <div className="text-[11px] text-white/40 leading-relaxed">
+            No executions yet. Run this workflow to start collecting metrics.
+          </div>
+        ) : (
+          <>
+            {/* Summary */}
+            <div className="grid grid-cols-2 gap-2">
+              <StatCard label="Total runs" value={String(metrics.totalRuns)} />
+              <StatCard
+                label="Success"
+                value={`${successRate}%`}
+                accent={successRate >= 80 ? 'green' : successRate >= 50 ? 'amber' : 'red'}
+              />
+              <StatCard label="Avg duration" value={formatDuration(metrics.avgDurationMs)} />
+              <StatCard
+                label="Total tokens"
+                value={formatTokens(totalTok)}
+                accent="blue"
+              />
+            </div>
+
+            {/* Status breakdown */}
+            <div>
+              <div className="text-[10px] font-mono uppercase tracking-wider text-white/30 mb-1.5">
+                Status breakdown
+              </div>
+              <div className="bg-[#0a0a0a] border border-white/[0.06] rounded p-2 space-y-1">
+                <BreakdownRow label="Success" count={metrics.successRuns} total={metrics.totalRuns} color="bg-green-500" />
+                <BreakdownRow label="Failed" count={metrics.failedRuns} total={metrics.totalRuns} color="bg-red-500" />
+                <BreakdownRow label="Aborted" count={metrics.abortedRuns} total={metrics.totalRuns} color="bg-amber-500" />
+              </div>
+            </div>
+
+            {/* Tokens detail */}
+            {totalTok > 0 && (
+              <div>
+                <div className="text-[10px] font-mono uppercase tracking-wider text-white/30 mb-1.5">
+                  Token usage
+                </div>
+                <div className="bg-[#0a0a0a] border border-white/[0.06] rounded p-2 space-y-1 text-[11px] font-mono">
+                  <div className="flex justify-between"><span className="text-white/50">Input</span><span className="text-white/80">{formatTokens(tokens.input)}</span></div>
+                  <div className="flex justify-between"><span className="text-white/50">Output</span><span className="text-white/80">{formatTokens(tokens.output)}</span></div>
+                  <div className="flex justify-between"><span className="text-white/50">Cache read</span><span className="text-white/60">{formatTokens(tokens.cacheRead)}</span></div>
+                  <div className="flex justify-between"><span className="text-white/50">Cache write</span><span className="text-white/60">{formatTokens(tokens.cacheCreation)}</span></div>
+                </div>
+              </div>
+            )}
+
+            {/* Top failing nodes */}
+            {metrics.topFailingNodes.length > 0 && (
+              <div>
+                <div className="text-[10px] font-mono uppercase tracking-wider text-white/30 mb-1.5">
+                  Most failing nodes
+                </div>
+                <div className="bg-[#0a0a0a] border border-white/[0.06] rounded p-2 space-y-1">
+                  {metrics.topFailingNodes.map((n) => (
+                    <div key={n.nodeId} className="flex items-center justify-between text-[11px]">
+                      <span className="text-white/80 truncate flex-1">{n.nodeLabel}</span>
+                      <span className="text-red-400 font-mono ml-2">{n.failures}×</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Last run */}
+            {metrics.lastRunAt && (
+              <div className="text-[10px] text-white/35 font-mono pt-1 border-t border-white/[0.04]">
+                Last run: {new Date(metrics.lastRunAt).toLocaleString()} · {metrics.lastStatus}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function StatCard({
+  label,
+  value,
+  accent
+}: {
+  label: string
+  value: string
+  accent?: 'green' | 'amber' | 'red' | 'blue'
+}): React.JSX.Element {
+  const tone =
+    accent === 'green' ? 'text-green-400'
+      : accent === 'amber' ? 'text-amber-400'
+        : accent === 'red' ? 'text-red-400'
+          : accent === 'blue' ? 'text-blue-400'
+            : 'text-white/90'
+  return (
+    <div className="bg-[#0a0a0a] border border-white/[0.06] rounded p-2.5">
+      <div className="text-[9px] font-mono uppercase tracking-wider text-white/40">{label}</div>
+      <div className={`text-lg font-semibold mt-0.5 ${tone}`}>{value}</div>
+    </div>
+  )
+}
+
+function BreakdownRow({
+  label,
+  count,
+  total,
+  color
+}: {
+  label: string
+  count: number
+  total: number
+  color: string
+}): React.JSX.Element {
+  const pct = total > 0 ? Math.round((count / total) * 100) : 0
+  return (
+    <div className="flex items-center gap-2 text-[11px]">
+      <div className="w-16 text-white/60">{label}</div>
+      <div className="flex-1 bg-white/[0.04] h-1.5 rounded-full overflow-hidden">
+        <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+      <div className="w-12 text-right font-mono text-white/60">{count} ({pct}%)</div>
+    </div>
+  )
+}
+
+// --- Triggers Panel ---
+
+function TriggersPanel({
+  workflow,
+  currentCwd,
+  onChange,
+  onSave,
+  onClose
+}: {
+  workflow: WorkflowDefinition
+  currentCwd: string
+  onChange: (triggers: WorkflowTrigger[]) => void
+  onSave: () => Promise<void>
+  onClose: () => void
+}): React.JSX.Element {
+  const triggers = workflow.triggers ?? []
+
+  const addTrigger = async (kind: 'cron' | 'fileWatcher' | 'webhook'): Promise<void> => {
+    const id = `trg-${Date.now()}`
+    let next: WorkflowTrigger
+    if (kind === 'cron') {
+      next = {
+        id,
+        type: 'cron',
+        enabled: false,
+        schedule: '0 * * * *',
+        cwd: currentCwd
+      }
+    } else if (kind === 'fileWatcher') {
+      next = {
+        id,
+        type: 'fileWatcher',
+        enabled: false,
+        paths: ['**/*'],
+        cwd: currentCwd,
+        events: ['change'],
+        debounceMs: 1000
+      }
+    } else {
+      const { token } = await window.api.workflow.generateTriggerToken()
+      next = {
+        id,
+        type: 'webhook',
+        enabled: false,
+        token,
+        cwd: currentCwd
+      }
+    }
+    onChange([...triggers, next])
+  }
+
+  const updateTrigger = (id: string, patch: Partial<WorkflowTrigger>): void => {
+    onChange(triggers.map((t) => (t.id === id ? { ...t, ...patch } as WorkflowTrigger : t)))
+  }
+
+  const removeTrigger = (id: string): void => {
+    onChange(triggers.filter((t) => t.id !== id))
+  }
+
+  const testTrigger = async (id: string): Promise<void> => {
+    await onSave()
+    const result = await window.api.workflow.testTrigger(workflow.id, id)
+    if (!result.ok) alert(`Test failed: ${result.error ?? 'unknown'}`)
+  }
+
+  return (
+    <div className="w-[420px] flex-shrink-0 bg-[#111111] border-l border-white/[0.06] flex flex-col overflow-hidden">
+      <div className="h-11 flex items-center justify-between px-4 border-b border-white/[0.06]">
+        <span className="text-xs font-semibold text-white/90">Triggers</span>
+        <button onClick={onClose} className="text-white/40 hover:text-white/70 text-sm">✕</button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => addTrigger('cron')}
+            className="flex-1 text-[10px] text-white/75 bg-white/[0.04] border border-white/[0.08] rounded px-2 py-1.5 hover:bg-white/[0.08]"
+          >
+            + Schedule
+          </button>
+          <button
+            onClick={() => addTrigger('fileWatcher')}
+            className="flex-1 text-[10px] text-white/75 bg-white/[0.04] border border-white/[0.08] rounded px-2 py-1.5 hover:bg-white/[0.08]"
+          >
+            + File watch
+          </button>
+          <button
+            onClick={() => addTrigger('webhook')}
+            className="flex-1 text-[10px] text-white/75 bg-white/[0.04] border border-white/[0.08] rounded px-2 py-1.5 hover:bg-white/[0.08]"
+          >
+            + Webhook
+          </button>
+        </div>
+
+        {triggers.length === 0 && (
+          <div className="text-[11px] text-white/40 leading-relaxed">
+            No triggers configured. Add a schedule, file watcher, or webhook to fire this workflow
+            automatically. Changes take effect after Save.
+          </div>
+        )}
+
+        {triggers.map((t) => (
+          <TriggerCard
+            key={t.id}
+            workflowId={workflow.id}
+            trigger={t}
+            onUpdate={(patch) => updateTrigger(t.id, patch)}
+            onRemove={() => removeTrigger(t.id)}
+            onTest={() => testTrigger(t.id)}
+          />
+        ))}
+
+        <p className="text-[9px] text-white/25 leading-relaxed pt-2 border-t border-white/[0.04]">
+          Triggers require this app to stay running. Changes are applied on Save.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function TriggerCard({
+  workflowId,
+  trigger,
+  onUpdate,
+  onRemove,
+  onTest
+}: {
+  workflowId: string
+  trigger: WorkflowTrigger
+  onUpdate: (patch: Partial<WorkflowTrigger>) => void
+  onRemove: () => void
+  onTest: () => void
+}): React.JSX.Element {
+  const [webhookUrl, setWebhookUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (trigger.type !== 'webhook') return
+    window.api.workflow
+      .webhookUrl(workflowId, trigger.id, trigger.token)
+      .then((r) => setWebhookUrl(r.url))
+  }, [trigger, workflowId])
+
+  const typeColor =
+    trigger.type === 'cron' ? 'text-cyan-400 bg-cyan-500/10'
+      : trigger.type === 'fileWatcher' ? 'text-emerald-400 bg-emerald-500/10'
+        : 'text-violet-400 bg-violet-500/10'
+  const typeLabel =
+    trigger.type === 'cron' ? 'SCHEDULE'
+      : trigger.type === 'fileWatcher' ? 'FILE WATCHER'
+        : 'WEBHOOK'
+
+  const copyUrl = (): void => {
+    if (webhookUrl) navigator.clipboard.writeText(webhookUrl).catch(() => {})
+  }
+
+  return (
+    <div className="bg-[#0a0a0a] border border-white/[0.08] rounded-md p-3 space-y-2">
+      <div className="flex items-center gap-2">
+        <span className={`text-[8px] font-bold tracking-wider font-mono px-1.5 py-0.5 rounded ${typeColor}`}>
+          {typeLabel}
+        </span>
+        <input
+          value={trigger.name ?? ''}
+          onChange={(e) => onUpdate({ name: e.target.value })}
+          placeholder="Label (optional)"
+          className="flex-1 bg-transparent text-[11px] text-white/80 focus:outline-none min-w-0"
+        />
+        <label className="flex items-center gap-1 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={trigger.enabled}
+            onChange={(e) => onUpdate({ enabled: e.target.checked })}
+            className="accent-green-500 w-3 h-3"
+          />
+          <span className="text-[10px] text-white/50">on</span>
+        </label>
+      </div>
+
+      {trigger.type === 'cron' && (
+        <>
+          <div>
+            <label className="text-[9px] text-white/40 block mb-0.5">Cron schedule</label>
+            <input
+              value={trigger.schedule}
+              onChange={(e) => onUpdate({ schedule: e.target.value })}
+              placeholder="*/15 * * * *"
+              className="w-full bg-[#111] border border-white/[0.08] rounded px-2 py-1 text-[11px] text-white/85 font-mono focus:border-cyan-500/40 focus:outline-none"
+            />
+            <p className="text-[9px] text-white/25 mt-0.5 font-mono">
+              e.g. <span className="text-cyan-400/70">0 9 * * 1-5</span> (9am weekdays)
+            </p>
+          </div>
+          <CwdField cwd={trigger.cwd} onChange={(cwd) => onUpdate({ cwd })} />
+        </>
+      )}
+
+      {trigger.type === 'fileWatcher' && (
+        <>
+          <div>
+            <label className="text-[9px] text-white/40 block mb-0.5">Paths (glob, one per line)</label>
+            <textarea
+              value={trigger.paths.join('\n')}
+              onChange={(e) => onUpdate({ paths: e.target.value.split('\n').map((p) => p.trim()).filter(Boolean) })}
+              rows={2}
+              placeholder="src/**/*.ts"
+              className="w-full bg-[#111] border border-white/[0.08] rounded px-2 py-1 text-[11px] text-white/85 font-mono resize-none focus:border-emerald-500/40 focus:outline-none"
+            />
+          </div>
+          <CwdField cwd={trigger.cwd} onChange={(cwd) => onUpdate({ cwd })} />
+          <div className="flex gap-3">
+            {(['add', 'change', 'unlink'] as const).map((ev) => (
+              <label key={ev} className="flex items-center gap-1 text-[10px] text-white/60 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={trigger.events?.includes(ev) ?? false}
+                  onChange={(e) => {
+                    const current = new Set(trigger.events ?? [])
+                    if (e.target.checked) current.add(ev)
+                    else current.delete(ev)
+                    onUpdate({ events: Array.from(current) })
+                  }}
+                  className="accent-emerald-500 w-3 h-3"
+                />
+                {ev}
+              </label>
+            ))}
+          </div>
+          <div>
+            <label className="text-[9px] text-white/40 block mb-0.5">Debounce (ms)</label>
+            <input
+              type="number"
+              min={0}
+              value={trigger.debounceMs ?? 1000}
+              onChange={(e) => onUpdate({ debounceMs: parseInt(e.target.value, 10) || 0 })}
+              className="w-24 bg-[#111] border border-white/[0.08] rounded px-2 py-1 text-[11px] text-white/85 font-mono focus:outline-none"
+            />
+          </div>
+        </>
+      )}
+
+      {trigger.type === 'webhook' && (
+        <>
+          <CwdField cwd={trigger.cwd} onChange={(cwd) => onUpdate({ cwd })} />
+          <div>
+            <label className="text-[9px] text-white/40 block mb-0.5">URL (local only)</label>
+            <div className="flex gap-1">
+              <input
+                value={webhookUrl ?? 'Server not running'}
+                readOnly
+                className="flex-1 bg-[#111] border border-white/[0.08] rounded px-2 py-1 text-[10px] text-white/70 font-mono focus:outline-none"
+              />
+              <button
+                onClick={copyUrl}
+                disabled={!webhookUrl}
+                className="text-[10px] text-white/75 bg-white/[0.06] border border-white/[0.08] rounded px-2 py-1 hover:bg-white/[0.12] disabled:opacity-40"
+              >
+                Copy
+              </button>
+            </div>
+            <p className="text-[9px] text-white/25 mt-0.5">
+              POST to fire. JSON body becomes input values. Token-gated.
+            </p>
+          </div>
+        </>
+      )}
+
+      <div className="flex items-center justify-end gap-2 pt-1">
+        <button
+          onClick={onTest}
+          className="text-[10px] text-blue-400/80 hover:text-blue-300 px-2 py-0.5"
+        >
+          Test now
+        </button>
+        <button
+          onClick={onRemove}
+          className="text-[10px] text-red-400/60 hover:text-red-400 px-2 py-0.5"
+        >
+          Remove
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function CwdField({
+  cwd,
+  onChange
+}: {
+  cwd: string
+  onChange: (cwd: string) => void
+}): React.JSX.Element {
+  const pick = async (): Promise<void> => {
+    const picked = await window.api.dialog.pickFolder()
+    if (picked) onChange(picked)
+  }
+  return (
+    <div>
+      <label className="text-[9px] text-white/40 block mb-0.5">Working directory</label>
+      <div className="flex gap-1">
+        <input
+          value={cwd}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="/path/to/project"
+          className="flex-1 bg-[#111] border border-white/[0.08] rounded px-2 py-1 text-[11px] text-white/85 font-mono focus:outline-none min-w-0"
+        />
+        <button
+          onClick={pick}
+          className="text-[10px] text-white/70 bg-white/[0.06] border border-white/[0.08] rounded px-2 py-1 hover:bg-white/[0.12]"
+        >
+          Pick…
+        </button>
       </div>
     </div>
   )

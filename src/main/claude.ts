@@ -67,6 +67,23 @@ export function onClaudeResult(
   resultCallbacks.set(coideSessionId, cb)
 }
 
+// Token usage callbacks (for workflow engine to aggregate per node/execution)
+type UsageCallback = (usage: {
+  input_tokens: number
+  output_tokens: number
+  cache_creation_input_tokens: number
+  cache_read_input_tokens: number
+}) => void
+const usageCallbacks = new Map<string, UsageCallback>()
+
+export function onClaudeUsage(coideSessionId: string, cb: UsageCallback): void {
+  usageCallbacks.set(coideSessionId, cb)
+}
+
+export function offClaudeUsage(coideSessionId: string): void {
+  usageCallbacks.delete(coideSessionId)
+}
+
 // Keep a reference to prevent garbage collection from destroying notifications before they fire
 let activeNotification: Notification | null = null
 
@@ -297,6 +314,7 @@ function handleEvent(raw: Record<string, unknown>, win: BrowserWindow, coideSess
       resultCb(String(raw.result ?? ''), Boolean(raw.is_error))
       resultCallbacks.delete(coideSessionId)
     }
+    usageCallbacks.delete(coideSessionId)
 
     win.webContents.send('claude:event', {
       ...tag,
@@ -483,14 +501,21 @@ export function runClaude(
             const msg = raw.message as Record<string, unknown> | undefined
             const usage = msg?.usage as Record<string, number> | undefined
             if (usage) {
-              win.webContents.send('claude:event', {
-                ...tag,
-                type: 'usage',
+              const normalized = {
                 input_tokens: usage.input_tokens ?? 0,
                 output_tokens: usage.output_tokens ?? 0,
                 cache_creation_input_tokens: usage.cache_creation_input_tokens ?? 0,
                 cache_read_input_tokens: usage.cache_read_input_tokens ?? 0
+              }
+              win.webContents.send('claude:event', {
+                ...tag,
+                type: 'usage',
+                ...normalized
               })
+              const usageCb = usageCallbacks.get(coideSessionId)
+              if (usageCb) {
+                try { usageCb(normalized) } catch { /* ignore */ }
+              }
             }
           }
 

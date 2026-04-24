@@ -100,6 +100,13 @@ const api = {
       ipcRenderer.invoke('workflow:executions:list', { workflowId }),
     getExecution: (id: string) => ipcRenderer.invoke('workflow:executions:get', { id }),
     deleteExecution: (id: string) => ipcRenderer.invoke('workflow:executions:delete', { id }),
+    metrics: (workflowId: string) => ipcRenderer.invoke('workflow:metrics', { workflowId }),
+    testTrigger: (workflowId: string, triggerId: string): Promise<{ ok: boolean; error?: string }> =>
+      ipcRenderer.invoke('workflow:trigger:test', { workflowId, triggerId }),
+    generateTriggerToken: (): Promise<{ token: string }> =>
+      ipcRenderer.invoke('workflow:trigger:generate-token'),
+    webhookUrl: (workflowId: string, triggerId: string, token: string): Promise<{ url: string | null }> =>
+      ipcRenderer.invoke('workflow:trigger:webhook-url', { workflowId, triggerId, token }),
     exportWorkflow: (workflow: unknown): Promise<{ success?: boolean; canceled?: boolean; path?: string; error?: string }> =>
       ipcRenderer.invoke('workflow:export', { workflow }),
     importWorkflow: (): Promise<{ success?: boolean; canceled?: boolean; workflow?: unknown; error?: string }> =>

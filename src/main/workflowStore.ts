@@ -2,7 +2,12 @@ import { readdir, readFile, writeFile, unlink, mkdir } from 'fs/promises'
 import { existsSync } from 'fs'
 import { join } from 'path'
 import { homedir } from 'os'
-import type { WorkflowDefinition, WorkflowExecutionRecord } from '../shared/workflow-types'
+import type {
+  WorkflowDefinition,
+  WorkflowExecutionRecord,
+  WorkflowMetrics
+} from '../shared/workflow-types'
+import { aggregateWorkflowMetrics } from '../shared/workflowHelpers'
 
 const WORKFLOW_DIR = join(homedir(), '.coide', 'workflows')
 const EXECUTIONS_DIR = join(homedir(), '.coide', 'workflow-executions')
@@ -29,9 +34,12 @@ export async function listWorkflows(): Promise<WorkflowDefinition[]> {
 
 export async function loadWorkflow(id: string): Promise<WorkflowDefinition | null> {
   const filePath = join(WORKFLOW_DIR, `${id}.json`)
-  if (!existsSync(filePath)) return null
-  const raw = await readFile(filePath, 'utf-8')
-  return JSON.parse(raw)
+  if (existsSync(filePath)) {
+    const raw = await readFile(filePath, 'utf-8')
+    return JSON.parse(raw)
+  }
+  // Fallback: allow sub-workflow nodes to reference built-in templates directly
+  return getBuiltInTemplates().find((t) => t.id === id) ?? null
 }
 
 export async function saveWorkflow(wf: WorkflowDefinition): Promise<void> {
@@ -86,6 +94,16 @@ export async function deleteExecutionRecord(id: string): Promise<void> {
   if (existsSync(filePath)) await unlink(filePath)
 }
 
+// --- Metrics aggregation ---
+export async function computeWorkflowMetrics(
+  workflowId: string
+): Promise<WorkflowMetrics | null> {
+  const wf = await loadWorkflow(workflowId)
+  if (!wf) return null
+  const records = await listExecutionRecords(workflowId)
+  return aggregateWorkflowMetrics(wf, records)
+}
+
 // --- Built-in Templates ---
 export function getBuiltInTemplates(): WorkflowDefinition[] {
   return [
@@ -94,7 +112,9 @@ export function getBuiltInTemplates(): WorkflowDefinition[] {
     leadResearchTemplate(),
     parallelAuditTemplate(),
     iterativeRefinerTemplate(),
-    researchBriefTemplate()
+    researchBriefTemplate(),
+    auditReusableTemplate(),
+    weeklyRepoDigestTemplate()
   ]
 }
 
@@ -615,6 +635,182 @@ function researchBriefTemplate(): WorkflowDefinition {
       { id: 'e-pain-join', source: 'painpoints', target: 'join' },
       { id: 'e-join-review', source: 'join', target: 'review' },
       { id: 'e-review-brief', source: 'review', target: 'brief' }
+    ]
+  }
+}
+
+function auditReusableTemplate(): WorkflowDefinition {
+  return {
+    id: 'template-audit-reusable',
+    name: 'Parallel Audit (Reusable Sub-flow)',
+    description:
+      'Read-only parallel audit: runs security, performance, and style reviews in parallel, joins the reports, and captures the consolidated findings into the variable "audit_findings". Designed to be called by other workflows via a Sub-flow node.',
+    isTemplate: true,
+    createdAt: 0,
+    updatedAt: 0,
+    inputs: [
+      {
+        key: 'target',
+        label: 'Target to audit',
+        placeholder: 'e.g. a list of files, a diff, or a description of scope',
+        defaultValue: 'the files changed on the current branch (git diff --name-only)'
+      }
+    ],
+    nodes: [
+      {
+        id: 'fork',
+        label: 'Fork Reviewers',
+        position: { x: 60, y: 220 },
+        data: { type: 'parallel' }
+      },
+      {
+        id: 'security',
+        label: 'Security',
+        position: { x: 300, y: 60 },
+        data: {
+          type: 'prompt',
+          prompt:
+            'Audit the following target for security issues (injection, auth, unsafe eval, secrets, path traversal). Output a bulleted list of findings with file:line references where possible. If nothing found, say "No security issues found."\n\nTarget:\n{{input.target}}',
+          model: 'sonnet',
+          allowedTools: ['Read', 'Grep', 'Glob']
+        }
+      },
+      {
+        id: 'perf',
+        label: 'Performance',
+        position: { x: 300, y: 220 },
+        data: {
+          type: 'prompt',
+          prompt:
+            'Audit the following target for performance issues (N+1 queries, large allocations, render thrash, sync I/O on hot paths). Output a bulleted list. If nothing found, say "No performance issues found."\n\nTarget:\n{{input.target}}',
+          model: 'sonnet',
+          allowedTools: ['Read', 'Grep', 'Glob']
+        }
+      },
+      {
+        id: 'style',
+        label: 'Style',
+        position: { x: 300, y: 380 },
+        data: {
+          type: 'prompt',
+          prompt:
+            'Audit the following target for style / naming / readability issues. Output a bulleted list. If nothing found, say "No style issues found."\n\nTarget:\n{{input.target}}',
+          model: 'haiku',
+          allowedTools: ['Read']
+        }
+      },
+      {
+        id: 'join',
+        label: 'Consolidate',
+        position: { x: 560, y: 220 },
+        data: { type: 'join', separator: '\n\n=== NEXT SECTION ===\n\n' }
+      },
+      {
+        id: 'capture',
+        label: 'Capture Findings',
+        position: { x: 820, y: 220 },
+        data: {
+          type: 'prompt',
+          prompt:
+            'Return the following audit report verbatim — do not add commentary, do not summarize, do not edit. This output is captured into the parent workflow\'s variables.\n\n---\n{{prev.output}}\n---',
+          model: 'haiku',
+          setVars: [{ name: 'audit_findings', extractor: '' }]
+        }
+      }
+    ],
+    edges: [
+      { id: 'e-fork-sec', source: 'fork', target: 'security' },
+      { id: 'e-fork-perf', source: 'fork', target: 'perf' },
+      { id: 'e-fork-style', source: 'fork', target: 'style' },
+      { id: 'e-sec-join', source: 'security', target: 'join' },
+      { id: 'e-perf-join', source: 'perf', target: 'join' },
+      { id: 'e-style-join', source: 'style', target: 'join' },
+      { id: 'e-join-capture', source: 'join', target: 'capture' }
+    ]
+  }
+}
+
+function weeklyRepoDigestTemplate(): WorkflowDefinition {
+  return {
+    id: 'template-weekly-repo-digest',
+    name: 'Weekly Repo Digest (Phase 3 Showcase)',
+    description:
+      'Demonstrates sub-workflows, triggers, and metrics. Calls the Parallel Code Audit sub-workflow on this week\'s changes, captures its findings, and drafts a Friday digest. Ships with a disabled Friday-5pm cron trigger — flip it on in the Triggers tab.',
+    isTemplate: true,
+    createdAt: 0,
+    updatedAt: 0,
+    inputs: [
+      {
+        key: 'repo_label',
+        label: 'Repo label (for the digest header)',
+        placeholder: 'e.g. "coide"',
+        defaultValue: 'this repo'
+      }
+    ],
+    triggers: [
+      {
+        id: 'trg-weekly-cron',
+        type: 'cron',
+        enabled: false,
+        name: 'Friday 5pm digest',
+        schedule: '0 17 * * 5',
+        cwd: ''
+      }
+    ],
+    nodes: [
+      {
+        id: 'week_commits',
+        label: 'List This Week\'s Commits',
+        position: { x: 40, y: 200 },
+        data: {
+          type: 'script',
+          command: 'git log --since="7 days ago" --pretty=format:"- %h %s" --no-merges | head -40'
+        }
+      },
+      {
+        id: 'scope',
+        label: 'Summarize Changes',
+        position: { x: 320, y: 200 },
+        data: {
+          type: 'prompt',
+          prompt:
+            'Here are this week\'s commits for {{input.repo_label}}:\n\n{{prev.output}}\n\nIn 3-5 bullets, describe what shipped this week. No prose, no hype — just what changed.',
+          model: 'haiku',
+          setVars: [{ name: 'changes', extractor: '' }]
+        }
+      },
+      {
+        id: 'audit',
+        label: 'Audit via Sub-flow',
+        position: { x: 620, y: 200 },
+        data: {
+          type: 'subworkflow',
+          workflowId: 'template-audit-reusable',
+          inputMapping: {
+            target: '{{vars.changes}}'
+          },
+          captureVars: ['audit_findings']
+        }
+      },
+      {
+        id: 'digest',
+        label: 'Draft Friday Digest',
+        position: { x: 920, y: 200 },
+        data: {
+          type: 'prompt',
+          prompt:
+            'Draft a concise Friday digest for {{input.repo_label}}.\n\nWhat shipped:\n{{vars.changes}}\n\nConsolidated audit findings (from sub-workflow):\n{{vars.audit_findings}}\n\nStructure:\n1. This week in 3 bullets\n2. Top 2 audit findings worth attention\n3. One question to bring to Monday standup\n\nKeep it under 200 words. No buzzwords.',
+          systemPrompt:
+            'Write for engineers, not managers. Precise, concrete, concise. No filler.',
+          model: 'sonnet',
+          setVars: [{ name: 'digest', extractor: '' }]
+        }
+      }
+    ],
+    edges: [
+      { id: 'e-commits-scope', source: 'week_commits', target: 'scope' },
+      { id: 'e-scope-audit', source: 'scope', target: 'audit' },
+      { id: 'e-audit-digest', source: 'audit', target: 'digest' }
     ]
   }
 }

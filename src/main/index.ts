@@ -17,9 +17,19 @@ import {
   getBuiltInTemplates,
   listExecutionRecords,
   loadExecutionRecord,
-  deleteExecutionRecord
+  deleteExecutionRecord,
+  computeWorkflowMetrics
 } from './workflowStore'
 import { executeWorkflow, abortWorkflow, respondToReview } from './workflow'
+import {
+  startTriggerRuntime,
+  stopTriggerRuntime,
+  refreshTriggers,
+  updateTriggerSettings,
+  testTrigger
+} from './workflowTriggers'
+import { startWebhookServer, stopWebhookServer, getWebhookPort } from './webhookServer'
+import { randomBytes } from 'crypto'
 
 type SkillInfo = { name: string; description: string; scope: 'global' | 'project'; filePath: string }
 type AgentInfo = { name: string; description: string; scope: 'global' | 'project' }
@@ -153,6 +163,7 @@ ipcMain.handle('claude:permission-response', (_event, { approved, coideSessionId
 
 ipcMain.handle('settings:sync', (_event, settings: Partial<CoideSettings>) => {
   currentSettings = { ...DEFAULT_SETTINGS, ...settings }
+  updateTriggerSettings(currentSettings)
 })
 
 ipcMain.handle('dialog:pickFolder', async () => {
@@ -570,12 +581,31 @@ ipcMain.handle('workflow:load', async (_event, { id }: { id: string }) => {
 
 ipcMain.handle('workflow:save', async (_event, { workflow }: { workflow: WorkflowDefinition }) => {
   await saveWorkflow(workflow)
+  await refreshTriggers()
   return { success: true }
 })
 
 ipcMain.handle('workflow:delete', async (_event, { id }: { id: string }) => {
   await deleteWorkflow(id)
+  await refreshTriggers()
   return { success: true }
+})
+
+ipcMain.handle(
+  'workflow:trigger:test',
+  async (_event, { workflowId, triggerId }: { workflowId: string; triggerId: string }) => {
+    return testTrigger(workflowId, triggerId)
+  }
+)
+
+ipcMain.handle('workflow:trigger:generate-token', () => {
+  return { token: randomBytes(24).toString('hex') }
+})
+
+ipcMain.handle('workflow:trigger:webhook-url', (_event, { workflowId, triggerId, token }: { workflowId: string; triggerId: string; token: string }) => {
+  const port = getWebhookPort()
+  if (!port) return { url: null }
+  return { url: `http://127.0.0.1:${port}/webhook/${workflowId}/${triggerId}?token=${token}` }
 })
 
 ipcMain.handle('workflow:templates', () => {
@@ -618,6 +648,10 @@ ipcMain.handle('workflow:executions:get', async (_event, { id }: { id: string })
 ipcMain.handle('workflow:executions:delete', async (_event, { id }: { id: string }) => {
   await deleteExecutionRecord(id)
   return { success: true }
+})
+
+ipcMain.handle('workflow:metrics', async (_event, { workflowId }: { workflowId: string }) => {
+  return computeWorkflowMetrics(workflowId)
 })
 
 ipcMain.handle(
@@ -684,7 +718,7 @@ ipcMain.handle('terminal:kill', (_event, { id }: { id: string }) => {
   killTerminal(id)
 })
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.coide')
   if (process.platform === 'darwin') {
     const icon = nativeImage.createFromPath(join(__dirname, '../../resources/icon.png'))
@@ -697,10 +731,17 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
+  // Start trigger runtime + webhook server once the window is ready
+  if (mainWindow) {
+    await startWebhookServer()
+    await startTriggerRuntime(mainWindow, currentSettings)
+  }
 })
 
 app.on('will-quit', () => {
   killAllTerminals()
+  stopTriggerRuntime()
+  stopWebhookServer()
   rm(IMAGES_DIR, { recursive: true, force: true }).catch(() => {})
   rm(FILES_DIR, { recursive: true, force: true }).catch(() => {})
 })

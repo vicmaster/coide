@@ -2,8 +2,13 @@ import { describe, it, expect } from 'vitest'
 import {
   interpolate,
   applyExtractor,
-  evaluateCondition
+  evaluateCondition,
+  aggregateWorkflowMetrics
 } from '../../shared/workflowHelpers'
+import type {
+  WorkflowDefinition,
+  WorkflowExecutionRecord
+} from '../../shared/workflow-types'
 
 describe('interpolate', () => {
   it('returns template unchanged when there are no placeholders', () => {
@@ -133,5 +138,131 @@ describe('evaluateCondition', () => {
 
   it('returns false for syntactically invalid expressions', () => {
     expect(evaluateCondition('((', '', {}, 0)).toBe(false)
+  })
+})
+
+describe('aggregateWorkflowMetrics', () => {
+  const wf: WorkflowDefinition = {
+    id: 'wf-test',
+    name: 'Test Flow',
+    createdAt: 0,
+    updatedAt: 0,
+    nodes: [
+      { id: 'n1', label: 'Seed', position: { x: 0, y: 0 }, data: { type: 'prompt', prompt: '' } },
+      { id: 'n2', label: 'Review', position: { x: 0, y: 0 }, data: { type: 'prompt', prompt: '' } },
+      { id: 'n3', label: 'Finalize', position: { x: 0, y: 0 }, data: { type: 'prompt', prompt: '' } }
+    ],
+    edges: []
+  }
+
+  const mkRecord = (
+    id: string,
+    status: 'done' | 'failed' | 'aborted',
+    overrides: Partial<WorkflowExecutionRecord> = {}
+  ): WorkflowExecutionRecord => ({
+    id,
+    workflowId: wf.id,
+    workflowName: wf.name,
+    status,
+    startedAt: 1000,
+    finishedAt: 3000,
+    inputValues: {},
+    finalVars: {},
+    nodeStates: {},
+    ...overrides
+  })
+
+  it('returns zeros for an empty history', () => {
+    const m = aggregateWorkflowMetrics(wf, [])
+    expect(m.totalRuns).toBe(0)
+    expect(m.successRuns).toBe(0)
+    expect(m.avgDurationMs).toBe(0)
+    expect(m.topFailingNodes).toEqual([])
+    expect(m.lastRunAt).toBeUndefined()
+    expect(m.totalTokens).toEqual({ input: 0, output: 0, cacheRead: 0, cacheCreation: 0 })
+  })
+
+  it('counts each status independently', () => {
+    const m = aggregateWorkflowMetrics(wf, [
+      mkRecord('r1', 'done'),
+      mkRecord('r2', 'done'),
+      mkRecord('r3', 'failed'),
+      mkRecord('r4', 'aborted')
+    ])
+    expect(m.totalRuns).toBe(4)
+    expect(m.successRuns).toBe(2)
+    expect(m.failedRuns).toBe(1)
+    expect(m.abortedRuns).toBe(1)
+  })
+
+  it('averages duration and rounds to whole ms', () => {
+    const m = aggregateWorkflowMetrics(wf, [
+      mkRecord('r1', 'done', { startedAt: 0, finishedAt: 1000 }),
+      mkRecord('r2', 'done', { startedAt: 0, finishedAt: 2000 }),
+      mkRecord('r3', 'done', { startedAt: 0, finishedAt: 3001 })
+    ])
+    expect(m.avgDurationMs).toBe(2000) // (1000+2000+3001)/3 = 2000.33 → 2000
+  })
+
+  it('sums token usage across all records', () => {
+    const m = aggregateWorkflowMetrics(wf, [
+      mkRecord('r1', 'done', {
+        tokens: { input: 100, output: 50, cacheRead: 10, cacheCreation: 5 }
+      }),
+      mkRecord('r2', 'failed', {
+        tokens: { input: 200, output: 0, cacheRead: 0, cacheCreation: 15 }
+      })
+    ])
+    expect(m.totalTokens).toEqual({ input: 300, output: 50, cacheRead: 10, cacheCreation: 20 })
+  })
+
+  it('ranks failing nodes by frequency and resolves their labels', () => {
+    const m = aggregateWorkflowMetrics(wf, [
+      mkRecord('r1', 'failed', {
+        nodeStates: {
+          n1: { nodeId: 'n1', status: 'done' },
+          n2: { nodeId: 'n2', status: 'failed' }
+        }
+      }),
+      mkRecord('r2', 'failed', {
+        nodeStates: {
+          n2: { nodeId: 'n2', status: 'failed' },
+          n3: { nodeId: 'n3', status: 'failed' }
+        }
+      }),
+      mkRecord('r3', 'failed', {
+        nodeStates: {
+          n2: { nodeId: 'n2', status: 'failed' }
+        }
+      })
+    ])
+    expect(m.topFailingNodes[0]).toEqual({ nodeId: 'n2', nodeLabel: 'Review', failures: 3 })
+    expect(m.topFailingNodes[1]).toEqual({ nodeId: 'n3', nodeLabel: 'Finalize', failures: 1 })
+    expect(m.topFailingNodes).toHaveLength(2)
+  })
+
+  it('picks lastRunAt / lastStatus from the most recent record regardless of order', () => {
+    const m = aggregateWorkflowMetrics(wf, [
+      mkRecord('r-old', 'done', { startedAt: 1000 }),
+      mkRecord('r-new', 'failed', { startedAt: 9999 }),
+      mkRecord('r-mid', 'done', { startedAt: 5000 })
+    ])
+    expect(m.lastRunAt).toBe(9999)
+    expect(m.lastStatus).toBe('failed')
+  })
+
+  it('falls back to nodeId when a failing node is missing from the workflow def', () => {
+    const m = aggregateWorkflowMetrics(wf, [
+      mkRecord('r1', 'failed', {
+        nodeStates: {
+          'deleted-node': { nodeId: 'deleted-node', status: 'failed' }
+        }
+      })
+    ])
+    expect(m.topFailingNodes[0]).toEqual({
+      nodeId: 'deleted-node',
+      nodeLabel: 'deleted-node',
+      failures: 1
+    })
   })
 })

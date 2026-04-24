@@ -1,8 +1,8 @@
 import { BrowserWindow } from 'electron'
 import { exec as execCallback } from 'child_process'
 import { appendFile } from 'fs'
-import { runClaude, onClaudeResult, abortClaude } from './claude'
-import { loadWorkflow, saveExecutionRecord } from './workflowStore'
+import { runClaude, onClaudeResult, onClaudeUsage, offClaudeUsage, abortClaude } from './claude'
+import { loadWorkflow, saveExecutionRecord, saveWorkflow } from './workflowStore'
 import { interpolate, applyExtractor, evaluateCondition } from '../shared/workflowHelpers'
 
 function wfLog(msg: string): void {
@@ -19,8 +19,11 @@ import type {
   WorkflowNodeRunState,
   WorkflowExecutionRecord,
   ReviewRequest,
-  SetVarSpec
+  SetVarSpec,
+  WorkflowTokenUsage
 } from '../shared/workflow-types'
+
+const MAX_SUBWORKFLOW_DEPTH = 3
 
 // --- Active executions ---
 type ActiveExec = {
@@ -34,6 +37,23 @@ type ActiveExec = {
   settings: CoideSettings
   activeSessions: Set<string>
   pendingReviews: Map<string, (approved: boolean) => void>
+  nodeTokens: Record<string, WorkflowTokenUsage>
+  totalTokens: WorkflowTokenUsage
+  depth: number
+  triggeredBy?: 'manual' | 'cron' | 'fileWatcher' | 'webhook'
+}
+
+function zeroUsage(): WorkflowTokenUsage {
+  return { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 }
+}
+
+function addUsage(a: WorkflowTokenUsage, b: WorkflowTokenUsage): WorkflowTokenUsage {
+  return {
+    input: a.input + b.input,
+    output: a.output + b.output,
+    cacheRead: a.cacheRead + b.cacheRead,
+    cacheCreation: a.cacheCreation + b.cacheCreation
+  }
 }
 
 const activeExecutions = new Map<string, ActiveExec>()
@@ -102,9 +122,22 @@ async function executePromptNode(
       : undefined
   }
 
+  // Aggregate token usage for this node run
+  onClaudeUsage(coideSessionId, (u) => {
+    const delta: WorkflowTokenUsage = {
+      input: u.input_tokens,
+      output: u.output_tokens,
+      cacheRead: u.cache_read_input_tokens,
+      cacheCreation: u.cache_creation_input_tokens
+    }
+    exec.nodeTokens[node.id] = addUsage(exec.nodeTokens[node.id] ?? zeroUsage(), delta)
+    exec.totalTokens = addUsage(exec.totalTokens, delta)
+  })
+
   const resultPromise = new Promise<string>((resolve, reject) => {
     onClaudeResult(coideSessionId, (result, isError) => {
       exec.activeSessions.delete(coideSessionId)
+      offClaudeUsage(coideSessionId)
       if (isError) reject(new Error(result))
       else resolve(result)
     })
@@ -117,6 +150,49 @@ async function executePromptNode(
   const output = await resultPromise
   applySetVars(node.data.setVars, output, exec, executionId)
   return output
+}
+
+async function executeSubworkflowNode(
+  node: WorkflowNode,
+  prevOutput: string,
+  executionId: string,
+  exec: ActiveExec
+): Promise<string> {
+  if (node.data.type !== 'subworkflow') throw new Error('Not a subworkflow node')
+
+  if (exec.depth >= MAX_SUBWORKFLOW_DEPTH) {
+    throw new Error(`Sub-workflow depth limit (${MAX_SUBWORKFLOW_DEPTH}) exceeded`)
+  }
+
+  const child = await loadWorkflow(node.data.workflowId)
+  if (!child) throw new Error(`Sub-workflow not found: ${node.data.workflowId}`)
+
+  // Resolve child inputs from parent's context via inputMapping templates
+  const childInputs: Record<string, string> = {}
+  const mapping = node.data.inputMapping ?? {}
+  for (const key of Object.keys(mapping)) {
+    childInputs[key] = interpolate(mapping[key], prevOutput, exec.inputValues, exec.vars)
+  }
+  // Inherit any child input defaults not mapped
+  for (const inp of child.inputs ?? []) {
+    if (!(inp.key in childInputs) && inp.defaultValue) {
+      childInputs[inp.key] = inp.defaultValue
+    }
+  }
+
+  const childResult = await runChildWorkflow(child, childInputs, exec)
+
+  // Capture child vars into parent
+  const capture = node.data.captureVars
+  const toCopy = capture && capture.length > 0 ? capture : Object.keys(childResult.finalVars)
+  for (const name of toCopy) {
+    if (childResult.finalVars[name] !== undefined) {
+      exec.vars[name] = childResult.finalVars[name]
+      sendEvent(exec.win, { type: 'variable:set', executionId, name, value: childResult.finalVars[name] })
+    }
+  }
+
+  return childResult.output
 }
 
 function executeScriptNode(node: WorkflowNode, exec: ActiveExec, prevOutput: string): Promise<string> {
@@ -247,6 +323,13 @@ async function runFromNode(
       await Promise.all(
         next.map((e) => runFromNode(e.target, prevOutput, executionId, exec, visited, joinCollectors))
       )
+      return
+    }
+
+    if (nodeType === 'subworkflow') {
+      const output = await executeSubworkflowNode(node, prevOutput, executionId, exec)
+      await markNodeDone(exec, executionId, node.id, output)
+      await runSuccessors(node.id, output, executionId, exec, visited, joinCollectors)
       return
     }
 
@@ -412,7 +495,8 @@ async function markNodeDone(
     startedAt: prev?.startedAt ?? Date.now(),
     finishedAt: Date.now(),
     output: output.slice(0, 10_000),
-    iteration: prev?.iteration
+    iteration: prev?.iteration,
+    tokens: exec.nodeTokens[nodeId]
   }
   sendEvent(exec.win, {
     type: 'node:done',
@@ -440,9 +524,10 @@ export async function executeWorkflow(
   cwd: string,
   win: BrowserWindow,
   settings: CoideSettings,
-  inputValues?: Record<string, string>
+  inputValues?: Record<string, string>,
+  triggeredBy?: 'manual' | 'cron' | 'fileWatcher' | 'webhook'
 ): Promise<string> {
-  wfLog(`executeWorkflow: workflowId=${workflowId}, cwd=${cwd}`)
+  wfLog(`executeWorkflow: workflowId=${workflowId}, cwd=${cwd}, triggeredBy=${triggeredBy ?? 'manual'}`)
   const wf = await loadWorkflow(workflowId)
   if (!wf) throw new Error(`Workflow not found: ${workflowId}`)
 
@@ -458,9 +543,25 @@ export async function executeWorkflow(
     win,
     settings,
     activeSessions: new Set(),
-    pendingReviews: new Map()
+    pendingReviews: new Map(),
+    nodeTokens: {},
+    totalTokens: zeroUsage(),
+    depth: 0,
+    triggeredBy: triggeredBy ?? 'manual'
   }
   activeExecutions.set(executionId, exec)
+
+  // Record cwd in workflow's recents (max 8, most recent first)
+  try {
+    const current = wf.recentCwds ?? []
+    const updated = [cwd, ...current.filter((c) => c !== cwd)].slice(0, 8)
+    if (JSON.stringify(updated) !== JSON.stringify(current)) {
+      wf.recentCwds = updated
+      await saveWorkflow(wf)
+    }
+  } catch (e) {
+    wfLog(`recentCwds update failed: ${e}`)
+  }
 
   const startNodes = findStartNodes(wf)
   if (startNodes.length === 0) {
@@ -487,7 +588,10 @@ export async function executeWorkflow(
       finishedAt,
       inputValues: exec.inputValues,
       finalVars: { ...exec.vars },
-      nodeStates: { ...exec.nodeStates }
+      nodeStates: { ...exec.nodeStates },
+      cwd,
+      tokens: exec.totalTokens,
+      triggeredBy: exec.triggeredBy
     }
     if (exec.aborted) {
       sendEvent(win, { type: 'execution:aborted', executionId, record })
@@ -506,7 +610,10 @@ export async function executeWorkflow(
       inputValues: exec.inputValues,
       finalVars: { ...exec.vars },
       nodeStates: { ...exec.nodeStates },
-      error: msg
+      error: msg,
+      cwd,
+      tokens: exec.totalTokens,
+      triggeredBy: exec.triggeredBy
     }
     sendEvent(win, { type: 'execution:failed', executionId, error: msg.slice(0, 500), record })
   } finally {
@@ -517,6 +624,76 @@ export async function executeWorkflow(
   }
 
   return executionId
+}
+
+// Run a sub-workflow from within a parent exec. Tokens bubble up to parent; no execution
+// record is persisted for the child (it's part of the parent run).
+async function runChildWorkflow(
+  wf: WorkflowDefinition,
+  inputValues: Record<string, string>,
+  parent: ActiveExec
+): Promise<{ output: string; finalVars: Record<string, string> }> {
+  const executionId = `exec-${++executionCounter}-${Date.now()}-child`
+  const child: ActiveExec = {
+    aborted: parent.aborted,
+    vars: {},
+    nodeStates: {},
+    inputValues,
+    wf,
+    cwd: parent.cwd,
+    win: parent.win,
+    settings: parent.settings,
+    activeSessions: parent.activeSessions, // share, so abort cascades
+    pendingReviews: new Map(),
+    nodeTokens: {},
+    totalTokens: zeroUsage(),
+    depth: parent.depth + 1,
+    triggeredBy: parent.triggeredBy
+  }
+  activeExecutions.set(executionId, child)
+
+  const startNodes = findStartNodes(wf)
+  if (startNodes.length === 0) {
+    activeExecutions.delete(executionId)
+    throw new Error(`Sub-workflow "${wf.name}" has no start node`)
+  }
+
+  const joinCollectors = new Map<string, { outputs: string[]; arrivals: number; expected: number }>()
+  const visited = new Set<string>()
+
+  let lastOutput = ''
+  try {
+    const results = await Promise.all(
+      startNodes.map((n) => runFromNode(n.id, '', executionId, child, visited, joinCollectors))
+    )
+    // Use output of the terminal node (first one with no successors) as the child's output
+    const terminal = findTerminalNode(wf, child.nodeStates)
+    lastOutput = terminal?.output ?? String(results[0] ?? '')
+  } finally {
+    activeExecutions.delete(executionId)
+    // Bubble tokens up
+    parent.totalTokens = addUsage(parent.totalTokens, child.totalTokens)
+    // Cascade abort state
+    if (child.aborted) parent.aborted = true
+  }
+
+  return { output: lastOutput, finalVars: { ...child.vars } }
+}
+
+function findTerminalNode(
+  wf: WorkflowDefinition,
+  nodeStates: Record<string, WorkflowNodeRunState>
+): WorkflowNodeRunState | null {
+  // Prefer done nodes with no outgoing edges; fallback to last-finished done node
+  const hasOutgoing = new Set(wf.edges.map((e) => e.source))
+  const doneStates = Object.values(nodeStates).filter((s) => s.status === 'done')
+  const terminal = doneStates.filter((s) => !hasOutgoing.has(s.nodeId))
+  if (terminal.length > 0) {
+    terminal.sort((a, b) => (b.finishedAt ?? 0) - (a.finishedAt ?? 0))
+    return terminal[0]
+  }
+  doneStates.sort((a, b) => (b.finishedAt ?? 0) - (a.finishedAt ?? 0))
+  return doneStates[0] ?? null
 }
 
 export function abortWorkflow(executionId: string): void {

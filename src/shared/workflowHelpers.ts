@@ -1,6 +1,13 @@
 // Pure helpers used by the workflow engine. Kept in `shared/` so they can be
 // unit-tested without pulling in Electron or Node-only deps.
 
+import type {
+  WorkflowDefinition,
+  WorkflowExecutionRecord,
+  WorkflowMetrics,
+  WorkflowTokenUsage
+} from './workflow-types'
+
 /**
  * Interpolate `{{prev.output}}`, `{{input.key}}`, and `{{vars.name}}` placeholders
  * in a template string. Unknown keys resolve to empty string.
@@ -90,5 +97,85 @@ export function evaluateCondition(
     return Boolean(fn(output, vars, iteration))
   } catch {
     return false
+  }
+}
+
+function zeroUsage(): WorkflowTokenUsage {
+  return { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 }
+}
+
+/**
+ * Aggregate a set of execution records into a WorkflowMetrics summary.
+ * Pure function — extracted from the main-process store so we can unit-test it
+ * without touching the filesystem.
+ */
+export function aggregateWorkflowMetrics(
+  wf: WorkflowDefinition,
+  records: WorkflowExecutionRecord[]
+): WorkflowMetrics {
+  const nodeLabels = new Map(wf.nodes.map((n) => [n.id, n.label]))
+
+  let totalRuns = 0
+  let successRuns = 0
+  let failedRuns = 0
+  let abortedRuns = 0
+  let totalDuration = 0
+  let durationCount = 0
+  const totalTokens = zeroUsage()
+  const failureCounts = new Map<string, number>()
+  let lastRunAt: number | undefined
+  let lastStatus: 'done' | 'failed' | 'aborted' | undefined
+
+  for (const rec of records) {
+    totalRuns += 1
+    if (rec.status === 'done') successRuns += 1
+    else if (rec.status === 'failed') failedRuns += 1
+    else if (rec.status === 'aborted') abortedRuns += 1
+
+    if (typeof rec.finishedAt === 'number' && typeof rec.startedAt === 'number') {
+      totalDuration += rec.finishedAt - rec.startedAt
+      durationCount += 1
+    }
+
+    if (rec.tokens) {
+      totalTokens.input += rec.tokens.input
+      totalTokens.output += rec.tokens.output
+      totalTokens.cacheRead += rec.tokens.cacheRead
+      totalTokens.cacheCreation += rec.tokens.cacheCreation
+    }
+
+    if (lastRunAt === undefined || rec.startedAt > lastRunAt) {
+      lastRunAt = rec.startedAt
+      lastStatus = rec.status
+    }
+
+    for (const ns of Object.values(rec.nodeStates)) {
+      if (ns.status === 'failed') {
+        failureCounts.set(ns.nodeId, (failureCounts.get(ns.nodeId) ?? 0) + 1)
+      }
+    }
+  }
+
+  const topFailingNodes = [...failureCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([nodeId, failures]) => ({
+      nodeId,
+      nodeLabel: nodeLabels.get(nodeId) ?? nodeId,
+      failures
+    }))
+
+  return {
+    workflowId: wf.id,
+    workflowName: wf.name,
+    totalRuns,
+    successRuns,
+    failedRuns,
+    abortedRuns,
+    avgDurationMs: durationCount === 0 ? 0 : Math.round(totalDuration / durationCount),
+    totalTokens,
+    lastRunAt,
+    lastStatus,
+    topFailingNodes
   }
 }

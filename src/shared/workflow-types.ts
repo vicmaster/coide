@@ -62,6 +62,15 @@ export type HumanReviewNodeData = {
   message?: string
 }
 
+export type SubworkflowNodeData = {
+  type: 'subworkflow'
+  workflowId: string // target workflow id
+  // Maps parent inputs/vars to child inputs. Values are template strings like "{{input.company}}" or "{{vars.foo}}".
+  inputMapping?: Record<string, string>
+  // Names of child finalVars to copy into parent vars. Empty/undefined = copy all.
+  captureVars?: string[]
+}
+
 export type WorkflowNodeData =
   | PromptNodeData
   | ConditionNodeData
@@ -70,6 +79,7 @@ export type WorkflowNodeData =
   | JoinNodeData
   | LoopNodeData
   | HumanReviewNodeData
+  | SubworkflowNodeData
 
 export type WorkflowNodeType = WorkflowNodeData['type']
 
@@ -97,6 +107,44 @@ export type WorkflowEdge = {
   label?: string // 'yes' | 'no' | 'body' | 'exit' | custom
 }
 
+// --- Triggers (fire workflow automatically) ---
+export type WorkflowTriggerCron = {
+  id: string
+  type: 'cron'
+  enabled: boolean
+  name?: string
+  schedule: string // e.g. "*/15 * * * *"
+  cwd: string
+  inputValues?: Record<string, string>
+}
+
+export type WorkflowTriggerFileWatcher = {
+  id: string
+  type: 'fileWatcher'
+  enabled: boolean
+  name?: string
+  paths: string[] // glob patterns, relative to cwd
+  cwd: string
+  events?: ('add' | 'change' | 'unlink')[] // default ['change']
+  debounceMs?: number // default 1000
+  inputValues?: Record<string, string>
+}
+
+export type WorkflowTriggerWebhook = {
+  id: string
+  type: 'webhook'
+  enabled: boolean
+  name?: string
+  token: string // generated secret; required as ?token= query
+  cwd: string
+  inputValues?: Record<string, string>
+}
+
+export type WorkflowTrigger =
+  | WorkflowTriggerCron
+  | WorkflowTriggerFileWatcher
+  | WorkflowTriggerWebhook
+
 export type WorkflowDefinition = {
   id: string
   name: string
@@ -107,6 +155,16 @@ export type WorkflowDefinition = {
   createdAt: number
   updatedAt: number
   isTemplate?: boolean
+  recentCwds?: string[] // history of project directories this workflow has run against
+  triggers?: WorkflowTrigger[]
+}
+
+// --- Token usage (accumulated per node or execution) ---
+export type WorkflowTokenUsage = {
+  input: number
+  output: number
+  cacheRead: number
+  cacheCreation: number
 }
 
 // --- Runtime execution state ---
@@ -118,6 +176,7 @@ export type WorkflowNodeRunState = {
   startedAt?: number
   finishedAt?: number
   iteration?: number // for loop bodies
+  tokens?: WorkflowTokenUsage
 }
 
 export type WorkflowExecutionState = {
@@ -142,6 +201,25 @@ export type WorkflowExecutionRecord = {
   finalVars: Record<string, string>
   nodeStates: Record<string, WorkflowNodeRunState>
   error?: string
+  cwd?: string
+  tokens?: WorkflowTokenUsage
+  triggeredBy?: 'manual' | 'cron' | 'fileWatcher' | 'webhook'
+}
+
+// --- Metrics aggregated across executions ---
+export type WorkflowMetrics = {
+  workflowId: string
+  workflowName: string
+  totalRuns: number
+  successRuns: number
+  failedRuns: number
+  abortedRuns: number
+  avgDurationMs: number
+  totalTokens: WorkflowTokenUsage
+  lastRunAt?: number
+  lastStatus?: 'done' | 'failed' | 'aborted'
+  // Top failing nodes: [{ nodeId, nodeLabel, failures }]
+  topFailingNodes: { nodeId: string; nodeLabel: string; failures: number }[]
 }
 
 // --- Human-review request payload ---

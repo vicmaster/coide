@@ -183,12 +183,12 @@ src/renderer/src/store/workflow.ts               — Zustand store for workflow 
 - [x] Import/export workflow JSON files
 
 **Phase 3 — Platform (ongoing)**
-- [ ] Triggers: file watcher, git hooks, cron schedule, manual
-- [ ] Template marketplace — community-shared workflows
-- [ ] Sub-workflows (a node can reference another workflow)
-- [ ] Metrics dashboard: success rate, avg duration, token cost per workflow
-- [ ] Multi-project: same workflow across different CWDs
-- [ ] Webhook triggers for CI/CD integration
+- [x] Triggers: file watcher, cron schedule, manual (chokidar + node-cron scheduler in main process, refreshed on workflow save)
+- [ ] Template marketplace — community-shared workflows *(planned: fetch from public `coide-flows-marketplace` GitHub repo, install via Raw URL, submit via PR)*
+- [x] Sub-workflows (new `subworkflow` node type; child `finalVars` bubble up into parent via `captureVars`)
+- [x] Metrics dashboard: success rate, avg duration, token cost, top failing nodes (per-workflow Metrics panel)
+- [x] Multi-project: same workflow across different CWDs (Run split-button with recent cwds + folder picker; `recentCwds` persisted in workflow)
+- [x] Webhook triggers for CI/CD integration (loopback HTTP server, per-trigger token-gated URL, POST body merged into inputs)
 
 ### 8. Navigation & History
 - Conversation history sidebar with search
