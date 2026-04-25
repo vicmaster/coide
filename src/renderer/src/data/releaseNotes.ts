@@ -5,19 +5,54 @@ export type ReleaseNote = {
 }
 
 export const RELEASE_NOTES: ReleaseNote[] = [
+  // The 'next' entry accumulates notes from ship-feature during the current dev cycle.
+  // On release (npm version), scripts/add-release-note.js renames it to the actual
+  // version + date, and prepends a fresh empty 'next' entry. The modal filters this
+  // entry out so users only see released versions.
+  {
+    version: 'next',
+    date: '',
+    notes: [
+      'Release notes show full version history — rebuilt v0.16–v0.19 entries and fixed the release script so each version archives correctly going forward'
+    ]
+  },
   {
     version: '0.20.0',
     date: '2026-04-25',
     notes: [
-      'Visual Agent Workflows — React Flow canvas for orchestrating Claude agents',
-      '/release-notes modal with version history',
-      'Live-ticking rate limit countdown (every second)',
-      'Workflows Phase 2 — parallel fork/join, loops, human review, variables, per-node allowed tools, execution history, import/export',
-      'Workflows Phase 3 — sub-workflows, multi-project run targets, metrics dashboard, and cron/file-watcher/webhook triggers',
-      'Auto-recover when Claude CLI can\'t resume a stale conversation — retry transparently without --resume',
-      'Workflow marketplace — browse, install, and share workflows from the coide-flows-marketplace repo',
       'Tool trace polish — compact MCP names, no more text overlap on long tool names',
       'Permission dialog polish — Enter/Esc/⌘⏎ shortcuts, plan markdown preview, viewport-sized diff'
+    ]
+  },
+  {
+    version: '0.19.0',
+    date: '2026-04-25',
+    notes: [
+      'Workflow marketplace — browse, install, and share workflows from the coide-flows-marketplace repo'
+    ]
+  },
+  {
+    version: '0.18.0',
+    date: '2026-04-24',
+    notes: [
+      'Workflows Phase 3 — sub-workflows, multi-project run targets, metrics dashboard, and cron/file-watcher/webhook triggers',
+      'Auto-recover when Claude CLI can\'t resume a stale conversation — retry transparently without --resume'
+    ]
+  },
+  {
+    version: '0.17.0',
+    date: '2026-04-21',
+    notes: [
+      'Workflows Phase 2 — parallel fork/join, loops, human review, variables, per-node allowed tools, execution history, import/export'
+    ]
+  },
+  {
+    version: '0.16.0',
+    date: '2026-04-12',
+    notes: [
+      'Visual Agent Workflows — React Flow canvas for orchestrating Claude agents',
+      '/release-notes modal with version history',
+      'Live-ticking rate limit countdown (every second)'
     ]
   },
   {

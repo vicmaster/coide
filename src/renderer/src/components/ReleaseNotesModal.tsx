@@ -31,9 +31,9 @@ export default function ReleaseNotesModal({ onClose }: { onClose: () => void }):
           </button>
         </div>
 
-        {/* Body */}
+        {/* Body — hide the 'next' sentinel; only released versions are shown to users */}
         <div className="overflow-y-auto flex-1 p-5 space-y-5">
-          {RELEASE_NOTES.map((release, i) => (
+          {RELEASE_NOTES.filter((r) => r.version !== 'next').map((release, i, arr) => (
             <div key={release.version}>
               <div className="flex items-center gap-2 mb-2">
                 <span className={`text-sm font-semibold font-mono ${i === 0 ? 'text-blue-400' : 'text-white/70'}`}>
@@ -54,7 +54,7 @@ export default function ReleaseNotesModal({ onClose }: { onClose: () => void }):
                   </li>
                 ))}
               </ul>
-              {i < RELEASE_NOTES.length - 1 && (
+              {i < arr.length - 1 && (
                 <div className="border-t border-white/[0.04] mt-4" />
               )}
             </div>
