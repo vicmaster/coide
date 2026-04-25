@@ -17,7 +17,8 @@ Find what's new in Claude Code that coide doesn't have yet, assess feasibility, 
    - Look at the official docs: https://docs.anthropic.com/en/docs/claude-code
 
 2. **Read coide's current state**
-   - Read `VISION.md` to understand what's already built (checked items) and what's planned (unchecked items)
+   - Read `SHIPPED.md` for the archive of features already built
+   - Read `VISION.md` for the unchecked roadmap (`## Roadmap` section) and the conceptual feature catalog
    - Skim key implementation files if needed to understand current capabilities
 
 3. **Compare and identify gaps**
@@ -37,6 +38,7 @@ Find what's new in Claude Code that coide doesn't have yet, assess feasibility, 
    - Ask the user which ones they'd like to add to VISION.md
 
 6. **Update VISION.md**
-   - Add user-approved features as `- [ ]` items under the appropriate section (Next Up / Later / Future)
+   - Append user-approved features as `- [ ]` items under the `## Roadmap` section
    - Use the same format as existing items: `- [ ] Feature name — brief description`
    - Do NOT remove or modify any existing items
+   - Do NOT add anything to `SHIPPED.md` — that file is only updated when a feature actually ships (via `/ship-feature`)
