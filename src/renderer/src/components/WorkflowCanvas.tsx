@@ -31,7 +31,9 @@ import type {
   ReviewRequest,
   SetVarSpec,
   WorkflowMetrics,
-  WorkflowTrigger
+  WorkflowTrigger,
+  MarketplaceIndex,
+  MarketplaceEntry
 } from '../../../shared/workflow-types'
 
 // --- Constants ---
@@ -1363,6 +1365,10 @@ export default function WorkflowCanvas(): React.JSX.Element {
         workflows={workflows}
         onOpenWorkflow={openWorkflow}
         onClose={closeCanvas}
+        onWorkflowsChanged={async () => {
+          const wfs = await window.api.workflow.list()
+          setWorkflows(wfs as WorkflowDefinition[])
+        }}
       />
     )
   }
@@ -1472,7 +1478,15 @@ export default function WorkflowCanvas(): React.JSX.Element {
         )}
 
         {/* Overflow menu: Import / Export */}
-        <OverflowMenu onImport={handleImport} onExport={handleExport} disabled={isRunning} />
+        <OverflowMenu
+          onImport={handleImport}
+          onExport={handleExport}
+          onShareToMarketplace={async () => {
+            await handleSave()
+            await window.api.workflow.marketplaceShare(currentWorkflow)
+          }}
+          disabled={isRunning}
+        />
 
         <button
           onClick={handleSave}
@@ -1738,10 +1752,12 @@ function SegButton({
 function OverflowMenu({
   onImport,
   onExport,
+  onShareToMarketplace,
   disabled
 }: {
   onImport: () => void
   onExport: () => void
+  onShareToMarketplace: () => void
   disabled: boolean
 }): React.JSX.Element {
   const [open, setOpen] = useState(false)
@@ -1763,7 +1779,7 @@ function OverflowMenu({
         ⋯
       </button>
       {open && (
-        <div className="absolute top-full right-0 mt-1 bg-[#0f0f0f] border border-white/[0.1] rounded-lg shadow-2xl z-20 w-[160px] py-1">
+        <div className="absolute top-full right-0 mt-1 bg-[#0f0f0f] border border-white/[0.1] rounded-lg shadow-2xl z-20 w-[200px] py-1">
           <button
             onClick={() => { onImport(); setOpen(false) }}
             className="w-full text-left px-3 py-1.5 text-[11px] text-white/75 hover:bg-white/[0.04]"
@@ -1775,6 +1791,13 @@ function OverflowMenu({
             className="w-full text-left px-3 py-1.5 text-[11px] text-white/75 hover:bg-white/[0.04]"
           >
             Export workflow…
+          </button>
+          <div className="h-px bg-white/[0.06] my-1" />
+          <button
+            onClick={() => { onShareToMarketplace(); setOpen(false) }}
+            className="w-full text-left px-3 py-1.5 text-[11px] text-emerald-400/85 hover:bg-white/[0.04]"
+          >
+            Share to marketplace…
           </button>
         </div>
       )}
@@ -2786,13 +2809,16 @@ function InputsEditor({
 
 // --- Templates View ---
 
+type TemplatesTab = 'builtin' | 'marketplace' | 'saved'
+
 function TemplatesView({
   onUseTemplate,
   onCreateNew,
   onImport,
   workflows,
   onOpenWorkflow,
-  onClose
+  onClose,
+  onWorkflowsChanged
 }: {
   onUseTemplate: (tpl: WorkflowDefinition) => void
   onCreateNew: () => void
@@ -2800,8 +2826,10 @@ function TemplatesView({
   workflows: WorkflowDefinition[]
   onOpenWorkflow: (id: string) => void
   onClose: () => void
+  onWorkflowsChanged: () => void
 }): React.JSX.Element {
   const [templates, setTemplates] = useState<WorkflowDefinition[]>([])
+  const [tab, setTab] = useState<TemplatesTab>('builtin')
 
   useEffect(() => {
     window.api.workflow.templates().then((t) => setTemplates(t as WorkflowDefinition[]))
@@ -2814,6 +2842,24 @@ function TemplatesView({
           ←
         </button>
         <span className="text-sm font-semibold text-white/90">Workflow Templates</span>
+        <div className="flex items-center bg-[#0a0a0a] border border-white/[0.08] rounded overflow-hidden ml-3">
+          <SegButton active={tab === 'builtin'} onClick={() => setTab('builtin')} activeTone="blue">
+            Built-in{templates.length ? ` · ${templates.length}` : ''}
+          </SegButton>
+          <div className="w-px h-4 bg-white/[0.08]" />
+          <SegButton
+            active={tab === 'marketplace'}
+            onClick={() => setTab('marketplace')}
+            activeTone="emerald"
+            title="Community-shared workflows from coide-flows-marketplace"
+          >
+            Marketplace
+          </SegButton>
+          <div className="w-px h-4 bg-white/[0.08]" />
+          <SegButton active={tab === 'saved'} onClick={() => setTab('saved')} activeTone="white">
+            Saved{workflows.length ? ` · ${workflows.length}` : ''}
+          </SegButton>
+        </div>
         <div className="flex-1" />
         <button
           onClick={onImport}
@@ -2830,37 +2876,39 @@ function TemplatesView({
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
-        {/* Built-in templates */}
-        <h3 className="text-xs font-semibold text-white/50 mb-3 uppercase tracking-wider">
-          Built-in Templates
-        </h3>
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          {templates.map((tpl) => (
-            <div
-              key={tpl.id}
-              className="bg-[#111111] rounded-lg border border-white/[0.06] p-4 flex flex-col gap-2"
-            >
-              <div className="text-sm font-semibold text-white/90">{tpl.name}</div>
-              <div className="text-[11px] text-white/40 leading-relaxed flex-1">
-                {tpl.description}
-              </div>
-              <div className="text-[9px] text-white/25 font-mono">{tpl.nodes.length} nodes</div>
-              <button
-                onClick={() => onUseTemplate(tpl)}
-                className="mt-1 text-[11px] font-medium text-white bg-blue-600 rounded-md py-1.5 hover:bg-blue-700"
+        {tab === 'builtin' && (
+          <div className="grid grid-cols-3 gap-4">
+            {templates.map((tpl) => (
+              <div
+                key={tpl.id}
+                className="bg-[#111111] rounded-lg border border-white/[0.06] p-4 flex flex-col gap-2"
               >
-                Use Template
-              </button>
-            </div>
-          ))}
-        </div>
+                <div className="text-sm font-semibold text-white/90">{tpl.name}</div>
+                <div className="text-[11px] text-white/40 leading-relaxed flex-1">
+                  {tpl.description}
+                </div>
+                <div className="text-[9px] text-white/25 font-mono">{tpl.nodes.length} nodes</div>
+                <button
+                  onClick={() => onUseTemplate(tpl)}
+                  className="mt-1 text-[11px] font-medium text-white bg-blue-600 rounded-md py-1.5 hover:bg-blue-700"
+                >
+                  Use Template
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
-        {/* Saved workflows */}
-        {workflows.length > 0 && (
-          <>
-            <h3 className="text-xs font-semibold text-white/50 mb-3 uppercase tracking-wider">
-              Saved Workflows
-            </h3>
+        {tab === 'marketplace' && (
+          <MarketplaceTab installedWorkflows={workflows} onInstalled={onWorkflowsChanged} />
+        )}
+
+        {tab === 'saved' && (
+          workflows.length === 0 ? (
+            <div className="text-[12px] text-white/40">
+              No saved workflows yet. Create one from a template, the marketplace, or a blank canvas.
+            </div>
+          ) : (
             <div className="grid grid-cols-3 gap-4">
               {workflows.map((wf) => (
                 <div
@@ -2873,12 +2921,177 @@ function TemplatesView({
                     {wf.nodes.length} nodes · updated{' '}
                     {new Date(wf.updatedAt).toLocaleDateString()}
                   </div>
+                  {wf.marketplaceId && (
+                    <div className="text-[9px] text-emerald-400/70 font-mono mt-0.5">
+                      ↓ marketplace · v{wf.marketplaceVersion ?? '?'}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
-          </>
+          )
         )}
       </div>
+    </div>
+  )
+}
+
+// --- Marketplace Tab ---
+
+function MarketplaceTab({
+  installedWorkflows,
+  onInstalled
+}: {
+  installedWorkflows: WorkflowDefinition[]
+  onInstalled: () => void
+}): React.JSX.Element {
+  const [state, setState] = useState<{
+    loading: boolean
+    error?: string
+    index?: MarketplaceIndex
+  }>({ loading: true })
+  const [installing, setInstalling] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
+
+  const load = async (force = false): Promise<void> => {
+    setState({ loading: true })
+    const result = await window.api.workflow.marketplaceList(force)
+    setState({ loading: false, index: result.index, error: result.error })
+  }
+
+  useEffect(() => { load(false) }, [])
+
+  // Map: marketplaceId → installed version (so we can show "installed / update")
+  const installedById = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const wf of installedWorkflows) {
+      if (wf.marketplaceId) m.set(wf.marketplaceId, wf.marketplaceVersion ?? '0.0.0')
+    }
+    return m
+  }, [installedWorkflows])
+
+  const install = async (entry: MarketplaceEntry): Promise<void> => {
+    setInstalling(entry.id)
+    const result = await window.api.workflow.marketplaceInstall(entry)
+    setInstalling(null)
+    if (result.error) {
+      alert(`Install failed: ${result.error}`)
+      return
+    }
+    onInstalled()
+  }
+
+  const filteredEntries = useMemo(() => {
+    if (!state.index) return []
+    const q = query.trim().toLowerCase()
+    if (!q) return state.index.templates
+    return state.index.templates.filter(
+      (e) =>
+        e.name.toLowerCase().includes(q) ||
+        e.description.toLowerCase().includes(q) ||
+        e.author.toLowerCase().includes(q) ||
+        e.tags.some((t) => t.toLowerCase().includes(q))
+    )
+  }, [state.index, query])
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-4">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by name, tag, or author…"
+          className="flex-1 bg-[#0a0a0a] border border-white/[0.08] rounded-md px-3 py-1.5 text-xs text-white/85 focus:border-emerald-500/40 focus:outline-none"
+        />
+        <button
+          onClick={() => load(true)}
+          disabled={state.loading}
+          className="text-[10px] text-white/70 bg-white/[0.06] border border-white/[0.08] px-3 py-1.5 rounded hover:bg-white/[0.1] disabled:opacity-40"
+        >
+          {state.loading ? 'Refreshing…' : 'Refresh'}
+        </button>
+        <button
+          onClick={() => window.api.workflow.marketplaceOpen()}
+          className="text-[10px] text-white/60 hover:text-white/85 px-2"
+          title="Open the marketplace repo on GitHub"
+        >
+          Open repo ↗
+        </button>
+      </div>
+
+      {state.error && (
+        <div className="bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300 rounded-md px-3 py-2 mb-4">
+          {state.error}
+        </div>
+      )}
+
+      {state.loading && !state.index && (
+        <div className="text-[12px] text-white/40">Loading marketplace…</div>
+      )}
+
+      {state.index && filteredEntries.length === 0 && !state.loading && (
+        <div className="text-[12px] text-white/40">
+          {query ? `No templates match "${query}".` : 'No templates available.'}
+        </div>
+      )}
+
+      <div className="grid grid-cols-3 gap-4">
+        {filteredEntries.map((entry) => {
+          const installedVersion = installedById.get(entry.id)
+          const upToDate = installedVersion === entry.version
+          const updateAvailable = installedVersion && installedVersion !== entry.version
+          return (
+            <div
+              key={entry.id}
+              className="bg-[#111111] rounded-lg border border-white/[0.06] p-4 flex flex-col gap-2"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="text-sm font-semibold text-white/90 leading-tight">{entry.name}</div>
+                <div className="text-[9px] text-white/30 font-mono shrink-0">v{entry.version}</div>
+              </div>
+              <div className="text-[11px] text-white/40 leading-relaxed flex-1">
+                {entry.description}
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {entry.tags.slice(0, 4).map((t) => (
+                  <span
+                    key={t}
+                    className="text-[9px] text-emerald-400/70 bg-emerald-500/[0.06] px-1.5 py-0.5 rounded font-mono"
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
+              <div className="text-[9px] text-white/25 font-mono">by {entry.author}</div>
+              <button
+                onClick={() => install(entry)}
+                disabled={installing === entry.id || upToDate}
+                className={`mt-1 text-[11px] font-medium rounded-md py-1.5 ${
+                  upToDate
+                    ? 'text-emerald-300 bg-emerald-500/10 cursor-default'
+                    : updateAvailable
+                      ? 'text-white bg-amber-600 hover:bg-amber-700'
+                      : 'text-white bg-emerald-600 hover:bg-emerald-700'
+                } disabled:opacity-60`}
+              >
+                {installing === entry.id
+                  ? 'Installing…'
+                  : upToDate
+                    ? `✓ Installed v${installedVersion}`
+                    : updateAvailable
+                      ? `Update to v${entry.version}`
+                      : 'Install'}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+
+      {state.index && (
+        <div className="text-[9px] text-white/25 font-mono mt-6 text-right">
+          Updated {state.index.updatedAt}
+        </div>
+      )}
     </div>
   )
 }

@@ -184,7 +184,7 @@ src/renderer/src/store/workflow.ts               — Zustand store for workflow 
 
 **Phase 3 — Platform (ongoing)**
 - [x] Triggers: file watcher, cron schedule, manual (chokidar + node-cron scheduler in main process, refreshed on workflow save)
-- [ ] Template marketplace — community-shared workflows *(planned: fetch from public `coide-flows-marketplace` GitHub repo, install via Raw URL, submit via PR)*
+- [x] Template marketplace — fetches `index.json` from public [`coide-flows-marketplace`](https://github.com/vicmaster/coide-flows-marketplace) GitHub repo, installs templates with one click, tracks installed/update-available state via `marketplaceId`/`marketplaceVersion`; "Share to marketplace" opens a pre-filled GitHub issue for PR submission
 - [x] Sub-workflows (new `subworkflow` node type; child `finalVars` bubble up into parent via `captureVars`)
 - [x] Metrics dashboard: success rate, avg duration, token cost, top failing nodes (per-workflow Metrics panel)
 - [x] Multi-project: same workflow across different CWDs (Run split-button with recent cwds + folder picker; `recentCwds` persisted in workflow)

@@ -3,7 +3,8 @@ import {
   interpolate,
   applyExtractor,
   evaluateCondition,
-  aggregateWorkflowMetrics
+  aggregateWorkflowMetrics,
+  buildMarketplaceShareUrl
 } from '../../shared/workflowHelpers'
 import type {
   WorkflowDefinition,
@@ -264,5 +265,64 @@ describe('aggregateWorkflowMetrics', () => {
       nodeLabel: 'deleted-node',
       failures: 1
     })
+  })
+})
+
+describe('buildMarketplaceShareUrl', () => {
+  const baseWf: WorkflowDefinition = {
+    id: 'wf-local-123',
+    name: 'My Cool Flow',
+    description: 'does cool things',
+    createdAt: 1000,
+    updatedAt: 2000,
+    nodes: [{ id: 'n1', label: 'Start', position: { x: 0, y: 0 }, data: { type: 'prompt', prompt: 'hi' } }],
+    edges: []
+  }
+
+  const decodeBody = (url: string): string => {
+    const u = new URL(url)
+    return u.searchParams.get('body') ?? ''
+  }
+
+  it('points at the marketplace repo issues endpoint', () => {
+    const url = new URL(buildMarketplaceShareUrl(baseWf))
+    expect(url.host).toBe('github.com')
+    expect(url.pathname).toBe('/vicmaster/coide-flows-marketplace/issues/new')
+  })
+
+  it('puts the workflow name in the issue title', () => {
+    const url = new URL(buildMarketplaceShareUrl(baseWf))
+    expect(url.searchParams.get('title')).toContain('My Cool Flow')
+  })
+
+  it('falls back to "untitled" when the name is empty', () => {
+    const url = new URL(buildMarketplaceShareUrl({ ...baseWf, name: '' }))
+    expect(url.searchParams.get('title')).toContain('untitled')
+  })
+
+  it('embeds the workflow JSON in the body and resets timestamps', () => {
+    const body = decodeBody(buildMarketplaceShareUrl(baseWf))
+    const match = body.match(/```json\n([\s\S]+?)\n```/)
+    expect(match).not.toBeNull()
+    const embedded = JSON.parse(match![1])
+    expect(embedded.name).toBe('My Cool Flow')
+    expect(embedded.isTemplate).toBe(true)
+    expect(embedded.createdAt).toBe(0)
+    expect(embedded.updatedAt).toBe(0)
+  })
+
+  it('strips runtime-only fields (recentCwds, marketplaceId, marketplaceVersion)', () => {
+    const url = buildMarketplaceShareUrl({
+      ...baseWf,
+      recentCwds: ['/tmp/foo'],
+      marketplaceId: 'marketplace-something',
+      marketplaceVersion: '1.2.3'
+    })
+    const body = decodeBody(url)
+    const match = body.match(/```json\n([\s\S]+?)\n```/)
+    const embedded = JSON.parse(match![1])
+    expect(embedded.recentCwds).toBeUndefined()
+    expect(embedded.marketplaceId).toBeUndefined()
+    expect(embedded.marketplaceVersion).toBeUndefined()
   })
 })

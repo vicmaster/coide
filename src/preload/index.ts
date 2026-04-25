@@ -107,6 +107,13 @@ const api = {
       ipcRenderer.invoke('workflow:trigger:generate-token'),
     webhookUrl: (workflowId: string, triggerId: string, token: string): Promise<{ url: string | null }> =>
       ipcRenderer.invoke('workflow:trigger:webhook-url', { workflowId, triggerId, token }),
+    marketplaceList: (forceRefresh?: boolean) =>
+      ipcRenderer.invoke('marketplace:list', { forceRefresh }),
+    marketplaceInstall: (entry: unknown) =>
+      ipcRenderer.invoke('marketplace:install', { entry }),
+    marketplaceShare: (workflow: unknown) =>
+      ipcRenderer.invoke('marketplace:share', { workflow }),
+    marketplaceOpen: () => ipcRenderer.invoke('marketplace:open'),
     exportWorkflow: (workflow: unknown): Promise<{ success?: boolean; canceled?: boolean; path?: string; error?: string }> =>
       ipcRenderer.invoke('workflow:export', { workflow }),
     importWorkflow: (): Promise<{ success?: boolean; canceled?: boolean; workflow?: unknown; error?: string }> =>

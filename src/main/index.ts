@@ -29,6 +29,13 @@ import {
   testTrigger
 } from './workflowTriggers'
 import { startWebhookServer, stopWebhookServer, getWebhookPort } from './webhookServer'
+import {
+  fetchMarketplaceIndex,
+  installMarketplaceTemplate,
+  getMarketplaceShareUrl,
+  getMarketplaceRepoUrl
+} from './marketplace'
+import type { MarketplaceEntry } from '../shared/workflow-types'
 import { randomBytes } from 'crypto'
 
 type SkillInfo = { name: string; description: string; scope: 'global' | 'project'; filePath: string }
@@ -606,6 +613,28 @@ ipcMain.handle('workflow:trigger:webhook-url', (_event, { workflowId, triggerId,
   const port = getWebhookPort()
   if (!port) return { url: null }
   return { url: `http://127.0.0.1:${port}/webhook/${workflowId}/${triggerId}?token=${token}` }
+})
+
+// --- Marketplace ---
+ipcMain.handle('marketplace:list', async (_event, { forceRefresh }: { forceRefresh?: boolean } = {}) => {
+  return fetchMarketplaceIndex(forceRefresh ?? false)
+})
+
+ipcMain.handle('marketplace:install', async (_event, { entry }: { entry: MarketplaceEntry }) => {
+  const result = await installMarketplaceTemplate(entry)
+  if (result.workflow) await refreshTriggers()
+  return result
+})
+
+ipcMain.handle('marketplace:share', async (_event, { workflow }: { workflow: WorkflowDefinition }) => {
+  const url = getMarketplaceShareUrl(workflow)
+  await shell.openExternal(url)
+  return { ok: true }
+})
+
+ipcMain.handle('marketplace:open', async () => {
+  await shell.openExternal(getMarketplaceRepoUrl())
+  return { ok: true }
 })
 
 ipcMain.handle('workflow:templates', () => {

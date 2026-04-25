@@ -157,6 +157,26 @@ export type WorkflowDefinition = {
   isTemplate?: boolean
   recentCwds?: string[] // history of project directories this workflow has run against
   triggers?: WorkflowTrigger[]
+  // Marketplace tracking — set when a workflow was installed from coide-flows-marketplace
+  marketplaceId?: string
+  marketplaceVersion?: string
+}
+
+// --- Marketplace (community-shared workflows from coide-flows-marketplace repo) ---
+export type MarketplaceEntry = {
+  id: string
+  name: string
+  description: string
+  author: string
+  tags: string[]
+  version: string
+  path: string // relative path within the marketplace repo
+}
+
+export type MarketplaceIndex = {
+  schemaVersion: number
+  updatedAt: string
+  templates: MarketplaceEntry[]
 }
 
 // --- Token usage (accumulated per node or execution) ---

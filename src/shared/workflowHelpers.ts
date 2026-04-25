@@ -8,6 +8,11 @@ import type {
   WorkflowTokenUsage
 } from './workflow-types'
 
+export const MARKETPLACE_OWNER = 'vicmaster'
+export const MARKETPLACE_REPO = 'coide-flows-marketplace'
+export const MARKETPLACE_BRANCH = 'main'
+export const MARKETPLACE_RAW_BASE = `https://raw.githubusercontent.com/${MARKETPLACE_OWNER}/${MARKETPLACE_REPO}/${MARKETPLACE_BRANCH}`
+
 /**
  * Interpolate `{{prev.output}}`, `{{input.key}}`, and `{{vars.name}}` placeholders
  * in a template string. Unknown keys resolve to empty string.
@@ -178,4 +183,40 @@ export function aggregateWorkflowMetrics(
     lastStatus,
     topFailingNodes
   }
+}
+
+/**
+ * Build a GitHub "new issue" URL prefilled with the workflow JSON, for users
+ * who want to submit a workflow to the marketplace. Pure / no network calls.
+ * Strips runtime-only fields (recentCwds, marketplaceId/Version) before
+ * embedding so the JSON is reusable as a clean template.
+ */
+export function buildMarketplaceShareUrl(workflow: WorkflowDefinition): string {
+  const cleaned: Record<string, unknown> = {
+    ...workflow,
+    isTemplate: true,
+    createdAt: 0,
+    updatedAt: 0
+  }
+  delete cleaned.recentCwds
+  delete cleaned.marketplaceId
+  delete cleaned.marketplaceVersion
+  const body = [
+    '<!-- Submit a workflow to coide-flows-marketplace -->',
+    '',
+    '**Suggested name:** ' + (workflow.name || ''),
+    '**Description:** _add a one-liner_',
+    '**Tags:** _comma-separated_',
+    '',
+    '## Workflow JSON',
+    '',
+    '```json',
+    JSON.stringify(cleaned, null, 2),
+    '```'
+  ].join('\n')
+  const params = new URLSearchParams({
+    title: `Submit workflow: ${workflow.name || 'untitled'}`,
+    body
+  })
+  return `https://github.com/${MARKETPLACE_OWNER}/${MARKETPLACE_REPO}/issues/new?${params.toString()}`
 }
