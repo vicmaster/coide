@@ -3,6 +3,8 @@
 
 A desktop/web client that wraps the existing Claude Code CLI using your existing account and subscription (no separate API key), with a dramatically better UX than the terminal.
 
+> Shipped features live in `SHIPPED.md`. User-facing changelog lives in `src/renderer/src/data/releaseNotes.ts`.
+
 ---
 
 ## Core Concept
@@ -143,7 +145,7 @@ React Flow Canvas (renderer — src/renderer/src/components/WorkflowCanvas.tsx)
 - **Onboard to Repo** — scan structure → read key files → generate architecture summary
 - **Feature Implementation** — plan → implement → test → review → iterate
 
-***Key Files (to be created):***
+***Key Files:***
 ```
 src/main/workflow.ts           — Workflow execution engine (spawns Claude CLI per node)
 src/main/workflowStore.ts      — Persist workflows to disk (~/.coide/workflows/)
@@ -155,40 +157,8 @@ src/renderer/src/store/workflow.ts               — Zustand store for workflow 
 ```
 
 ***Dependencies:***
-- `reactflow` (previously removed — reinstall when building this feature)
+- `reactflow`
 - Existing: `node-pty` (PTY runner), `zustand` (state), Electron IPC
-
-***Implementation Phases:***
-
-**Phase 1 — MVP (1-2 weeks)**
-- [x] React Flow canvas with Prompt, Condition, and Script node types
-- [x] Sequential execution only (no parallel/loops yet)
-- [x] Each Prompt node spawns Claude CLI via existing `runClaude()` with configurable prompt + system prompt
-- [x] Output of node N injected as context into node N+1
-- [x] Real-time node state visualization (pending → running → done/failed)
-- [x] Node click to see full output in side panel
-- [x] Save/load workflows as JSON files
-- [x] 2-3 built-in templates (PR Review, Bug Fix)
-- [x] New tab in Sidebar: "Workflows" alongside Sessions/Skills/Commands
-- [x] Keyboard shortcut: Cmd+W to open workflow canvas
-
-**Phase 2 — Powerful (2-3 weeks)**
-- [x] Parallel branches (fork/join nodes)
-- [x] Loop nodes with max iterations and exit condition
-- [x] Variables system (`{{vars.name}}` templates in prompts)
-- [x] Tool filter per node (`--allowedTools`)
-- [x] Model selection per node
-- [x] Human Review node (pause and show approval dialog)
-- [x] Execution history with replay
-- [x] Import/export workflow JSON files
-
-**Phase 3 — Platform (ongoing)**
-- [x] Triggers: file watcher, cron schedule, manual (chokidar + node-cron scheduler in main process, refreshed on workflow save)
-- [x] Template marketplace — fetches `index.json` from public [`coide-flows-marketplace`](https://github.com/vicmaster/coide-flows-marketplace) GitHub repo, installs templates with one click, tracks installed/update-available state via `marketplaceId`/`marketplaceVersion`; "Share to marketplace" opens a pre-filled GitHub issue for PR submission
-- [x] Sub-workflows (new `subworkflow` node type; child `finalVars` bubble up into parent via `captureVars`)
-- [x] Metrics dashboard: success rate, avg duration, token cost, top failing nodes (per-workflow Metrics panel)
-- [x] Multi-project: same workflow across different CWDs (Run split-button with recent cwds + folder picker; `recentCwds` persisted in workflow)
-- [x] Webhook triggers for CI/CD integration (loopback HTTP server, per-trigger token-gated URL, POST body merged into inputs)
 
 ### 8. Navigation & History
 - Conversation history sidebar with search
@@ -244,8 +214,6 @@ src/renderer/src/store/workflow.ts               — Zustand store for workflow 
 
 ---
 
----
-
 ## Tech Stack
 
 ### Shell
@@ -291,137 +259,13 @@ Electron Renderer Process (React)
 
 ---
 
-## What's Built
-
-### Infrastructure
-- [x] Electron + electron-vite + React + TypeScript scaffold
-- [x] Tailwind CSS v3 + PostCSS configured
-- [x] IPC bridge (preload `contextBridge` → `window.api`)
-- [x] Claude CLI subprocess runner (`src/main/claude.ts`)
-- [x] Abort/stop support
-- [x] macOS `titleBarStyle: 'hiddenInset'` + drag region
-
-### UI
-- [x] 3-panel layout: Sidebar (224px) | Chat (flex) | Right Panel (256px, collapsible)
-- [x] macOS traffic light clearance (`pt-[46px]`) on all panels
-- [x] Dark theme (`#0d0d0d` background)
-
-### Chat
-- [x] Send messages, receive streamed responses (via event-based IPC)
-- [x] User / assistant / error message bubbles
-- [x] Loading indicator (bouncing dots)
-- [x] Stop button while Claude is running
-- [x] Skip-permissions toggle — auto-approve all tools, amber indicator when active
-- [x] CWD picker — click path to open native folder picker
-- [x] Markdown rendering for assistant messages (react-markdown + shiki, JS regex engine)
-
-### Session Management
-- [x] Zustand store with localStorage persistence
-- [x] Create new sessions (inherit CWD from current session)
-- [x] Switch between sessions in sidebar
-- [x] Delete sessions (hover × button)
-- [x] Auto-title sessions from first user message
-- [x] Multi-turn conversations via `--resume` (claudeSessionId tracked per session)
-- [x] Session list in sidebar with title + project folder name
-
-### Sidebar
-- [x] Tabs: Sessions | Skills | Commands
-- [x] Skills panel (hardcoded list with Run button on hover)
-- [x] Commands panel (hardcoded list)
-
-### Right Panel
-- [x] Tabs: Agents | Todo | Context
-- [x] Toggle open/close from Chat header
-- [x] Live Todo/Task panel — intercepts TodoWrite, TaskCreate, TaskUpdate events
-- [x] Progress bar with completion counter (e.g. 3/7 done)
-- [x] Task items with status dots (gray=pending, blue pulse=in_progress, green=completed)
-- [x] Strikethrough on completed tasks, italic activeForm on in-progress
-- [x] Collapsible task descriptions on click
-- [x] Tasks cleared on `/clear`, persisted with session via Zustand
-- [x] Live Agent Tree panel — intercepts Task tool events for sub-agent hierarchy
-- [x] Orchestrator root node with derived status (idle/running/done)
-- [x] Child agent nodes with blue pulse (running), green (done), red (failed)
-- [x] Duration and token count metadata after agent completion
-- [x] Progress counter header (e.g. 2/3 done)
-- [x] Agents cleared on `/clear`, persisted with session via Zustand
-- [x] Live Context & Token Usage tracker
-- [x] Token usage accumulated from `assistant` event `usage` field (input, output, cache read/write)
-- [x] Progress bar with color coding: blue → yellow (>70%) → red (>90%)
-- [x] Breakdown: input tokens, output tokens, cache stats (shown when > 0)
-- [x] Files in Context: derived from Read/Edit/Write/Glob/Grep tool calls, deduplicated
-- [x] Usage and files cleared on `/clear`, persisted with session via Zustand
-- [x] MCP Servers tab — reads global `~/.claude/settings.json` and project `.mcp.json`, shows server cards with scope badges
-
----
-
 ## Roadmap
 
-### Next Up
-- [x] Markdown rendering for assistant messages (react-markdown + shiki)
-- [x] Tool call cards (collapsible, shows bash runs / file reads / writes)
-- [x] Skip-permissions toggle (auto-approve all tools, persisted setting)
-- [x] Visual diff viewer with accept / reject
-- [x] Error detection — Warp-style error highlighting for Bash failures with "Fix this" / "Explain error" actions
-
-### Later
-- [x] Agent tree panel (live sub-agent hierarchy)
-- [x] Todo / task panel (live updates from Claude)
-- [x] Context / token usage tracker
-- [x] Desktop notifications
-- [x] Image / screenshot drag-and-drop
-- [x] File attachments — drag & drop or file picker for PDF, DOCX, XLSX, PPTX, CSV, and text files with automatic text extraction
-- [x] Settings UI
-- [x] Session search — full-text search across all past sessions to find old conversations
-- [x] File changelog — per-session list of every file touched, cumulative diff, one-click revert
-- [x] Keyboard shortcuts — Cmd+K clear, Cmd+N new session, Cmd+[/] switch sessions, Escape stop
-
-### Future
-- [x] Context limit warning — visual alert when approaching token limit
-- [x] Click-to-edit past messages — re-run or edit any previous user message
-- [x] Inline file preview — click a filename in chat to open a preview pane
-- [x] Agent tree enhancements — timeline view, pause/cancel/re-run individual sub-agents
-- [x] Skill editor UI — create/edit skills without touching files
-- [x] Skill import/export — pick .md from disk or save skill to chosen location
-- [x] Hook configuration UI — visualize and edit hooks visually
-- [x] Copy conversation as ChatGPT format — export messages as shareable markdown
-- [x] Jump to bottom button — floating pill when scrolled up, smart auto-scroll that doesn't interrupt reading
-- [x] In-session search — find text in current session with match highlighting
-- [x] MCP servers panel — read-only view of active MCP servers (global + project) in right panel
-- [x] Integrated terminal — xterm.js-based terminal panel with multi-tab support, resizable, Cmd+J toggle
-- [x] Inline chat date separators — Slack-style day dividers (Today/Yesterday/date) between messages from different days
-
-### Copycat — Features from Claude Code CLI
-- [x] Plan mode toggle — button to enter/exit plan mode (auto-accept edits, strategic planning before execution)
-- [x] Effort level selector — segmented control (low/med/high/max) in chat header, click to toggle effort level
-- [x] Model switching — dropdown to switch between Opus/Sonnet/Haiku mid-session via `--model` flag
-- [x] Status line — bottom bar showing current model, effort level, token usage, estimated cost, and session ID
-- [x] @-mentions — autocomplete for `@` in chat input to reference files, folders, and URLs inline
-- [x] Message queuing — allow typing and sending the next message while Claude is still responding
 - [ ] Light theme — add light color scheme and theme toggle in settings
-- [x] Extended thinking indicator — show visual "thinking" state when Claude uses deep/ultrathink reasoning
-- [x] Compact mode — toggle for denser chat layout with reduced spacing and smaller text
 - [ ] Voice mode — speech-to-text input and text-to-speech responses via Web Speech API
-- [x] History search — Ctrl+R style recall of past user prompts for quick re-use
-- [x] Session forking — branch current conversation into a new session with shared history
-- [x] Git worktrees — UI for `--worktree` flag to run isolated parallel sessions on separate branches
 - [ ] Vim mode — vim keybindings for the chat input textarea
-- [x] Vitest test suite — unit tests for store actions, utilities, and event parsing with `npm test`
-- [x] Onboarding wizard — CLI detection, folder picker, and getting-started tips for first-time users
-- [x] `/loop` recurring tasks — cron-like scheduled prompts on intervals (e.g. every 5m), reuses PTY runner on a timer
-- [x] `/compact` context compression — send compact command to CLI to compress conversation context mid-session
-- [x] Auto-compaction — detect context approaching token limit and auto-compress without user intervention
-- [x] `/copy` code block picker — interactive UI to pick and copy specific code blocks from the conversation
-- [x] Rate limit display — show rate limit usage percentage and reset countdown in status bar
-- [x] Message stash (Ctrl+S) — save current input as draft, restore later with keyboard shortcut
-- [x] `/context` optimization tips — forward to CLI and display actionable suggestions for reducing context usage
-- [x] `/stats` usage statistics — token/cost stats view with detailed breakdown per session
-- [x] `/rename` sessions — inline rename in sidebar to edit session title on demand
 - [ ] `/cost` per-model breakdown — enhance /stats with per-model cost and cache-hit breakdown
 - [ ] Focus view — reader mode toggle that hides tool calls and shows only prompts + responses
-- [x] Image compression — resize large images before sending to reduce token usage
-- [x] Refreshing status line — tick rate limit countdown and stats live every second
-- [x] `/release-notes` — show changelog/what's new per coide version in a modal
-- [x] Named subagents in @-mention — autocomplete shows running agents by name in chat input
 - [ ] Monitor tool — stream events from background scripts and processes via IPC
 - [ ] Checkpointing / `/rewind` — rewind conversation and code to a previous point, time-travel UI leveraging per-turn diffs
 - [ ] Auto-memory + CLAUDE.md editor — persistent cross-session learnings panel plus in-app CLAUDE.md editor for global and project memory files
