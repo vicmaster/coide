@@ -16,7 +16,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       'Workflows Phase 3 — sub-workflows, multi-project run targets, metrics dashboard, and cron/file-watcher/webhook triggers',
       'Auto-recover when Claude CLI can\'t resume a stale conversation — retry transparently without --resume',
       'Workflow marketplace — browse, install, and share workflows from the coide-flows-marketplace repo',
-      'Tool trace polish — compact MCP names, no more text overlap on long tool names'
+      'Tool trace polish — compact MCP names, no more text overlap on long tool names',
+      'Permission dialog polish — Enter/Esc/⌘⏎ shortcuts, plan markdown preview, viewport-sized diff'
     ]
   },
   {

@@ -646,11 +646,39 @@ export default function Chat({
     }
   }, [processAttachedFile])
 
-  const handlePermissionRespond = (approved: boolean): void => {
-    const current = permissionQueue[0]
-    setPermissionQueue((q) => q.slice(1))
-    window.api.claude.respondPermission(approved, current?.coideSessionId)
-  }
+  const handlePermissionRespond = useCallback((approved: boolean): void => {
+    const current = permissionQueue.find((p) => p.coideSessionId === activeSessionId) ?? permissionQueue[0]
+    const sid = current?.coideSessionId
+    setPermissionQueue((q) => {
+      const idx = q.findIndex((p) => p.tool_id === current?.tool_id)
+      if (idx < 0) return q
+      return [...q.slice(0, idx), ...q.slice(idx + 1)]
+    })
+    // Safety net for denial: main sends stream_end which clears loading, but if
+    // that event is delayed/dropped (e.g., the PTY race seen with plan-mode
+    // ExitPlanMode rejection), clear loading here so the UI never gets stuck.
+    if (!approved && sid) {
+      setLoadingSessions((prev) => {
+        if (!prev.has(sid)) return prev
+        const next = new Set(prev)
+        next.delete(sid)
+        return next
+      })
+    }
+    window.api.claude.respondPermission(approved, sid)
+  }, [permissionQueue, activeSessionId])
+
+  const handlePermissionAllowAll = useCallback((): void => {
+    const sid = activeSessionId
+    const toAllow = permissionQueue.filter((p) => p.coideSessionId === sid)
+    setPermissionQueue((q) => q.filter((p) => p.coideSessionId !== sid))
+    for (const perm of toAllow) {
+      window.api.claude.respondPermission(true, perm.coideSessionId)
+    }
+  }, [permissionQueue, activeSessionId])
+
+  const handleAllow = useCallback(() => handlePermissionRespond(true), [handlePermissionRespond])
+  const handleDeny = useCallback(() => handlePermissionRespond(false), [handlePermissionRespond])
 
   const sendMessage = useCallback(async (text: string, images?: ImageAttachment[], files?: FileAttachment[]): Promise<void> => {
     const currentActiveId = useSessionsStore.getState().activeSessionId
@@ -1313,9 +1341,10 @@ export default function Chat({
       {currentPermission && (
         <PermissionDialog
           permission={currentPermission}
-          queueLength={permissionQueue.length}
-          onAllow={() => handlePermissionRespond(true)}
-          onDeny={() => handlePermissionRespond(false)}
+          queueLength={permissionQueue.filter((p) => p.coideSessionId === activeSessionId).length}
+          onAllow={handleAllow}
+          onDeny={handleDeny}
+          onAllowAll={handlePermissionAllowAll}
         />
       )}
 

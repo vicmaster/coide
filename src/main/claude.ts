@@ -219,6 +219,7 @@ export async function respondPermission(approved: boolean, coideSessionId?: stri
       ptySessions.delete(coideSessionId)
     }
   } else {
+    log(`Denying permission for ${toolInfo.tool_name} [${coideSessionId.slice(0, 8)}]`)
     await revertFileChange(toolInfo)
     for (const remaining of sess.pendingPermissions) {
       await revertFileChange(remaining)

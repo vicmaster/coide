@@ -1,6 +1,8 @@
-import React from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import DiffViewer from './DiffViewer'
+import MarkdownRenderer from './MarkdownRenderer'
 import { buildDiffFromToolInput } from '../utils/diff'
+import { computeDiffHeight, extractPlan } from '../utils/permission'
 
 export type PermissionRequest = {
   tool_id: string
@@ -46,12 +48,14 @@ export default function PermissionDialog({
   permission,
   queueLength,
   onAllow,
-  onDeny
+  onDeny,
+  onAllowAll
 }: {
   permission: PermissionRequest
   queueLength: number
   onAllow: () => void
   onDeny: () => void
+  onAllowAll?: () => void
 }): React.JSX.Element {
   const isPlanApproval = permission.tool_name === 'ExitPlanMode'
   const isFileOp = permission.tool_name === 'Edit' || permission.tool_name === 'Write'
@@ -59,8 +63,70 @@ export default function PermissionDialog({
     ? buildDiffFromToolInput(permission.tool_name, permission.input, permission.originalContent)
     : null
 
-  const preview = isPlanApproval ? '' : inputPreview(permission.tool_name, permission.input)
-  const wide = diff != null
+  const preview = isPlanApproval || diff ? '' : inputPreview(permission.tool_name, permission.input)
+  const wide = diff != null || isPlanApproval
+
+  // Memoize the plan body so re-renders don't re-parse markdown.
+  const planMarkdown = useMemo(
+    () => (isPlanApproval ? extractPlan(permission.input) : ''),
+    [isPlanApproval, permission.input, permission.tool_id]
+  )
+
+  // Diff height: computed once on mount from viewport. Modal is short-lived;
+  // skipping resize listening avoids re-rendering Monaco mid-drag.
+  const [diffHeight] = useState(() => computeDiffHeight(window.innerHeight))
+
+  // Latest-callback ref pattern: lets the keydown listener stay attached
+  // across parent re-renders without re-creating it on every callback identity change.
+  const callbacksRef = useRef({ onAllow, onDeny, onAllowAll })
+  useEffect(() => {
+    callbacksRef.current = { onAllow, onDeny, onAllowAll }
+  })
+
+  // Keyboard shortcuts. Capture phase + stopImmediatePropagation so the dialog
+  // claims Enter/Esc unconditionally while open — beats the global abort handler
+  // (useKeyboardShortcuts.ts) and prevents the chat textarea from also receiving
+  // the key. Assumes PermissionDialog is the topmost modal; if stacking is added,
+  // introduce a modal-stack registry to suppress this.
+  const actedRef = useRef(false)
+  useEffect(() => {
+    actedRef.current = false
+
+    const handleKey = (e: KeyboardEvent): void => {
+      if (e.repeat) return // ignore held-key repeats
+      if (actedRef.current) return // already responded to this permission
+
+      const isCmdOrCtrl = e.metaKey || e.ctrlKey
+
+      if (e.key === 'Enter' && isCmdOrCtrl) {
+        if (queueLength > 1 && !isPlanApproval && callbacksRef.current.onAllowAll) {
+          e.preventDefault()
+          e.stopImmediatePropagation()
+          actedRef.current = true
+          callbacksRef.current.onAllowAll()
+        }
+        return
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        actedRef.current = true
+        callbacksRef.current.onAllow()
+        return
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        actedRef.current = true
+        callbacksRef.current.onDeny()
+      }
+    }
+
+    window.addEventListener('keydown', handleKey, { capture: true })
+    return () => window.removeEventListener('keydown', handleKey, { capture: true })
+  }, [permission.tool_id, queueLength, isPlanApproval])
+
+  const showAllowAllHint = queueLength > 1 && !isPlanApproval && onAllowAll
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -88,12 +154,16 @@ export default function PermissionDialog({
           </div>
         </div>
 
-        {/* Content: plan approval, diff, or text preview */}
+        {/* Content: plan markdown, diff, or text preview */}
         {isPlanApproval ? (
-          <div className="rounded-lg bg-blue-500/[0.06] border border-blue-500/[0.12] p-3 mb-5">
-            <p className="text-[12px] text-white/50 leading-relaxed">
-              Claude has outlined a plan above. Approve to start execution, or reject to cancel.
-            </p>
+          <div className="rounded-lg bg-blue-500/[0.04] border border-blue-500/[0.12] px-4 py-3 mb-5 max-h-[60vh] overflow-y-auto">
+            {planMarkdown ? (
+              <MarkdownRenderer>{planMarkdown}</MarkdownRenderer>
+            ) : (
+              <p className="text-[12px] text-white/50 leading-relaxed">
+                Claude has outlined a plan above. Approve to start execution, or reject to cancel.
+              </p>
+            )}
           </div>
         ) : diff ? (
           <div className="mb-5">
@@ -101,7 +171,7 @@ export default function PermissionDialog({
               filePath={diff.filePath}
               original={diff.original}
               modified={diff.modified}
-              height={360}
+              height={diffHeight}
             />
           </div>
         ) : (
@@ -128,6 +198,15 @@ export default function PermissionDialog({
           >
             {isPlanApproval ? 'Execute Plan' : isFileOp ? 'Accept' : 'Allow'}
           </button>
+        </div>
+
+        {/* Keyboard shortcut hints */}
+        <div className="mt-3 flex items-center justify-center gap-3 text-[10px] text-white/25">
+          <span><kbd className="px-1 py-0.5 rounded bg-white/[0.06] font-mono">⏎</kbd> {isPlanApproval ? 'Execute' : 'Allow'}</span>
+          <span><kbd className="px-1 py-0.5 rounded bg-white/[0.06] font-mono">Esc</kbd> {isPlanApproval ? 'Reject' : 'Deny'}</span>
+          {showAllowAllHint && (
+            <span><kbd className="px-1 py-0.5 rounded bg-white/[0.06] font-mono">⌘⏎</kbd> Allow all ({queueLength})</span>
+          )}
         </div>
       </div>
     </div>
