@@ -1,5 +1,11 @@
 import type { ToolCallMessage } from '../store/sessions'
 
+/** Compact display name. mcp__<server>__<function> → <server>:<function> */
+export function formatToolName(name: string): string {
+  const m = name.match(/^mcp__(.+?)__(.+)$/)
+  return m ? `${m[1]}:${m[2]}` : name
+}
+
 /** One-line label for a single tool call */
 export function inlineLabel(name: string, input: Record<string, unknown>, done: boolean): string {
   const verb = done ? pastTense(name) : presentTense(name)

@@ -1,14 +1,12 @@
 import React, { useState } from 'react'
 import type { ToolCallMessage } from '../store/sessions'
 import { useSettingsStore } from '../store/settings'
-import { inlineLabel, buildGroupSummary } from '../utils/toolSummary'
+import { inlineLabel, buildGroupSummary, formatToolName } from '../utils/toolSummary'
 import { useFilePreviewStore } from '../store/filePreview'
-import ToolCallCard from './ToolCallCard'
 
 const FILE_TOOLS = new Set(['Read', 'Edit', 'Write'])
 
-function TraceLine({ message, isLoading }: { message: ToolCallMessage; isLoading?: boolean }): React.JSX.Element {
-  const [expanded, setExpanded] = useState(false)
+function TraceLine({ message }: { message: ToolCallMessage }): React.JSX.Element {
   const done = message.result !== undefined
   const denied = message.denied === true
   const hasError = done && !denied && message.result && (
@@ -30,51 +28,36 @@ function TraceLine({ message, isLoading }: { message: ToolCallMessage; isLoading
     : null
 
   return (
-    <div>
-      <button
-        onClick={() => done && setExpanded((v) => !v)}
-        className={`w-full flex items-center gap-2 py-[3px] px-1 text-left rounded transition-colors ${
-          done ? 'hover:bg-white/[0.025] cursor-pointer' : 'cursor-default'
-        }`}
+    <div className="w-full flex items-center gap-2 py-[3px] px-1">
+      <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${dotClass}`} />
+      <span
+        title={message.tool_name}
+        className={`font-mono text-[11px] w-[120px] flex-shrink-0 truncate ${denied ? 'text-red-400/50' : 'text-white/35'}`}
       >
-        <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${dotClass}`} />
-        <span className={`font-mono text-[11px] w-[52px] flex-shrink-0 ${denied ? 'text-red-400/50' : 'text-white/35'}`}>
-          {message.tool_name}
+        {formatToolName(message.tool_name)}
+      </span>
+      {filePath && !denied ? (
+        <button
+          type="button"
+          className="text-[11px] text-blue-400/50 hover:text-blue-400 font-mono truncate min-w-0 transition-colors text-left"
+          onClick={() => useFilePreviewStore.getState().open(filePath)}
+        >
+          {filePath.split('/').slice(-3).join('/')}
+        </button>
+      ) : (
+        <span className={`text-[11px] font-mono truncate min-w-0 ${denied ? 'text-red-400/40' : 'text-white/25'}`}>
+          {label.replace(/^\S+\s*/, '')}
         </span>
-        {filePath && !denied ? (
-          <span
-            className="text-[11px] text-blue-400/50 hover:text-blue-400 font-mono truncate min-w-0 transition-colors"
-            onClick={(e) => {
-              e.stopPropagation()
-              useFilePreviewStore.getState().open(filePath)
-            }}
-          >
-            {filePath.split('/').slice(-3).join('/')}
-          </span>
-        ) : (
-          <span className={`text-[11px] font-mono truncate min-w-0 ${denied ? 'text-red-400/40' : 'text-white/25'}`}>
-            {label.replace(/^\S+\s*/, '')}
-          </span>
-        )}
-        {denied && (
-          <span className="text-[10px] text-red-400/40 ml-auto mr-1 flex-shrink-0">denied</span>
-        )}
-        {done && !denied && (
-          <span className="ml-auto text-white/15 flex-shrink-0 text-[10px]">{expanded ? '▾' : '▸'}</span>
-        )}
-      </button>
-      {expanded && (
-        <div className="ml-5 mb-1">
-          <ToolCallCard message={message} isLoading={isLoading} nested />
-        </div>
+      )}
+      {denied && (
+        <span className="text-[10px] text-red-400/40 ml-auto flex-shrink-0">denied</span>
       )}
     </div>
   )
 }
 
 export default function ToolCallGroup({
-  messages,
-  isLoading
+  messages
 }: {
   messages: ToolCallMessage[]
   isLoading?: boolean
@@ -89,7 +72,7 @@ export default function ToolCallGroup({
   if (isSingle) {
     return (
       <div className={compact ? 'py-0' : 'py-0.5'}>
-        <TraceLine message={messages[0]} isLoading={isLoading} />
+        <TraceLine message={messages[0]} />
       </div>
     )
   }
@@ -117,7 +100,7 @@ export default function ToolCallGroup({
       {expanded && (
         <div className="ml-3 border-l border-white/[0.06] pl-2 mt-0.5">
           {messages.map((m) => (
-            <TraceLine key={m.id} message={m} isLoading={isLoading} />
+            <TraceLine key={m.id} message={m} />
           ))}
         </div>
       )}

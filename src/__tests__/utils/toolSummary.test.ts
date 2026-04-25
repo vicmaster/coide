@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { inlineLabel, buildGroupSummary } from '../../renderer/src/utils/toolSummary'
+import { inlineLabel, buildGroupSummary, formatToolName } from '../../renderer/src/utils/toolSummary'
 import type { ToolCallMessage } from '../../renderer/src/store/sessions'
 
 function makeTool(name: string, input: Record<string, unknown>, result?: string): ToolCallMessage {
@@ -43,6 +43,21 @@ describe('inlineLabel', () => {
     const label = inlineLabel('Read', { file_path: '/Users/victor/Projects/coide/src/main/index.ts' }, true)
     expect(label).toContain('…/')
     expect(label).toContain('src/main/index.ts')
+  })
+})
+
+describe('formatToolName', () => {
+  it('leaves regular tool names unchanged', () => {
+    expect(formatToolName('Read')).toBe('Read')
+    expect(formatToolName('TodoWrite')).toBe('TodoWrite')
+  })
+
+  it('compresses mcp tool names', () => {
+    expect(formatToolName('mcp__slack__conversations_add_message')).toBe('slack:conversations_add_message')
+  })
+
+  it('handles mcp servers with hyphens', () => {
+    expect(formatToolName('mcp__google-workspace__search_drive_files')).toBe('google-workspace:search_drive_files')
   })
 })
 
