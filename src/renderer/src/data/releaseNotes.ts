@@ -6,8 +6,8 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
-    version: '0.18.0',
-    date: '2026-04-24',
+    version: '0.19.0',
+    date: '2026-04-25',
     notes: [
       'Visual Agent Workflows — React Flow canvas for orchestrating Claude agents',
       '/release-notes modal with version history',
