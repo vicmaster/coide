@@ -5,13 +5,18 @@ export type ReleaseNote = {
 }
 
 export const RELEASE_NOTES: ReleaseNote[] = [
+  {
+    version: 'next',
+    date: '',
+    notes: []
+  },
   // The 'next' entry accumulates notes from ship-feature during the current dev cycle.
   // On release (npm version), scripts/add-release-note.js renames it to the actual
   // version + date, and prepends a fresh empty 'next' entry. The modal filters this
   // entry out so users only see released versions.
   {
-    version: 'next',
-    date: '',
+    version: '0.21.0',
+    date: '2026-04-26',
     notes: [
       'Release notes show full version history — rebuilt v0.16–v0.19 entries and fixed the release script so each version archives correctly going forward',
       '/permissions dialog — per-tool auto-approve toggles and an "Always allow" button on prompts so you stop seeing the same one twice'
