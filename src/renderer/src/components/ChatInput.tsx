@@ -246,6 +246,9 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
       case 'release-notes':
         window.dispatchEvent(new CustomEvent('coide:open-release-notes'))
         break
+      case 'permissions':
+        window.dispatchEvent(new CustomEvent('coide:open-permissions'))
+        break
       case 'loop stop':
         window.dispatchEvent(new CustomEvent('coide:stop-loop'))
         break

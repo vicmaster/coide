@@ -49,13 +49,15 @@ export default function PermissionDialog({
   queueLength,
   onAllow,
   onDeny,
-  onAllowAll
+  onAllowAll,
+  onAlwaysAllow
 }: {
   permission: PermissionRequest
   queueLength: number
   onAllow: () => void
   onDeny: () => void
   onAllowAll?: () => void
+  onAlwaysAllow?: () => void
 }): React.JSX.Element {
   const isPlanApproval = permission.tool_name === 'ExitPlanMode'
   const isFileOp = permission.tool_name === 'Edit' || permission.tool_name === 'Write'
@@ -78,9 +80,9 @@ export default function PermissionDialog({
 
   // Latest-callback ref pattern: lets the keydown listener stay attached
   // across parent re-renders without re-creating it on every callback identity change.
-  const callbacksRef = useRef({ onAllow, onDeny, onAllowAll })
+  const callbacksRef = useRef({ onAllow, onDeny, onAllowAll, onAlwaysAllow })
   useEffect(() => {
-    callbacksRef.current = { onAllow, onDeny, onAllowAll }
+    callbacksRef.current = { onAllow, onDeny, onAllowAll, onAlwaysAllow }
   })
 
   // Keyboard shortcuts. Capture phase + stopImmediatePropagation so the dialog
@@ -190,6 +192,15 @@ export default function PermissionDialog({
           >
             {isPlanApproval ? 'Reject Plan' : isFileOp ? 'Reject' : 'Deny'}
           </button>
+          {!isPlanApproval && onAlwaysAllow && (
+            <button
+              onClick={onAlwaysAllow}
+              title={`Auto-approve ${permission.tool_name} from now on`}
+              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-white/50 hover:bg-white/[0.08] hover:text-white/70 transition-colors whitespace-nowrap"
+            >
+              Always allow
+            </button>
+          )}
           <button
             onClick={onAllow}
             className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${

@@ -152,3 +152,4 @@ Archive of completed features. User-facing changelog lives in `src/renderer/src/
 - Refreshing status line — tick rate limit countdown and stats live every second
 - `/release-notes` — show changelog/what's new per coide version in a modal
 - Named subagents in @-mention — autocomplete shows running agents by name in chat input
+- `/permissions` dialog — per-tool auto-approve toggles plus "Always allow" button on prompts, replacing the binary skipPermissions toggle

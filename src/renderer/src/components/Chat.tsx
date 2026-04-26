@@ -8,6 +8,7 @@ import ToolCallGroup from './ToolCallGroup'
 import PermissionDialog, { type PermissionRequest } from './PermissionDialog'
 import ChatInput from './ChatInput'
 import SettingsModal from './SettingsModal'
+import PermissionsModal from './PermissionsModal'
 import StatsModal from './StatsModal'
 import CopyBlocksModal from './CopyBlocksModal'
 import ReleaseNotesModal from './ReleaseNotesModal'
@@ -66,6 +67,7 @@ export default function Chat({
   const [statsOpen, setStatsOpen] = useState(false)
   const [copyBlocksOpen, setCopyBlocksOpen] = useState(false)
   const [releaseNotesOpen, setReleaseNotesOpen] = useState(false)
+  const [permissionsOpen, setPermissionsOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
@@ -107,6 +109,12 @@ export default function Chat({
     const handler = (): void => setReleaseNotesOpen(true)
     window.addEventListener('coide:open-release-notes', handler)
     return () => window.removeEventListener('coide:open-release-notes', handler)
+  }, [])
+
+  useEffect(() => {
+    const handler = (): void => setPermissionsOpen(true)
+    window.addEventListener('coide:open-permissions', handler)
+    return () => window.removeEventListener('coide:open-permissions', handler)
   }, [])
 
   useEffect(() => {
@@ -586,8 +594,14 @@ export default function Chat({
 
     const permCleanup = window.api.claude.onPermission((raw: unknown) => {
       const perm = raw as PermissionRequest & { coideSessionId?: string }
-      // Safety net: if skip-permissions is on, auto-approve instead of showing dialog
-      if (useSettingsStore.getState().skipPermissions) {
+      const settings = useSettingsStore.getState()
+      // Skip-all overrides everything
+      if (settings.skipPermissions) {
+        window.api.claude.respondPermission(true, perm.coideSessionId)
+        return
+      }
+      // Per-tool auto-approve
+      if (settings.autoApproveTools.includes(perm.tool_name)) {
         window.api.claude.respondPermission(true, perm.coideSessionId)
         return
       }
@@ -679,6 +693,16 @@ export default function Chat({
 
   const handleAllow = useCallback(() => handlePermissionRespond(true), [handlePermissionRespond])
   const handleDeny = useCallback(() => handlePermissionRespond(false), [handlePermissionRespond])
+
+  const handleAlwaysAllow = useCallback((): void => {
+    const current = permissionQueue.find((p) => p.coideSessionId === activeSessionId) ?? permissionQueue[0]
+    if (!current) return
+    const { autoApproveTools } = useSettingsStore.getState()
+    if (!autoApproveTools.includes(current.tool_name)) {
+      updateSettings({ autoApproveTools: [...autoApproveTools, current.tool_name] })
+    }
+    handlePermissionRespond(true)
+  }, [permissionQueue, activeSessionId, updateSettings, handlePermissionRespond])
 
   const sendMessage = useCallback(async (text: string, images?: ImageAttachment[], files?: FileAttachment[]): Promise<void> => {
     const currentActiveId = useSessionsStore.getState().activeSessionId
@@ -1345,10 +1369,12 @@ export default function Chat({
           onAllow={handleAllow}
           onDeny={handleDeny}
           onAllowAll={handlePermissionAllowAll}
+          onAlwaysAllow={handleAlwaysAllow}
         />
       )}
 
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+      {permissionsOpen && <PermissionsModal onClose={() => setPermissionsOpen(false)} />}
       {statsOpen && <StatsModal onClose={() => setStatsOpen(false)} />}
       {copyBlocksOpen && <CopyBlocksModal onClose={() => setCopyBlocksOpen(false)} />}
       {releaseNotesOpen && <ReleaseNotesModal onClose={() => setReleaseNotesOpen(false)} />}

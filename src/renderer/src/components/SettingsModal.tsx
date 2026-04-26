@@ -58,11 +58,16 @@ export default function SettingsModal({ onClose }: { onClose: () => void }): Rea
           />
         </SettingRow>
 
-        <SettingRow label="Skip Permissions">
-          <Toggle
-            checked={settings.skipPermissions}
-            onChange={(v) => update({ skipPermissions: v })}
-          />
+        <SettingRow label="Permissions">
+          <button
+            onClick={() => {
+              onClose()
+              window.dispatchEvent(new CustomEvent('coide:open-permissions'))
+            }}
+            className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-white/60 hover:text-white/80 hover:bg-white/[0.06] transition-colors"
+          >
+            Manage…
+          </button>
         </SettingRow>
 
         <SettingRow label="Notifications">

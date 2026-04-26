@@ -210,12 +210,14 @@ export async function respondPermission(approved: boolean, coideSessionId?: stri
       handleEvent(raw, win, coideSessionId)
     }
 
-    // If PTY already exited while we were waiting for permission,
-    // send stream_end and clean up now
-    if (!sess.pty.pid) {
-      if (!sess.settled) {
-        win.webContents.send('claude:event', { ...tag, type: 'stream_end' })
-      }
+    // If the run already finished (settle() was called while we were waiting),
+    // the buffered result event just emitted stream_end via handleEvent, so
+    // just clean up the map. Otherwise, if the PTY exited without a result,
+    // emit stream_end ourselves before cleaning up.
+    if (sess.settled) {
+      ptySessions.delete(coideSessionId)
+    } else if (!sess.pty.pid) {
+      win.webContents.send('claude:event', { ...tag, type: 'stream_end' })
       ptySessions.delete(coideSessionId)
     }
   } else {
@@ -433,7 +435,12 @@ export function runClaude(
       fn()
       setTimeout(() => {
         try { ptyProc.kill('SIGTERM') } catch {}
-        ptySessions.delete(coideSessionId)
+        // If a permission prompt is still pending, keep the session in the map
+        // so respondPermission can flush buffered events and emit stream_end.
+        // respondPermission cleans up when the user responds.
+        if (!sess.waitingForPermission) {
+          ptySessions.delete(coideSessionId)
+        }
       }, 200)
     }
 

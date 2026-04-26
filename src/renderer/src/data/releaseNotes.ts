@@ -13,7 +13,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     version: 'next',
     date: '',
     notes: [
-      'Release notes show full version history — rebuilt v0.16–v0.19 entries and fixed the release script so each version archives correctly going forward'
+      'Release notes show full version history — rebuilt v0.16–v0.19 entries and fixed the release script so each version archives correctly going forward',
+      '/permissions dialog — per-tool auto-approve toggles and an "Always allow" button on prompts so you stop seeing the same one twice'
     ]
   },
   {

@@ -13,6 +13,7 @@ export type CoideSettings = {
   autoCompactThreshold: number
   onboardingComplete: boolean
   allowedTools?: string[] // when set, passed as --allowed-tools to Claude CLI (used by workflow nodes)
+  autoApproveTools: string[] // tool names that auto-approve without prompting (e.g., 'Bash', 'Edit')
 }
 
 export const DEFAULT_SETTINGS: CoideSettings = {
@@ -28,5 +29,6 @@ export const DEFAULT_SETTINGS: CoideSettings = {
   compactMode: false,
   autoCompact: true,
   autoCompactThreshold: 90,
-  onboardingComplete: false
+  onboardingComplete: false,
+  autoApproveTools: []
 }
