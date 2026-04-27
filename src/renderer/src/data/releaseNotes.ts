@@ -8,6 +8,11 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     version: 'next',
     date: '',
+    notes: []
+  },
+  {
+    version: '0.22.0',
+    date: '2026-04-27',
     notes: [
       'Light theme — pick Light, Dark, or System in Settings. Code blocks and diffs follow the theme.'
     ]
