@@ -891,7 +891,7 @@ export default function Chat({
     >
       {/* Drop zone overlay */}
       {isDragging && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-blue-400/50 bg-blue-500/10 px-12 py-10">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -1283,7 +1283,7 @@ export default function Chat({
                           autoFocus
                           value={editText}
                           onChange={(e) => setEditText(e.target.value)}
-                          className="w-full resize-none rounded-2xl bg-blue-600 px-4 py-3 text-fg outline-none text-sm leading-relaxed"
+                          className="w-full resize-none rounded-2xl bg-blue-600 px-4 py-3 text-white outline-none text-sm leading-relaxed"
                           rows={Math.max(2, editText.split('\n').length)}
                           onKeyDown={(e) => {
                             if (e.key === 'Escape') { setEditingMessageId(null); setEditText('') }
@@ -1294,7 +1294,7 @@ export default function Chat({
                           <button
                             disabled={!editText.trim()}
                             onClick={() => { const mid = editingMessageId!; const text = editText; setEditingMessageId(null); setEditText(''); editAndResend(mid, text) }}
-                            className="rounded-lg bg-blue-500 px-3 py-1 text-xs font-medium text-fg hover:bg-blue-400 disabled:opacity-25 transition-colors"
+                            className="rounded-lg bg-blue-500 px-3 py-1 text-xs font-medium text-white hover:bg-blue-400 disabled:opacity-25 transition-colors"
                           >Save</button>
                         </div>
                       </div>
@@ -1329,7 +1329,7 @@ export default function Chat({
       {showJumpBottom && (
         <button
           onClick={() => virtualizer.scrollToIndex(virtualItems.length - 1, { align: 'end', behavior: 'smooth' })}
-          className="absolute left-1/2 -translate-x-1/2 bottom-[90px] z-10 rounded-full bg-overlay-3 border border-line-strong px-3 py-1.5 text-[11px] text-fg-muted hover:text-fg-strong hover:bg-overlay-4 transition-all backdrop-blur-sm shadow-lg flex items-center gap-1.5"
+          className="absolute left-1/2 -translate-x-1/2 bottom-[90px] z-10 rounded-full bg-overlay-3 border border-line-strong px-3 py-1.5 text-[11px] text-fg-muted hover:text-fg-strong hover:bg-overlay-4 transition-all shadow-lg flex items-center gap-1.5"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="6 9 12 15 18 9" />
@@ -1461,7 +1461,7 @@ const MessageRow = React.memo(function MessageRow({ message, isLoading, onEdit, 
     const textMsg = message as TextMessage
     return (
       <div className="flex justify-end group/msg">
-        <div className={`relative max-w-[75%] rounded-2xl bg-blue-600 text-fg ${compact ? 'px-3 py-2' : 'px-4 py-3'}`}>
+        <div className={`relative max-w-[75%] rounded-2xl bg-blue-600 text-white ${compact ? 'px-3 py-2' : 'px-4 py-3'}`}>
           {onEdit && (
             <button
               onClick={() => onEdit(textMsg.id, textMsg.text)}

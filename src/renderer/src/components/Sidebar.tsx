@@ -107,13 +107,13 @@ export default function Sidebar(): React.JSX.Element {
           <div className="flex">
             <button
               onClick={handleNewSession}
-              className="flex-1 rounded-l-md bg-blue-600/90 hover:bg-blue-600 py-1.5 text-xs font-medium text-fg transition-colors"
+              className="flex-1 rounded-l-md bg-blue-600/90 hover:bg-blue-600 py-1.5 text-xs font-medium text-white transition-colors"
             >
               + New Session
             </button>
             <button
               onClick={handleNewSessionInFolder}
-              className="rounded-r-md bg-blue-600/90 hover:bg-blue-600 px-2 py-1.5 text-xs text-fg border-l border-blue-500/50 transition-colors"
+              className="rounded-r-md bg-blue-600/90 hover:bg-blue-600 px-2 py-1.5 text-xs text-white border-l border-blue-500/50 transition-colors"
               title="New session in different folder"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -165,7 +165,7 @@ export default function Sidebar(): React.JSX.Element {
               })
               openCanvas()
             }}
-            className="flex-1 rounded-md bg-blue-600/90 hover:bg-blue-600 py-1.5 text-xs font-medium text-fg transition-colors"
+            className="flex-1 rounded-md bg-blue-600/90 hover:bg-blue-600 py-1.5 text-xs font-medium text-white transition-colors"
           >
             + New
           </button>
@@ -185,7 +185,7 @@ export default function Sidebar(): React.JSX.Element {
         <div className="p-2 border-t border-line-soft flex gap-1.5">
           <button
             onClick={() => useSkillEditorStore.getState().openNew()}
-            className="flex-1 rounded-md bg-blue-600/90 hover:bg-blue-600 py-1.5 text-xs font-medium text-fg transition-colors"
+            className="flex-1 rounded-md bg-blue-600/90 hover:bg-blue-600 py-1.5 text-xs font-medium text-white transition-colors"
           >
             + New
           </button>

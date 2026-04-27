@@ -4,6 +4,7 @@ import Chat from './components/Chat'
 import RightPanel from './components/RightPanel'
 import SessionSearch from './components/SessionSearch'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
+import { useResolvedTheme } from './hooks/useResolvedTheme'
 import { useSessionsStore } from './store/sessions'
 import { useWorkflowStore } from './store/workflow'
 
@@ -23,11 +24,16 @@ export default function App(): React.JSX.Element {
   const startYRef = useRef(0)
   const startHeightRef = useRef(250)
   const isCanvasOpen = useWorkflowStore((s) => s.isCanvasOpen)
+  const resolvedTheme = useResolvedTheme()
   useKeyboardShortcuts()
 
   useEffect(() => {
     useSessionsStore.persist.rehydrate()
   }, [])
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = resolvedTheme
+  }, [resolvedTheme])
 
   // Toggle terminal with Ctrl+`
   useEffect(() => {

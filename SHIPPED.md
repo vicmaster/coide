@@ -124,6 +124,7 @@ Archive of completed features. User-facing changelog lives in `src/renderer/src/
 - MCP servers panel — read-only view of active MCP servers (global + project) in right panel
 - Integrated terminal — xterm.js-based terminal panel with multi-tab support, resizable, Cmd+J toggle
 - Inline chat date separators — Slack-style day dividers (Today/Yesterday/date) between messages from different days
+- Light theme — full light color palette via CSS design tokens, with a Light/Dark/System toggle in Settings; Monaco diff/editor and Shiki code blocks swap to light themes when the resolved theme is light
 
 ## Copycat — Features parity with Claude Code CLI (shipped)
 - Plan mode toggle — button to enter/exit plan mode (auto-accept edits, strategic planning before execution)

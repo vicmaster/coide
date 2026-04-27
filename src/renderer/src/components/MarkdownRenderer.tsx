@@ -5,8 +5,16 @@ import { getSingletonHighlighter, createJavaScriptRegexEngine } from 'shiki'
 import type { HighlighterGeneric } from 'shiki'
 import { useFilePreviewStore } from '../store/filePreview'
 import { useSettingsStore } from '../store/settings'
+import { useResolvedTheme } from '../hooks/useResolvedTheme'
 
-const THEME = 'github-dark-dimmed'
+const THEME_DARK = 'github-dark-dimmed'
+const THEME_LIGHT = 'github-light-default'
+// Background colors baked into each Shiki theme — replaced with transparent so
+// the surrounding code-block surface shows through.
+const THEME_BG: Record<string, string> = {
+  [THEME_DARK]: '#22272e',
+  [THEME_LIGHT]: '#ffffff'
+}
 
 // Load only the most common languages initially (~1 MB vs ~3.8 MB)
 const INITIAL_LANGS = ['typescript', 'javascript', 'tsx', 'jsx', 'json', 'bash', 'markdown', 'text', 'diff']
@@ -14,9 +22,9 @@ const DEFERRED_LANGS = ['python', 'sh', 'shell', 'jsonc', 'yaml', 'toml', 'css',
 const ALL_LANGS = [...INITIAL_LANGS, ...DEFERRED_LANGS]
 const deferredSet = new Set(DEFERRED_LANGS)
 
-// Pre-warm with initial languages only
+// Pre-warm with initial languages and both themes
 const highlighterPromise = getSingletonHighlighter({
-  themes: [THEME],
+  themes: [THEME_DARK, THEME_LIGHT],
   langs: INITIAL_LANGS,
   engine: createJavaScriptRegexEngine()
 })
@@ -34,6 +42,8 @@ async function ensureLang(highlighter: HighlighterGeneric<string, string>, lang:
 const CodeBlock = React.memo(function CodeBlock({ language, code, compact }: { language: string; code: string; compact?: boolean }): React.JSX.Element {
   const [html, setHtml] = useState('')
   const [copied, setCopied] = useState(false)
+  const resolvedTheme = useResolvedTheme()
+  const shikiTheme = resolvedTheme === 'light' ? THEME_LIGHT : THEME_DARK
 
   useEffect(() => {
     const lang = ALL_LANGS.includes(language) ? language : 'text'
@@ -42,12 +52,12 @@ const CodeBlock = React.memo(function CodeBlock({ language, code, compact }: { l
       setHtml(
         h.codeToHtml(code, {
           lang,
-          theme: THEME,
-          colorReplacements: { '#22272e': 'transparent' }
+          theme: shikiTheme,
+          colorReplacements: { [THEME_BG[shikiTheme]]: 'transparent' }
         })
       )
     })
-  }, [code, language])
+  }, [code, language, shikiTheme])
 
   const handleCopy = (): void => {
     navigator.clipboard.writeText(code)
@@ -56,7 +66,7 @@ const CodeBlock = React.memo(function CodeBlock({ language, code, compact }: { l
   }
 
   return (
-    <div className={`${compact ? 'my-1.5' : 'my-3'} rounded-lg overflow-hidden border border-line bg-[#1a1f27]`}>
+    <div className={`${compact ? 'my-1.5' : 'my-3'} rounded-lg overflow-hidden border border-line bg-surface-3`}>
       <div className="flex items-center justify-between px-3 py-1.5 bg-overlay-1 border-b border-line-soft">
         <span className="text-[10px] text-fg-faint font-mono">{language || 'code'}</span>
         <button

@@ -688,7 +688,7 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
               />
               <button
                 onClick={() => removeImage(i)}
-                className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-red-500 text-fg text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 ×
               </button>
@@ -741,7 +741,7 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
         <button
           onClick={handleSend}
           disabled={!input.trim() && stagedImages.length === 0 && stagedFiles.length === 0}
-          className={`flex-shrink-0 rounded-lg px-2.5 py-1 text-xs font-medium text-fg transition-colors disabled:opacity-25 ${
+          className={`flex-shrink-0 rounded-lg px-2.5 py-1 text-xs font-medium text-white transition-colors disabled:opacity-25 ${
             isLoading ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-blue-600 hover:bg-blue-500'
           }`}
         >

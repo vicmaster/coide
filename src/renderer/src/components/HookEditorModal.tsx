@@ -170,7 +170,7 @@ export default function HookEditorModal(): React.JSX.Element | null {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       onClick={handleBackdrop}
     >
       <div className="w-full max-w-2xl rounded-2xl bg-surface-3 border border-line-strong shadow-2xl flex flex-col max-h-[75vh]">
@@ -205,7 +205,7 @@ export default function HookEditorModal(): React.JSX.Element | null {
         <div className="border-t border-line-soft" />
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 bg-surface-3">
           {loading ? (
             <p className="text-xs text-fg-subtle text-center py-8">Loading...</p>
           ) : configuredEvents.length === 0 ? (
@@ -256,7 +256,7 @@ export default function HookEditorModal(): React.JSX.Element | null {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="rounded-lg bg-overlay-3 px-4 py-1.5 text-xs text-fg-muted hover:bg-overlay-4 transition-colors disabled:opacity-50"
+              className="rounded-lg bg-blue-600/90 hover:bg-blue-600 px-4 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Save'}
             </button>

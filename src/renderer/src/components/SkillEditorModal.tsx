@@ -1,37 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { loader, Editor, useMonaco } from '@monaco-editor/react'
+import { loader, Editor } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
 import { useSkillEditorStore } from '../store/skillEditor'
 import { useSessionsStore } from '../store/sessions'
+import { useMonacoCoideTheme } from '../hooks/useMonacoCoideTheme'
 
 loader.config({ monaco })
-
-const THEME_NAME = 'coide-dark'
-
-function useCoideTheme(): boolean {
-  const m = useMonaco()
-  const [defined, setDefined] = useState(false)
-
-  useEffect(() => {
-    if (m && !defined) {
-      m.editor.defineTheme(THEME_NAME, {
-        base: 'vs-dark',
-        inherit: true,
-        rules: [],
-        colors: {
-          'editor.background': '#111111',
-          'editorLineNumber.foreground': '#ffffff18',
-          'editorGutter.background': '#111111',
-          'scrollbar.shadow': '#00000000',
-          'editorOverviewRuler.border': '#00000000'
-        }
-      })
-      setDefined(true)
-    }
-  }, [m, defined])
-
-  return defined
-}
 
 const TEMPLATE = '# Skill Name\n\nInstructions for Claude when this skill is invoked...\n'
 
@@ -62,7 +36,7 @@ function buildFrontmatter(
 
 export default function SkillEditorModal(): React.JSX.Element | null {
   const { isOpen, mode, skillName, skillScope, filePath, close } = useSkillEditorStore()
-  const themeDefined = useCoideTheme()
+  const { defined: themeDefined, theme } = useMonacoCoideTheme()
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -161,7 +135,7 @@ export default function SkillEditorModal(): React.JSX.Element | null {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
       onClick={close}
     >
       <div
@@ -262,7 +236,7 @@ export default function SkillEditorModal(): React.JSX.Element | null {
                 value={content}
                 onChange={(v) => setContent(v ?? '')}
                 language="markdown"
-                theme={THEME_NAME}
+                theme={theme}
                 options={{
                   minimap: { enabled: false },
                   scrollBeyondLastLine: false,
@@ -302,7 +276,7 @@ export default function SkillEditorModal(): React.JSX.Element | null {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="rounded-md bg-blue-600/90 hover:bg-blue-600 px-4 py-1.5 text-xs font-medium text-fg transition-colors disabled:opacity-50"
+              className="rounded-md bg-blue-600/90 hover:bg-blue-600 px-4 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Save'}
             </button>

@@ -1,7 +1,7 @@
 import React, { useEffect, useCallback } from 'react'
 import { useSettingsStore } from '../store/settings'
 import { useHookEditorStore } from '../store/hookEditor'
-import { DEFAULT_SETTINGS } from '../../../shared/types'
+import { DEFAULT_SETTINGS, type ThemePreference } from '../../../shared/types'
 
 export default function SettingsModal({ onClose }: { onClose: () => void }): React.JSX.Element {
   const settings = useSettingsStore()
@@ -27,7 +27,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }): Rea
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       onClick={handleBackdrop}
     >
       <div className="w-full max-w-md rounded-2xl bg-surface-3 border border-line-strong p-5 shadow-2xl max-h-[85vh] overflow-y-auto">
@@ -44,6 +44,18 @@ export default function SettingsModal({ onClose }: { onClose: () => void }): Rea
 
         {/* Essential */}
         <SectionLabel>Essential</SectionLabel>
+
+        <SettingRow label="Theme">
+          <SegmentedControl
+            value={settings.theme}
+            onChange={(v) => update({ theme: v as ThemePreference })}
+            options={[
+              { value: 'light', label: 'Light' },
+              { value: 'dark', label: 'Dark' },
+              { value: 'system', label: 'System' }
+            ]}
+          />
+        </SettingRow>
 
         <SettingRow label="Model">
           <Select

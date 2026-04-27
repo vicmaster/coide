@@ -11,7 +11,7 @@ export default function WelcomeModal(): React.JSX.Element | null {
   if (onboardingComplete) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
       <div className="w-full max-w-md rounded-2xl border border-line-strong bg-surface-3 shadow-2xl overflow-hidden">
         {/* Step dots */}
         <div className="flex justify-center gap-2 pt-5 pb-2">
@@ -160,7 +160,7 @@ function StepCli({ onNext }: { onNext: () => void }): React.JSX.Element {
               <button
                 onClick={handleVerifyCustom}
                 disabled={!customPath.trim() || verifying}
-                className="rounded-md bg-blue-600/80 hover:bg-blue-600 px-3 py-1.5 text-[12px] font-medium text-fg transition-colors disabled:opacity-30"
+                className="rounded-md bg-blue-600/80 hover:bg-blue-600 px-3 py-1.5 text-[12px] font-medium text-white transition-colors disabled:opacity-30"
               >
                 {verifying ? '…' : 'Verify'}
               </button>
@@ -172,7 +172,7 @@ function StepCli({ onNext }: { onNext: () => void }): React.JSX.Element {
       {status === 'found' && (
         <button
           onClick={onNext}
-          className="rounded-lg bg-blue-600 hover:bg-blue-500 px-5 py-2 text-[13px] font-medium text-fg transition-colors"
+          className="rounded-lg bg-blue-600 hover:bg-blue-500 px-5 py-2 text-[13px] font-medium text-white transition-colors"
         >
           Continue
         </button>
@@ -240,7 +240,7 @@ function StepFolder({ onNext, onBack }: { onNext: () => void; onBack: () => void
         <button
           onClick={onNext}
           disabled={!folder}
-          className="rounded-lg bg-blue-600 hover:bg-blue-500 px-5 py-2 text-[13px] font-medium text-fg transition-colors disabled:opacity-30"
+          className="rounded-lg bg-blue-600 hover:bg-blue-500 px-5 py-2 text-[13px] font-medium text-white transition-colors disabled:opacity-30"
         >
           Next →
         </button>
@@ -277,7 +277,7 @@ function StepTips(): React.JSX.Element {
 
       <button
         onClick={() => useSettingsStore.getState().updateSettings({ onboardingComplete: true })}
-        className="rounded-lg bg-blue-600 hover:bg-blue-500 px-6 py-2.5 text-[13px] font-semibold text-fg transition-colors"
+        className="rounded-lg bg-blue-600 hover:bg-blue-500 px-6 py-2.5 text-[13px] font-semibold text-white transition-colors"
       >
         Get Started
       </button>

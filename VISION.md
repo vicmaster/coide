@@ -261,7 +261,6 @@ Electron Renderer Process (React)
 
 ## Roadmap
 
-- [ ] Light theme — add light color scheme and theme toggle in settings
 - [ ] Voice mode — speech-to-text input and text-to-speech responses via Web Speech API
 - [ ] Vim mode — vim keybindings for the chat input textarea
 - [ ] `/cost` per-model breakdown — enhance /stats with per-model cost and cache-hit breakdown

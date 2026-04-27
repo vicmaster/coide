@@ -4,7 +4,8 @@
 
 /*
  * Design tokens — semantic theme variables.
- * Add a `[data-theme="light"]` block here when introducing the light palette.
+ * :root holds the dark palette; [data-theme="light"] swaps to light values.
+ * App.tsx writes data-theme on <html> based on the resolved theme preference.
  */
 :root {
   /* Solid surfaces (elevation tiers) */
@@ -32,6 +33,40 @@
   --line-soft: rgba(255, 255, 255, 0.06);
   --line: rgba(255, 255, 255, 0.08);
   --line-strong: rgba(255, 255, 255, 0.12);
+
+  /* Scrollbar thumbs — overridden per theme so scrollbars stay visible on inverted bgs */
+  --scrollbar-thumb: rgba(255, 255, 255, 0.08);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="light"] {
+  /* Solid surfaces — inverted elevation: canvas is mid-gray, modals are white */
+  --canvas: #f5f5f5;
+  --surface-1: #ececec;
+  --surface-2: #ffffff;
+  --surface-3: #fafafa;
+  --surface-4: #e8e8e8;
+
+  /* Overlays darken instead of lighten on light backgrounds */
+  --overlay-1: rgba(0, 0, 0, 0.03);
+  --overlay-2: rgba(0, 0, 0, 0.06);
+  --overlay-3: rgba(0, 0, 0, 0.09);
+  --overlay-4: rgba(0, 0, 0, 0.14);
+
+  /* Black text — slightly higher opacities than dark mode for readability */
+  --fg: #000000;
+  --fg-strong: rgba(0, 0, 0, 0.88);
+  --fg-muted: rgba(0, 0, 0, 0.65);
+  --fg-subtle: rgba(0, 0, 0, 0.50);
+  --fg-faint: rgba(0, 0, 0, 0.32);
+  --fg-ghost: rgba(0, 0, 0, 0.18);
+
+  --line-soft: rgba(0, 0, 0, 0.06);
+  --line: rgba(0, 0, 0, 0.10);
+  --line-strong: rgba(0, 0, 0, 0.16);
+
+  --scrollbar-thumb: rgba(0, 0, 0, 0.10);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.20);
 }
 
 * {
@@ -45,7 +80,7 @@ html, body, #root {
   width: 100%;
   overflow: hidden;
   background: var(--canvas);
-  color: #e5e5e5;
+  color: var(--fg-strong);
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -67,8 +102,8 @@ button, input, textarea, a, [role="button"] {
 
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
 
 /* Monaco editor overrides to blend with app background */
 .monaco-editor,
@@ -92,7 +127,18 @@ button, input, textarea, a, [role="button"] {
 
 .xterm-viewport::-webkit-scrollbar { width: 4px; }
 .xterm-viewport::-webkit-scrollbar-track { background: transparent; }
-.xterm-viewport::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+.xterm-viewport::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 2px; }
+
+/* React Flow edge strokes — hardcoded per theme for guaranteed visibility */
+.react-flow__edge-path,
+.react-flow__connection-path {
+  stroke: #ffffff !important;
+  stroke-width: 1.5 !important;
+}
+[data-theme="light"] .react-flow__edge-path,
+[data-theme="light"] .react-flow__connection-path {
+  stroke: #000000 !important;
+}
 
 /* In-session search highlights */
 mark.coide-search-highlight {

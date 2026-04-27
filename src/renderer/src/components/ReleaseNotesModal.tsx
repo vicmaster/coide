@@ -16,7 +16,7 @@ export default function ReleaseNotesModal({ onClose }: { onClose: () => void }):
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       onClick={handleBackdrop}
     >
       <div className="w-full max-w-md max-h-[75vh] flex flex-col rounded-2xl bg-surface-3 border border-line-strong shadow-2xl overflow-hidden">

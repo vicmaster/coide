@@ -19,6 +19,7 @@ import {
 import '@xyflow/react/dist/style.css'
 import { useWorkflowStore } from '../store/workflow'
 import { useSessionsStore } from '../store/sessions'
+import { useResolvedTheme } from '../hooks/useResolvedTheme'
 import type {
   WorkflowDefinition,
   WorkflowNode,
@@ -83,7 +84,7 @@ function PromptNode({ data, selected }: NodeProps): React.JSX.Element {
     <div
       className={`bg-surface-2 rounded-[10px] border-2 px-3 py-2.5 w-[192px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-blue-500/40' : ''}`}
     >
-      <Handle type="target" position={Position.Left} className="!bg-overlay-4 !w-2 !h-2" />
+      <Handle type="target" position={Position.Left} className="!bg-fg-subtle !w-2 !h-2 !border !border-surface-2" />
       <div className="flex items-center gap-1.5 mb-1">
         <div className={`w-[7px] h-[7px] rounded-full ${statusColor(status)}`} />
         <span className="text-[9px] font-bold tracking-wider text-blue-400 font-mono">
@@ -118,7 +119,7 @@ function PromptNode({ data, selected }: NodeProps): React.JSX.Element {
           ✗ {(output as string)?.slice(0, 30) || 'failed'}
         </div>
       )}
-      <Handle type="source" position={Position.Right} className="!bg-overlay-4 !w-2 !h-2" />
+      <Handle type="source" position={Position.Right} className="!bg-fg-subtle !w-2 !h-2 !border !border-surface-2" />
     </div>
   )
 }
@@ -129,7 +130,7 @@ function ConditionNode({ data, selected }: NodeProps): React.JSX.Element {
     <div
       className={`bg-surface-2 rounded-[10px] border-2 px-3 py-2.5 w-[192px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-yellow-500/40' : ''}`}
     >
-      <Handle type="target" position={Position.Left} className="!bg-overlay-4 !w-2 !h-2" />
+      <Handle type="target" position={Position.Left} className="!bg-fg-subtle !w-2 !h-2 !border !border-surface-2" />
       <div className="flex items-center gap-1.5 mb-1">
         <div className={`w-[7px] h-[7px] rounded-full ${statusColor(status)}`} />
         <span className="text-[9px] font-bold tracking-wider text-amber-400 font-mono">
@@ -166,7 +167,7 @@ function ScriptNode({ data, selected }: NodeProps): React.JSX.Element {
     <div
       className={`bg-surface-2 rounded-[10px] border-2 px-3 py-2.5 w-[192px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-purple-500/40' : ''}`}
     >
-      <Handle type="target" position={Position.Left} className="!bg-overlay-4 !w-2 !h-2" />
+      <Handle type="target" position={Position.Left} className="!bg-fg-subtle !w-2 !h-2 !border !border-surface-2" />
       <div className="flex items-center gap-1.5 mb-1">
         <div className={`w-[7px] h-[7px] rounded-full ${statusColor(status)}`} />
         <span className="text-[9px] font-bold tracking-wider text-purple-400 font-mono">
@@ -185,7 +186,7 @@ function ScriptNode({ data, selected }: NodeProps): React.JSX.Element {
       {status === 'running' && (
         <div className="text-[9px] text-blue-400/70 font-mono mt-1">⟳ running...</div>
       )}
-      <Handle type="source" position={Position.Right} className="!bg-overlay-4 !w-2 !h-2" />
+      <Handle type="source" position={Position.Right} className="!bg-fg-subtle !w-2 !h-2 !border !border-surface-2" />
     </div>
   )
 }
@@ -196,7 +197,7 @@ function ParallelNode({ data, selected }: NodeProps): React.JSX.Element {
     <div
       className={`bg-surface-2 rounded-[10px] border-2 px-3 py-2.5 w-[160px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-cyan-500/40' : ''}`}
     >
-      <Handle type="target" position={Position.Left} className="!bg-overlay-4 !w-2 !h-2" />
+      <Handle type="target" position={Position.Left} className="!bg-fg-subtle !w-2 !h-2 !border !border-surface-2" />
       <div className="flex items-center gap-1.5 mb-1">
         <div className={`w-[7px] h-[7px] rounded-full ${statusColor(status)}`} />
         <span className="text-[9px] font-bold tracking-wider text-cyan-400 font-mono">
@@ -223,7 +224,7 @@ function JoinNode({ data, selected }: NodeProps): React.JSX.Element {
       </div>
       <div className="text-xs font-medium text-fg-strong truncate">{data.label as string}</div>
       <div className="text-[9px] text-fg-subtle font-mono mt-0.5">⇇ wait for all</div>
-      <Handle type="source" position={Position.Right} className="!bg-overlay-4 !w-2 !h-2" />
+      <Handle type="source" position={Position.Right} className="!bg-fg-subtle !w-2 !h-2 !border !border-surface-2" />
     </div>
   )
 }
@@ -235,7 +236,7 @@ function LoopNode({ data, selected }: NodeProps): React.JSX.Element {
     <div
       className={`bg-surface-2 rounded-[10px] border-2 px-3 py-2.5 w-[192px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-pink-500/40' : ''}`}
     >
-      <Handle type="target" position={Position.Left} className="!bg-overlay-4 !w-2 !h-2" />
+      <Handle type="target" position={Position.Left} className="!bg-fg-subtle !w-2 !h-2 !border !border-surface-2" />
       <div className="flex items-center gap-1.5 mb-1">
         <div className={`w-[7px] h-[7px] rounded-full ${statusColor(status)}`} />
         <span className="text-[9px] font-bold tracking-wider text-pink-400 font-mono">LOOP</span>
@@ -263,7 +264,7 @@ function LoopNode({ data, selected }: NodeProps): React.JSX.Element {
         type="source"
         position={Position.Right}
         id="exit"
-        className="!bg-overlay-4 !w-2 !h-2"
+        className="!bg-fg-subtle !w-2 !h-2 !border !border-surface-2"
       />
     </div>
   )
@@ -275,7 +276,7 @@ function HumanReviewNode({ data, selected }: NodeProps): React.JSX.Element {
     <div
       className={`bg-surface-2 rounded-[10px] border-2 px-3 py-2.5 w-[192px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-orange-400/40' : ''}`}
     >
-      <Handle type="target" position={Position.Left} className="!bg-overlay-4 !w-2 !h-2" />
+      <Handle type="target" position={Position.Left} className="!bg-fg-subtle !w-2 !h-2 !border !border-surface-2" />
       <div className="flex items-center gap-1.5 mb-1">
         <div className={`w-[7px] h-[7px] rounded-full ${statusColor(status)}`} />
         <span className="text-[9px] font-bold tracking-wider text-orange-400 font-mono">
@@ -289,7 +290,7 @@ function HumanReviewNode({ data, selected }: NodeProps): React.JSX.Element {
       {status === 'awaiting_review' && (
         <div className="text-[9px] text-orange-400 font-mono mt-1">⏸ awaiting review</div>
       )}
-      <Handle type="source" position={Position.Right} className="!bg-overlay-4 !w-2 !h-2" />
+      <Handle type="source" position={Position.Right} className="!bg-fg-subtle !w-2 !h-2 !border !border-surface-2" />
     </div>
   )
 }
@@ -301,7 +302,7 @@ function SubworkflowNode({ data, selected }: NodeProps): React.JSX.Element {
     <div
       className={`bg-surface-2 rounded-[10px] border-2 px-3 py-2.5 w-[192px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-violet-500/40' : ''}`}
     >
-      <Handle type="target" position={Position.Left} className="!bg-overlay-4 !w-2 !h-2" />
+      <Handle type="target" position={Position.Left} className="!bg-fg-subtle !w-2 !h-2 !border !border-surface-2" />
       <div className="flex items-center gap-1.5 mb-1">
         <div className={`w-[7px] h-[7px] rounded-full ${statusColor(status)}`} />
         <span className="text-[9px] font-bold tracking-wider text-violet-400 font-mono">
@@ -318,7 +319,7 @@ function SubworkflowNode({ data, selected }: NodeProps): React.JSX.Element {
       {status === 'running' && (
         <div className="text-[9px] text-blue-400/70 font-mono mt-1">⟳ running...</div>
       )}
-      <Handle type="source" position={Position.Right} className="!bg-overlay-4 !w-2 !h-2" />
+      <Handle type="source" position={Position.Right} className="!bg-fg-subtle !w-2 !h-2 !border !border-surface-2" />
     </div>
   )
 }
@@ -1008,6 +1009,11 @@ export default function WorkflowCanvas(): React.JSX.Element {
     return active?.cwd ?? localStorage.getItem('cwd') ?? ''
   })
 
+  const resolvedTheme = useResolvedTheme()
+  const flowDotColor = resolvedTheme === 'light' ? '#00000014' : '#ffffff08'
+  const minimapMaskColor = resolvedTheme === 'light' ? '#f5f5f5cc' : '#0a0a0a90'
+  const minimapNodeColor = resolvedTheme === 'light' ? '#3b82f640' : '#3b82f620'
+
   const [showTemplates, setShowTemplates] = useState(!currentWorkflow)
   const [saveFlash, setSaveFlash] = useState(false)
   const [showRunDialog, setShowRunDialog] = useState(false)
@@ -1502,7 +1508,7 @@ export default function WorkflowCanvas(): React.JSX.Element {
         {isRunning ? (
           <button
             onClick={handleAbort}
-            className="text-[10px] font-semibold text-fg bg-red-600 px-3 py-1 rounded hover:bg-red-700 flex-shrink-0"
+            className="text-[10px] font-semibold text-white bg-red-600 px-3 py-1 rounded hover:bg-red-700 flex-shrink-0"
           >
             ■ Stop
           </button>
@@ -1533,13 +1539,13 @@ export default function WorkflowCanvas(): React.JSX.Element {
             proOptions={{ hideAttribution: true }}
             className="bg-surface-1"
           >
-            <Background color="#ffffff08" variant={BackgroundVariant.Dots} gap={20} />
+            <Background color={flowDotColor} variant={BackgroundVariant.Dots} gap={20} />
             <Controls
               className="!bg-surface-2 !border-line !rounded-lg [&>button]:!bg-surface-2 [&>button]:!border-line-soft [&>button]:!text-fg-muted [&>button:hover]:!bg-overlay-3"
             />
             <MiniMap
-              nodeColor="#3b82f620"
-              maskColor="#0a0a0a90"
+              nodeColor={minimapNodeColor}
+              maskColor={minimapMaskColor}
               className="!bg-surface-2 !border-line !rounded-lg"
             />
           </ReactFlow>
@@ -1832,7 +1838,7 @@ function RunButton({
       <button
         onClick={() => onRun()}
         disabled={disabled}
-        className="text-[10px] font-semibold text-fg bg-green-600 px-3 py-1 rounded-l hover:bg-green-700 disabled:opacity-40"
+        className="text-[10px] font-semibold text-white bg-green-600 px-3 py-1 rounded-l hover:bg-green-700 disabled:opacity-40"
         title={currentCwd ? `Run on ${currentCwd}` : 'Run'}
       >
         ▶ Run
@@ -1840,7 +1846,7 @@ function RunButton({
       <button
         onClick={() => setOpen((v) => !v)}
         disabled={disabled}
-        className="text-[10px] font-semibold text-fg bg-green-700 hover:bg-green-600 px-1.5 rounded-r border-l border-green-900/50 disabled:opacity-40"
+        className="text-[10px] font-semibold text-white bg-green-700 hover:bg-green-600 px-1.5 rounded-r border-l border-green-900/50 disabled:opacity-40"
         title="Run on…"
       >
         ▾
@@ -2612,7 +2618,7 @@ function RunDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <form
         onSubmit={handleSubmit}
         className="bg-surface-2 border border-line-strong rounded-xl w-[440px] max-h-[80vh] flex flex-col shadow-2xl"
@@ -2650,7 +2656,7 @@ function RunDialog({
           <button
             type="submit"
             disabled={hasEmptyInputs}
-            className="text-[11px] font-semibold text-fg bg-green-600 px-4 py-1.5 rounded-md hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="text-[11px] font-semibold text-white bg-green-600 px-4 py-1.5 rounded-md hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             ▶ Run
           </button>
@@ -2671,7 +2677,7 @@ function ReviewDialog({ request }: { request: ReviewRequest }): React.JSX.Elemen
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
       <div className="bg-surface-2 border border-orange-400/30 rounded-xl w-[560px] max-h-[80vh] flex flex-col shadow-2xl">
         <div className="px-5 py-4 border-b border-line-soft">
           <div className="flex items-center gap-2 mb-1">
@@ -2713,7 +2719,7 @@ function ReviewDialog({ request }: { request: ReviewRequest }): React.JSX.Elemen
           </button>
           <button
             onClick={() => respond(true)}
-            className="text-[11px] font-semibold text-fg bg-green-600 px-4 py-1.5 rounded-md hover:bg-green-700"
+            className="text-[11px] font-semibold text-white bg-green-600 px-4 py-1.5 rounded-md hover:bg-green-700"
           >
             ✓ Approve
           </button>
@@ -2869,7 +2875,7 @@ function TemplatesView({
         </button>
         <button
           onClick={onCreateNew}
-          className="text-[10px] font-semibold text-fg bg-blue-600 px-3 py-1 rounded hover:bg-blue-700"
+          className="text-[10px] font-semibold text-white bg-blue-600 px-3 py-1 rounded hover:bg-blue-700"
         >
           + Blank Workflow
         </button>
@@ -2890,7 +2896,7 @@ function TemplatesView({
                 <div className="text-[9px] text-fg-faint font-mono">{tpl.nodes.length} nodes</div>
                 <button
                   onClick={() => onUseTemplate(tpl)}
-                  className="mt-1 text-[11px] font-medium text-fg bg-blue-600 rounded-md py-1.5 hover:bg-blue-700"
+                  className="mt-1 text-[11px] font-medium text-white bg-blue-600 rounded-md py-1.5 hover:bg-blue-700"
                 >
                   Use Template
                 </button>
@@ -3068,10 +3074,10 @@ function MarketplaceTab({
                 disabled={installing === entry.id || upToDate}
                 className={`mt-1 text-[11px] font-medium rounded-md py-1.5 ${
                   upToDate
-                    ? 'text-emerald-300 bg-emerald-500/10 cursor-default'
+                    ? 'text-emerald-500 bg-emerald-500/15 cursor-default'
                     : updateAvailable
-                      ? 'text-fg bg-amber-600 hover:bg-amber-700'
-                      : 'text-fg bg-emerald-600 hover:bg-emerald-700'
+                      ? 'text-white bg-amber-600 hover:bg-amber-700'
+                      : 'text-white bg-emerald-600 hover:bg-emerald-700'
                 } disabled:opacity-60`}
               >
                 {installing === entry.id

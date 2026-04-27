@@ -1,38 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { loader, Editor, useMonaco } from '@monaco-editor/react'
+import { loader, Editor } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
 import { useFilePreviewStore } from '../store/filePreview'
 import { useSessionsStore } from '../store/sessions'
 import { detectLanguage } from '../utils/diff'
+import { useMonacoCoideTheme } from '../hooks/useMonacoCoideTheme'
 
 loader.config({ monaco })
-
-const THEME_NAME = 'coide-dark'
-
-function useCoideTheme(): boolean {
-  const m = useMonaco()
-  const [defined, setDefined] = useState(false)
-
-  useEffect(() => {
-    if (m && !defined) {
-      m.editor.defineTheme(THEME_NAME, {
-        base: 'vs-dark',
-        inherit: true,
-        rules: [],
-        colors: {
-          'editor.background': '#111111',
-          'editorLineNumber.foreground': '#ffffff18',
-          'editorGutter.background': '#111111',
-          'scrollbar.shadow': '#00000000',
-          'editorOverviewRuler.border': '#00000000'
-        }
-      })
-      setDefined(true)
-    }
-  }, [m, defined])
-
-  return defined
-}
 
 function resolvePath(filePath: string, cwd: string): string {
   if (filePath.startsWith('/')) return filePath
@@ -44,7 +18,7 @@ function resolvePath(filePath: string, cwd: string): string {
 export default function FilePreviewModal(): React.JSX.Element | null {
   const filePath = useFilePreviewStore((s) => s.filePath)
   const close = useFilePreviewStore((s) => s.close)
-  const themeDefined = useCoideTheme()
+  const { defined: themeDefined, theme } = useMonacoCoideTheme()
 
   const [content, setContent] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -97,7 +71,7 @@ export default function FilePreviewModal(): React.JSX.Element | null {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
       onClick={close}
     >
       <div
@@ -133,7 +107,7 @@ export default function FilePreviewModal(): React.JSX.Element | null {
             <Editor
               value={content}
               language={language}
-              theme={THEME_NAME}
+              theme={theme}
               options={{
                 readOnly: true,
                 minimap: { enabled: false },

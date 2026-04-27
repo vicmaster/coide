@@ -104,7 +104,7 @@ export default function StatsModal({ onClose }: { onClose: () => void }): React.
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       onClick={handleBackdrop}
     >
       <div className="w-full max-w-sm rounded-2xl bg-surface-3 border border-line-strong p-5 shadow-2xl">

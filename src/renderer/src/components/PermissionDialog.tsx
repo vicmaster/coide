@@ -131,7 +131,7 @@ export default function PermissionDialog({
   const showAllowAllHint = queueLength > 1 && !isPlanApproval && onAllowAll
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className={`w-full mx-4 rounded-2xl border border-line-strong bg-surface-3 shadow-2xl p-5 ${wide ? 'max-w-3xl' : 'max-w-md'}`}>
         {/* Header */}
         <div className="flex items-center gap-3 mb-4">
@@ -158,7 +158,7 @@ export default function PermissionDialog({
 
         {/* Content: plan markdown, diff, or text preview */}
         {isPlanApproval ? (
-          <div className="rounded-lg bg-blue-500/[0.04] border border-blue-500/[0.12] px-4 py-3 mb-5 max-h-[60vh] overflow-y-auto">
+          <div className="rounded-lg bg-surface-2 border border-blue-500/[0.25] px-4 py-3 mb-5 max-h-[60vh] overflow-y-auto">
             {planMarkdown ? (
               <MarkdownRenderer>{planMarkdown}</MarkdownRenderer>
             ) : (
@@ -177,7 +177,7 @@ export default function PermissionDialog({
             />
           </div>
         ) : (
-          <div className="rounded-lg bg-overlay-1 border border-line-soft p-3 mb-5">
+          <div className="rounded-lg bg-surface-2 border border-line-soft p-3 mb-5">
             <pre className="text-[11px] font-mono text-fg-muted whitespace-pre-wrap break-all leading-relaxed max-h-36 overflow-y-auto">
               {preview}
             </pre>
@@ -203,7 +203,7 @@ export default function PermissionDialog({
           )}
           <button
             onClick={onAllow}
-            className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium text-fg transition-colors ${
+            className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${
               isPlanApproval ? 'bg-green-600 hover:bg-green-500' : 'bg-blue-600 hover:bg-blue-500'
             }`}
           >
