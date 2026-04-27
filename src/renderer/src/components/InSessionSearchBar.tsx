@@ -40,8 +40,8 @@ export default function InSessionSearchBar({
   }
 
   return (
-    <div className="flex items-center gap-2 border-b border-white/[0.06] bg-[#1a1a1a] px-4 py-1.5">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/30 flex-shrink-0">
+    <div className="flex items-center gap-2 border-b border-line-soft bg-surface-4 px-4 py-1.5">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-fg-subtle flex-shrink-0">
         <circle cx="11" cy="11" r="8" />
         <line x1="21" y1="21" x2="16.65" y2="16.65" />
       </svg>
@@ -52,10 +52,10 @@ export default function InSessionSearchBar({
         onChange={(e) => onQueryChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Find in conversation…"
-        className="flex-1 bg-transparent text-xs text-white/80 placeholder-white/25 outline-none"
+        className="flex-1 bg-transparent text-xs text-fg-strong placeholder-fg-faint outline-none"
       />
       {query && (
-        <span className="text-[11px] text-white/30 font-mono tabular-nums flex-shrink-0">
+        <span className="text-[11px] text-fg-subtle font-mono tabular-nums flex-shrink-0">
           {matchCount > 0 ? `${activeIndex + 1} of ${matchCount}` : 'No results'}
         </span>
       )}
@@ -63,7 +63,7 @@ export default function InSessionSearchBar({
         <button
           onClick={onPrev}
           disabled={matchCount === 0}
-          className="rounded p-0.5 text-white/30 hover:text-white/60 disabled:opacity-25 transition-colors"
+          className="rounded p-0.5 text-fg-subtle hover:text-fg-muted disabled:opacity-25 transition-colors"
           title="Previous (Shift+Enter)"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -73,7 +73,7 @@ export default function InSessionSearchBar({
         <button
           onClick={onNext}
           disabled={matchCount === 0}
-          className="rounded p-0.5 text-white/30 hover:text-white/60 disabled:opacity-25 transition-colors"
+          className="rounded p-0.5 text-fg-subtle hover:text-fg-muted disabled:opacity-25 transition-colors"
           title="Next (Enter)"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -83,7 +83,7 @@ export default function InSessionSearchBar({
       </div>
       <button
         onClick={onClose}
-        className="rounded p-0.5 text-white/30 hover:text-white/60 transition-colors"
+        className="rounded p-0.5 text-fg-subtle hover:text-fg-muted transition-colors"
         title="Close (Esc)"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

@@ -189,13 +189,13 @@ export default function SessionSearch(): React.JSX.Element | null {
       onClick={() => setOpen(false)}
     >
       <div
-        className="w-full max-w-lg rounded-xl border border-white/[0.1] bg-[#1a1a1a] shadow-2xl overflow-hidden"
+        className="w-full max-w-lg rounded-xl border border-line-strong bg-surface-4 shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
         {/* Search input */}
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.08]">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/30 shrink-0">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-line">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-fg-subtle shrink-0">
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
@@ -205,9 +205,9 @@ export default function SessionSearch(): React.JSX.Element | null {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search sessions..."
-            className="flex-1 bg-transparent text-sm text-white/90 placeholder-white/25 outline-none"
+            className="flex-1 bg-transparent text-sm text-fg-strong placeholder-fg-faint outline-none"
           />
-          <kbd className="text-[10px] text-white/20 border border-white/[0.08] rounded px-1.5 py-0.5 font-mono">
+          <kbd className="text-[10px] text-fg-faint border border-line rounded px-1.5 py-0.5 font-mono">
             esc
           </kbd>
         </div>
@@ -216,8 +216,8 @@ export default function SessionSearch(): React.JSX.Element | null {
         <div ref={listRef} className="overflow-y-auto" style={{ maxHeight: '60vh' }}>
           {results.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 gap-1">
-              <p className="text-sm text-white/25">No sessions found</p>
-              <p className="text-xs text-white/15">Try a different search term</p>
+              <p className="text-sm text-fg-faint">No sessions found</p>
+              <p className="text-xs text-fg-faint">Try a different search term</p>
             </div>
           ) : (
             results.map((result, i) => (
@@ -227,27 +227,27 @@ export default function SessionSearch(): React.JSX.Element | null {
                 onMouseEnter={() => setSelectedIndex(i)}
                 className={`w-full text-left px-4 py-3 transition-colors ${
                   i === selectedIndex
-                    ? 'bg-white/[0.08]'
-                    : 'hover:bg-white/[0.04]'
-                } ${i > 0 ? 'border-t border-white/[0.04]' : ''}`}
+                    ? 'bg-overlay-3'
+                    : 'hover:bg-overlay-1'
+                } ${i > 0 ? 'border-t border-line-soft' : ''}`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-medium text-white/80 truncate">
+                  <p className="text-xs font-medium text-fg-strong truncate">
                     {result.matchSource === 'title' && debouncedQuery.trim() ? (
                       <HighlightedText text={result.snippet} matchIndex={result.matchIndex} matchLength={result.matchLength} />
                     ) : (
                       result.session.title
                     )}
                   </p>
-                  <span className="text-[10px] text-white/20 shrink-0">
+                  <span className="text-[10px] text-fg-faint shrink-0">
                     {relativeTime(result.session.createdAt)}
                   </span>
                 </div>
-                <p className="text-[10px] text-white/25 mt-0.5 font-mono">
+                <p className="text-[10px] text-fg-faint mt-0.5 font-mono">
                   {result.session.cwd.split('/').pop()}
                 </p>
                 {result.matchSource === 'message' && (
-                  <p className="text-[11px] text-white/35 mt-1.5 leading-relaxed truncate">
+                  <p className="text-[11px] text-fg-subtle mt-1.5 leading-relaxed truncate">
                     &ldquo;<HighlightedText text={result.snippet} matchIndex={result.matchIndex} matchLength={result.matchLength} />&rdquo;
                   </p>
                 )}

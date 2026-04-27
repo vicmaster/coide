@@ -39,13 +39,13 @@ export default function Sidebar(): React.JSX.Element {
   }
 
   return (
-    <aside className="flex h-full w-64 flex-col bg-[#111111] border-r border-white/[0.06]">
+    <aside className="flex h-full w-64 flex-col bg-surface-2 border-r border-line-soft">
       {/* Title — offset for macOS traffic lights */}
       <div className="flex items-center justify-between px-4 pt-[46px] pb-3">
-        <span className="text-sm font-semibold tracking-tight text-white/80">coide</span>
+        <span className="text-sm font-semibold tracking-tight text-fg-strong">coide</span>
         <button
           onClick={() => window.dispatchEvent(new Event('coide:toggle-search'))}
-          className="p-1 rounded text-white/25 hover:text-white/60 hover:bg-white/5 transition-colors"
+          className="p-1 rounded text-fg-faint hover:text-fg-muted hover:bg-overlay-2 transition-colors"
           title="Search sessions (⇧⌘F)"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -70,8 +70,8 @@ export default function Sidebar(): React.JSX.Element {
               onClick={() => setActiveTab(tab)}
               className={`flex-1 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
                 activeTab === tab
-                  ? 'bg-white/10 text-white'
-                  : 'text-white/35 hover:text-white/60 hover:bg-white/5'
+                  ? 'bg-overlay-3 text-fg'
+                  : 'text-fg-subtle hover:text-fg-muted hover:bg-overlay-2'
               }`}
             >
               {label[tab]}
@@ -90,7 +90,7 @@ export default function Sidebar(): React.JSX.Element {
 
       {/* Git branch */}
       {gitBranch && (
-        <div className="px-3 py-1.5 border-t border-white/[0.06] flex items-center gap-1.5 text-[11px] text-white/30 font-mono truncate">
+        <div className="px-3 py-1.5 border-t border-line-soft flex items-center gap-1.5 text-[11px] text-fg-subtle font-mono truncate">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
             <line x1="6" y1="3" x2="6" y2="15" />
             <circle cx="18" cy="6" r="3" />
@@ -103,17 +103,17 @@ export default function Sidebar(): React.JSX.Element {
 
       {/* Footer actions */}
       {activeTab === 'sessions' && (
-        <div className="p-2 border-t border-white/[0.06] space-y-1.5">
+        <div className="p-2 border-t border-line-soft space-y-1.5">
           <div className="flex">
             <button
               onClick={handleNewSession}
-              className="flex-1 rounded-l-md bg-blue-600/90 hover:bg-blue-600 py-1.5 text-xs font-medium text-white transition-colors"
+              className="flex-1 rounded-l-md bg-blue-600/90 hover:bg-blue-600 py-1.5 text-xs font-medium text-fg transition-colors"
             >
               + New Session
             </button>
             <button
               onClick={handleNewSessionInFolder}
-              className="rounded-r-md bg-blue-600/90 hover:bg-blue-600 px-2 py-1.5 text-xs text-white border-l border-blue-500/50 transition-colors"
+              className="rounded-r-md bg-blue-600/90 hover:bg-blue-600 px-2 py-1.5 text-xs text-fg border-l border-blue-500/50 transition-colors"
               title="New session in different folder"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -150,7 +150,7 @@ export default function Sidebar(): React.JSX.Element {
         />
       )}
       {activeTab === 'workflows' && (
-        <div className="p-2 border-t border-white/[0.06] flex gap-1.5">
+        <div className="p-2 border-t border-line-soft flex gap-1.5">
           <button
             onClick={() => {
               const { openCanvas, setCurrentWorkflow } = useWorkflowStore.getState()
@@ -165,7 +165,7 @@ export default function Sidebar(): React.JSX.Element {
               })
               openCanvas()
             }}
-            className="flex-1 rounded-md bg-blue-600/90 hover:bg-blue-600 py-1.5 text-xs font-medium text-white transition-colors"
+            className="flex-1 rounded-md bg-blue-600/90 hover:bg-blue-600 py-1.5 text-xs font-medium text-fg transition-colors"
           >
             + New
           </button>
@@ -175,17 +175,17 @@ export default function Sidebar(): React.JSX.Element {
               setCurrentWorkflow(null) // will show templates view
               openCanvas()
             }}
-            className="flex-1 rounded-md border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] py-1.5 text-xs font-medium text-white/60 hover:text-white/80 transition-colors"
+            className="flex-1 rounded-md border border-line bg-overlay-1 hover:bg-overlay-3 py-1.5 text-xs font-medium text-fg-muted hover:text-fg-strong transition-colors"
           >
             Templates
           </button>
         </div>
       )}
       {activeTab === 'skills' && (
-        <div className="p-2 border-t border-white/[0.06] flex gap-1.5">
+        <div className="p-2 border-t border-line-soft flex gap-1.5">
           <button
             onClick={() => useSkillEditorStore.getState().openNew()}
-            className="flex-1 rounded-md bg-blue-600/90 hover:bg-blue-600 py-1.5 text-xs font-medium text-white transition-colors"
+            className="flex-1 rounded-md bg-blue-600/90 hover:bg-blue-600 py-1.5 text-xs font-medium text-fg transition-colors"
           >
             + New
           </button>
@@ -230,7 +230,7 @@ export default function Sidebar(): React.JSX.Element {
                 window.dispatchEvent(new Event('coide:skills-changed'))
               }
             }}
-            className="flex-1 rounded-md border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] py-1.5 text-xs font-medium text-white/60 hover:text-white/80 transition-colors"
+            className="flex-1 rounded-md border border-line bg-overlay-1 hover:bg-overlay-3 py-1.5 text-xs font-medium text-fg-muted hover:text-fg-strong transition-colors"
           >
             Import
           </button>
@@ -242,7 +242,7 @@ export default function Sidebar(): React.JSX.Element {
 
 function SectionLabel({ label }: { label: string }): React.JSX.Element {
   return (
-    <p className="px-2 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/20">
+    <p className="px-2 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-fg-faint">
       {label}
     </p>
   )
@@ -265,8 +265,8 @@ function SessionsList(): React.JSX.Element {
   if (sessions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 gap-1">
-        <p className="text-[11px] text-white/20">No sessions yet</p>
-        <p className="text-[10px] text-white/12">Start typing to begin</p>
+        <p className="text-[11px] text-fg-faint">No sessions yet</p>
+        <p className="text-[10px] text-fg-ghost">Start typing to begin</p>
       </div>
     )
   }
@@ -284,8 +284,8 @@ function SessionsList(): React.JSX.Element {
             }}
             className={`w-full rounded-md px-2 py-1.5 text-left transition-colors ${
               session.id === activeSessionId
-                ? 'bg-white/10 text-white/90'
-                : 'text-white/50 hover:bg-white/5 hover:text-white/70'
+                ? 'bg-overlay-3 text-fg-strong'
+                : 'text-fg-muted hover:bg-overlay-2 hover:text-fg-muted'
             }`}
           >
             {renamingId === session.id ? (
@@ -300,20 +300,20 @@ function SessionsList(): React.JSX.Element {
                 }}
                 onBlur={commitRename}
                 onClick={(e) => e.stopPropagation()}
-                className="w-full bg-transparent text-xs text-white/90 outline-none border-b border-blue-400/50 pr-5"
+                className="w-full bg-transparent text-xs text-fg-strong outline-none border-b border-blue-400/50 pr-5"
               />
             ) : (
               <p className="text-xs truncate pr-5">{session.title}</p>
             )}
             <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="text-[10px] text-white/25 font-mono truncate">
+              <span className="text-[10px] text-fg-faint font-mono truncate">
                 {session.cwd.split('/').pop()}
               </span>
               {session.branch && (
                 <span className={`text-[9px] font-mono px-1 py-0.5 rounded flex-shrink-0 ${
                   session.worktree
                     ? 'bg-purple-500/15 text-purple-400/60'
-                    : 'bg-white/[0.06] text-white/25'
+                    : 'bg-overlay-2 text-fg-faint'
                 }`}>
                   {session.branch}
                 </span>
@@ -322,7 +322,7 @@ function SessionsList(): React.JSX.Element {
                 <span className="text-[8px] font-medium text-purple-400/40 flex-shrink-0">wt</span>
               )}
               {session.forkOf && (
-                <span className="text-[9px] font-medium text-white/40 flex-shrink-0" title={`Forked from "${session.forkOf.title}"`}>⑂</span>
+                <span className="text-[9px] font-medium text-fg-subtle flex-shrink-0" title={`Forked from "${session.forkOf.title}"`}>⑂</span>
               )}
             </div>
           </button>
@@ -331,7 +331,7 @@ function SessionsList(): React.JSX.Element {
               e.stopPropagation()
               deleteSession(session.id)
             }}
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 text-white/20 hover:text-white/60 transition-all"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 text-fg-faint hover:text-fg-muted transition-all"
             title="Delete session"
           >
             ×
@@ -401,7 +401,7 @@ function SkillsList(): React.JSX.Element {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Filter skills…"
-        className="w-full rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-1.5 text-[11px] text-white/80 placeholder-white/20 outline-none focus:border-white/[0.15]"
+        className="w-full rounded-md border border-line bg-overlay-1 px-2 py-1.5 text-[11px] text-fg-strong placeholder-fg-faint outline-none focus:border-line-strong"
       />
       {filteredProject.length > 0 && (
         <div>
@@ -438,7 +438,7 @@ function SkillsList(): React.JSX.Element {
         </div>
       )}
       {!hasResults && (
-        <p className="text-center text-[10px] text-white/20 py-4">
+        <p className="text-center text-[10px] text-fg-faint py-4">
           {search ? 'No matching skills' : 'No skills found'}
         </p>
       )}
@@ -462,12 +462,12 @@ const SkillRow = React.memo(function SkillRow({
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   return (
-    <div className="group rounded-md border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.06] px-2.5 py-2 transition-colors">
+    <div className="group rounded-md border border-line-soft bg-overlay-1 hover:bg-overlay-2 px-2.5 py-2 transition-colors">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-white/70">/{skill.name}</span>
+        <span className="text-xs font-medium text-fg-muted">/{skill.name}</span>
         {confirmDelete ? (
           <div className="flex items-center gap-1.5 text-[10px]">
-            <span className="text-white/40">Delete?</span>
+            <span className="text-fg-subtle">Delete?</span>
             <button
               onClick={() => { onDelete(skill); setConfirmDelete(false) }}
               className="text-red-400 hover:text-red-300 transition-colors"
@@ -476,7 +476,7 @@ const SkillRow = React.memo(function SkillRow({
             </button>
             <button
               onClick={() => setConfirmDelete(false)}
-              className="text-white/40 hover:text-white/60 transition-colors"
+              className="text-fg-subtle hover:text-fg-muted transition-colors"
             >
               No
             </button>
@@ -485,19 +485,19 @@ const SkillRow = React.memo(function SkillRow({
           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
             <button
               onClick={() => onEdit(skill)}
-              className="text-[10px] text-white/40 hover:text-white/70 transition-colors"
+              className="text-[10px] text-fg-subtle hover:text-fg-muted transition-colors"
             >
               Edit
             </button>
             <button
               onClick={() => onExport(skill)}
-              className="text-[10px] text-white/40 hover:text-white/70 transition-colors"
+              className="text-[10px] text-fg-subtle hover:text-fg-muted transition-colors"
             >
               Exp
             </button>
             <button
               onClick={() => setConfirmDelete(true)}
-              className="text-[10px] text-white/40 hover:text-red-400 transition-colors"
+              className="text-[10px] text-fg-subtle hover:text-red-400 transition-colors"
             >
               Del
             </button>
@@ -510,7 +510,7 @@ const SkillRow = React.memo(function SkillRow({
           </div>
         )}
       </div>
-      <p className="mt-0.5 text-[10px] text-white/30 truncate">{skill.description}</p>
+      <p className="mt-0.5 text-[10px] text-fg-subtle truncate">{skill.description}</p>
     </div>
   )
 })
@@ -541,10 +541,10 @@ function WorkflowsList(): React.JSX.Element {
   if (workflows.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 px-4">
-        <p className="text-[11px] text-white/25 text-center mb-3">
+        <p className="text-[11px] text-fg-faint text-center mb-3">
           No saved workflows yet
         </p>
-        <p className="text-[10px] text-white/15 text-center">
+        <p className="text-[10px] text-fg-ghost text-center">
           Create a new workflow or start from a template
         </p>
       </div>
@@ -556,12 +556,12 @@ function WorkflowsList(): React.JSX.Element {
       {workflows.map((wf) => (
         <div
           key={wf.id}
-          className="group flex items-center rounded-md px-2 py-2 hover:bg-white/[0.04] cursor-pointer transition-colors"
+          className="group flex items-center rounded-md px-2 py-2 hover:bg-overlay-1 cursor-pointer transition-colors"
           onClick={() => handleOpen(wf.id)}
         >
           <div className="flex-1 min-w-0">
-            <div className="text-xs font-medium text-white/70 truncate">{wf.name}</div>
-            <div className="text-[10px] text-white/25">
+            <div className="text-xs font-medium text-fg-muted truncate">{wf.name}</div>
+            <div className="text-[10px] text-fg-faint">
               {wf.nodes.length} nodes
             </div>
           </div>
@@ -570,7 +570,7 @@ function WorkflowsList(): React.JSX.Element {
               e.stopPropagation()
               handleDelete(wf.id)
             }}
-            className="opacity-0 group-hover:opacity-100 text-white/20 hover:text-red-400 text-xs transition-opacity ml-1"
+            className="opacity-0 group-hover:opacity-100 text-fg-faint hover:text-red-400 text-xs transition-opacity ml-1"
             title="Delete workflow"
           >
             ×
@@ -599,12 +599,12 @@ function CommandsList(): React.JSX.Element {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Filter commands…"
-        className="w-full rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-1.5 text-[11px] text-white/80 placeholder-white/20 outline-none focus:border-white/[0.15]"
+        className="w-full rounded-md border border-line bg-overlay-1 px-2 py-1.5 text-[11px] text-fg-strong placeholder-fg-faint outline-none focus:border-line-strong"
       />
       {filtered.length > 0 ? (
         <div>
           <SectionLabel label="CLI Reference" />
-          <p className="px-2 mb-1.5 text-[10px] text-white/20">
+          <p className="px-2 mb-1.5 text-[10px] text-fg-faint">
             These commands work in the Claude Code CLI terminal, not in coide chat.
           </p>
           <div className="space-y-0.5">
@@ -613,14 +613,14 @@ function CommandsList(): React.JSX.Element {
                 key={cmd.name}
                 className="rounded-md px-2 py-1.5"
               >
-                <div className="text-xs font-mono text-white/40">{cmd.name}</div>
-                <div className="text-[10px] text-white/25">{cmd.description}</div>
+                <div className="text-xs font-mono text-fg-subtle">{cmd.name}</div>
+                <div className="text-[10px] text-fg-faint">{cmd.description}</div>
               </div>
             ))}
           </div>
         </div>
       ) : (
-        <p className="text-center text-[10px] text-white/20 py-4">No matching commands</p>
+        <p className="text-center text-[10px] text-fg-faint py-4">No matching commands</p>
       )}
     </div>
   )

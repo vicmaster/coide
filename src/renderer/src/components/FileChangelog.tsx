@@ -7,7 +7,7 @@ const EMPTY_MESSAGES: Message[] = []
 const STATUS_BADGE: Record<FileStatus | 'reverted' | 'deleted', { label: string; className: string }> = {
   created: { label: 'new', className: 'bg-green-500/20 text-green-400' },
   modified: { label: 'modified', className: 'bg-blue-500/20 text-blue-400' },
-  read: { label: 'read', className: 'bg-white/10 text-white/40' },
+  read: { label: 'read', className: 'bg-overlay-3 text-fg-subtle' },
   reverted: { label: 'reverted', className: 'bg-yellow-500/20 text-yellow-400' },
   deleted: { label: 'deleted', className: 'bg-red-500/20 text-red-400/60' }
 }
@@ -26,10 +26,10 @@ export default function FileChangelog(): React.JSX.Element {
   if (entries.length === 0) {
     return (
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-white/20 px-1 mb-2">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-fg-faint px-1 mb-2">
           Files
         </p>
-        <p className="text-[11px] text-white/20 text-center mt-4">
+        <p className="text-[11px] text-fg-faint text-center mt-4">
           Files appear here when Claude reads or edits them
         </p>
       </div>
@@ -43,9 +43,9 @@ export default function FileChangelog(): React.JSX.Element {
   return (
     <div>
       <div className="flex items-center justify-between px-1 mb-2">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-white/20">Files</p>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-fg-faint">Files</p>
         {parts.length > 0 && (
-          <span className="text-[10px] text-white/30 font-mono">{parts.join(' · ')}</span>
+          <span className="text-[10px] text-fg-subtle font-mono">{parts.join(' · ')}</span>
         )}
       </div>
       <div className="space-y-0.5">
@@ -127,27 +127,27 @@ const FileChangelogRow = memo(function FileChangelogRow({
   const expandable = entry.status !== 'read'
 
   return (
-    <div className="rounded-md border border-transparent hover:border-white/[0.06] transition-colors">
+    <div className="rounded-md border border-transparent hover:border-line-soft transition-colors">
       <div
         className={`flex items-center gap-2 px-2 py-1.5 ${expandable ? 'cursor-pointer' : ''}`}
         onClick={handleExpand}
       >
         {expandable && (
-          <span className={`text-[10px] text-white/20 transition-transform ${expanded ? 'rotate-90' : ''}`}>
+          <span className={`text-[10px] text-fg-faint transition-transform ${expanded ? 'rotate-90' : ''}`}>
             ▶
           </span>
         )}
         <div className="min-w-0 flex-1">
-          <span className={`text-[11px] truncate block ${alreadyGone ? 'text-white/25 line-through' : 'text-white/50'}`}>
+          <span className={`text-[11px] truncate block ${alreadyGone ? 'text-fg-faint line-through' : 'text-fg-muted'}`}>
             {fileName}
           </span>
           {dirPath && (
-            <span className="text-[10px] text-white/15 truncate block">{dirPath}</span>
+            <span className="text-[10px] text-fg-faint truncate block">{dirPath}</span>
           )}
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {entry.editCount > 1 && (
-            <span className="text-[10px] text-white/20 font-mono">{entry.editCount} edits</span>
+            <span className="text-[10px] text-fg-faint font-mono">{entry.editCount} edits</span>
           )}
           <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${badge.className}`}>
             {badge.label}
@@ -158,12 +158,12 @@ const FileChangelogRow = memo(function FileChangelogRow({
       {expanded && expandable && (
         <div className="px-2 pb-2">
           {loading && (
-            <div className="flex items-center justify-center py-4 text-white/20 text-xs">
+            <div className="flex items-center justify-center py-4 text-fg-faint text-xs">
               Loading...
             </div>
           )}
           {alreadyGone && (
-            <div className="text-[11px] text-white/20 py-2 px-1">File no longer exists on disk</div>
+            <div className="text-[11px] text-fg-faint py-2 px-1">File no longer exists on disk</div>
           )}
           {canDiff && diskContent !== null && !loading && (
             <DiffViewer
@@ -181,7 +181,7 @@ const FileChangelogRow = memo(function FileChangelogRow({
                   e.stopPropagation()
                   fetchDisk()
                 }}
-                className="text-[10px] text-white/20 hover:text-white/40 transition-colors"
+                className="text-[10px] text-fg-faint hover:text-fg-subtle transition-colors"
                 title="Refresh"
               >
                 ↻
@@ -196,7 +196,7 @@ const FileChangelogRow = memo(function FileChangelogRow({
                 className={`text-[10px] px-2 py-0.5 rounded transition-colors ${
                   confirming
                     ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-                    : 'bg-white/5 text-white/30 hover:text-white/50 hover:bg-white/10'
+                    : 'bg-overlay-2 text-fg-subtle hover:text-fg-muted hover:bg-overlay-3'
                 }`}
               >
                 {confirming ? 'Confirm?' : revertLabel}

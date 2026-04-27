@@ -14,9 +14,9 @@ export default function RightPanel(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<Tab>('agents')
 
   return (
-    <aside className="flex h-full w-64 flex-col bg-[#111111] border-l border-white/[0.06]">
+    <aside className="flex h-full w-64 flex-col bg-surface-2 border-l border-line-soft">
       {/* Header — matches sidebar and chat header height */}
-      <div className="flex items-end px-3 pt-[46px] pb-2.5 border-b border-white/[0.06]">
+      <div className="flex items-end px-3 pt-[46px] pb-2.5 border-b border-line-soft">
         <div className="flex gap-0.5">
           {(['agents', 'context', 'mcp'] as Tab[]).map((tab) => (
             <button
@@ -24,8 +24,8 @@ export default function RightPanel(): React.JSX.Element {
               onClick={() => setActiveTab(tab)}
               className={`rounded-md px-2 py-1 text-[11px] font-medium capitalize transition-colors ${
                 activeTab === tab
-                  ? 'bg-white/10 text-white/80'
-                  : 'text-white/30 hover:text-white/55 hover:bg-white/5'
+                  ? 'bg-overlay-3 text-fg-strong'
+                  : 'text-fg-subtle hover:text-fg-muted hover:bg-overlay-2'
               }`}
             >
               {tab === 'mcp' ? 'MCP' : tab}
@@ -48,7 +48,7 @@ function AgentsTab(): React.JSX.Element {
   return (
     <div className="space-y-4">
       <AgentTree />
-      <div className="h-px bg-white/[0.06]" />
+      <div className="h-px bg-overlay-2" />
       <TodoList />
     </div>
   )
@@ -66,7 +66,7 @@ function ContextTab(): React.JSX.Element {
 
 function SectionLabel({ label }: { label: string }): React.JSX.Element {
   return (
-    <p className="px-1 mb-2 text-[10px] font-semibold uppercase tracking-widest text-white/20">
+    <p className="px-1 mb-2 text-[10px] font-semibold uppercase tracking-widest text-fg-faint">
       {label}
     </p>
   )
@@ -88,19 +88,19 @@ function AgentTree(): React.JSX.Element {
     <div>
       {total > 0 ? (
         <div className="flex items-center justify-between px-1 mb-2">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-white/20">Agent Tree</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-fg-faint">Agent Tree</p>
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-white/30 font-mono">{doneCount}/{total} done</span>
+            <span className="text-[10px] text-fg-subtle font-mono">{doneCount}/{total} done</span>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-0.5 rounded ${viewMode === 'list' ? 'text-white/50' : 'text-white/20 hover:text-white/40'}`}
+              className={`p-0.5 rounded ${viewMode === 'list' ? 'text-fg-muted' : 'text-fg-faint hover:text-fg-subtle'}`}
               title="List view"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 3h10M1 6h10M1 9h10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
             </button>
             <button
               onClick={() => setViewMode('timeline')}
-              className={`p-0.5 rounded ${viewMode === 'timeline' ? 'text-white/50' : 'text-white/20 hover:text-white/40'}`}
+              className={`p-0.5 rounded ${viewMode === 'timeline' ? 'text-fg-muted' : 'text-fg-faint hover:text-fg-subtle'}`}
               title="Timeline view"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="2" width="6" height="2" rx="0.5" fill="currentColor"/><rect x="3" y="5" width="8" height="2" rx="0.5" fill="currentColor"/><rect x="2" y="8" width="5" height="2" rx="0.5" fill="currentColor"/></svg>
@@ -127,7 +127,7 @@ function AgentTree(): React.JSX.Element {
         <TimelineView agents={agents} />
       )}
       {total === 0 && (
-        <p className="mt-4 text-[11px] text-white/20 text-center">
+        <p className="mt-4 text-[11px] text-fg-faint text-center">
           Agents appear here during a session
         </p>
       )}
@@ -158,7 +158,7 @@ function AgentNodeRow({
     running: 'bg-blue-400 animate-pulse',
     done: 'bg-green-400',
     failed: 'bg-red-400',
-    idle: 'bg-white/[0.08]'
+    idle: 'bg-overlay-3'
   }
 
   const metaParts: string[] = []
@@ -167,24 +167,24 @@ function AgentNodeRow({
 
   return (
     <div
-      className="group flex items-start gap-2 rounded-md px-2 py-1.5 hover:bg-white/5 transition-colors"
+      className="group flex items-start gap-2 rounded-md px-2 py-1.5 hover:bg-overlay-2 transition-colors"
       style={{ paddingLeft: `${depth * 14 + 8}px` }}
     >
-      {depth > 0 && <span className="text-[10px] text-white/15 mt-0.5">└</span>}
+      {depth > 0 && <span className="text-[10px] text-fg-faint mt-0.5">└</span>}
       <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 mt-1 ${statusColors[status]}`} />
       <div className="min-w-0 flex-1">
-        <span className="text-xs text-white/50">{name}</span>
+        <span className="text-xs text-fg-muted">{name}</span>
         {meta?.subagentType && (
-          <span className="ml-1.5 text-[10px] text-white/20">{meta.subagentType}</span>
+          <span className="ml-1.5 text-[10px] text-fg-faint">{meta.subagentType}</span>
         )}
         {metaParts.length > 0 && (
-          <p className="text-[10px] text-white/20 mt-0.5">{metaParts.join(' · ')}</p>
+          <p className="text-[10px] text-fg-faint mt-0.5">{metaParts.join(' · ')}</p>
         )}
       </div>
       {status === 'running' && meta && (
         <button
           onClick={() => window.api.claude.abort(useSessionsStore.getState().activeSessionId ?? undefined)}
-          className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 text-white/30 hover:text-red-400 transition-all flex-shrink-0 mt-0.5"
+          className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-overlay-3 text-fg-subtle hover:text-red-400 transition-all flex-shrink-0 mt-0.5"
           title="Cancel (stops entire session)"
         >
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
@@ -241,7 +241,7 @@ function TimelineView({ agents }: { agents: Agent[] }): React.JSX.Element {
 
         return (
           <div key={agent.toolId} className="group flex items-center gap-1.5">
-            <span className="text-[10px] text-white/40 w-[72px] truncate flex-shrink-0" title={agent.name}>
+            <span className="text-[10px] text-fg-subtle w-[72px] truncate flex-shrink-0" title={agent.name}>
               {agent.name}
             </span>
             <div className="flex-1 relative h-4">
@@ -254,7 +254,7 @@ function TimelineView({ agents }: { agents: Agent[] }): React.JSX.Element {
             {agent.status === 'running' && (
               <button
                 onClick={() => window.api.claude.abort(useSessionsStore.getState().activeSessionId ?? undefined)}
-                className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 text-white/30 hover:text-red-400 transition-all flex-shrink-0"
+                className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-overlay-3 text-fg-subtle hover:text-red-400 transition-all flex-shrink-0"
                 title="Cancel (stops entire session)"
               >
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
@@ -281,7 +281,7 @@ function TodoList(): React.JSX.Element {
     return (
       <div>
         <SectionLabel label="Tasks" />
-        <p className="text-[11px] text-white/20 text-center mt-4">
+        <p className="text-[11px] text-fg-faint text-center mt-4">
           Todo items appear when Claude creates a task list
         </p>
       </div>
@@ -292,12 +292,12 @@ function TodoList(): React.JSX.Element {
     <div>
       {/* Header + counter */}
       <div className="flex items-center justify-between px-1 mb-2">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-white/20">Tasks</p>
-        <span className="text-[10px] text-white/30 font-mono">{completed}/{total} done</span>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-fg-faint">Tasks</p>
+        <span className="text-[10px] text-fg-subtle font-mono">{completed}/{total} done</span>
       </div>
 
       {/* Progress bar */}
-      <div className="h-1 w-full rounded-full bg-white/[0.07] mb-3">
+      <div className="h-1 w-full rounded-full bg-overlay-3 mb-3">
         <div
           className="h-1 rounded-full bg-green-500/60 transition-all duration-500 ease-out"
           style={{ width: `${pct}%` }}
@@ -322,21 +322,21 @@ function TaskItem({ task }: { task: Task }): React.JSX.Element {
       ? 'bg-green-400'
       : task.status === 'in_progress'
         ? 'bg-blue-400 animate-pulse'
-        : 'bg-white/20'
+        : 'bg-overlay-4'
 
   return (
     <div>
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-start gap-2 rounded-md px-2 py-1.5 hover:bg-white/5 transition-colors text-left"
+        className="w-full flex items-start gap-2 rounded-md px-2 py-1.5 hover:bg-overlay-2 transition-colors text-left"
       >
         <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 mt-1 ${dotClass}`} />
         <div className="min-w-0 flex-1">
           <span
             className={`text-xs leading-snug ${
               task.status === 'completed'
-                ? 'text-white/30 line-through'
-                : 'text-white/60'
+                ? 'text-fg-subtle line-through'
+                : 'text-fg-muted'
             }`}
           >
             {task.subject}
@@ -347,8 +347,8 @@ function TaskItem({ task }: { task: Task }): React.JSX.Element {
         </div>
       </button>
       {expanded && task.description && (
-        <div className="ml-5 mr-2 mb-1 px-2 py-1.5 rounded bg-white/[0.03] border border-white/[0.05]">
-          <p className="text-[10px] text-white/30 leading-relaxed whitespace-pre-wrap">{task.description}</p>
+        <div className="ml-5 mr-2 mb-1 px-2 py-1.5 rounded bg-overlay-1 border border-line-soft">
+          <p className="text-[10px] text-fg-subtle leading-relaxed whitespace-pre-wrap">{task.description}</p>
         </div>
       )}
     </div>
@@ -394,19 +394,19 @@ function ContextTracker(): React.JSX.Element {
     <div className="space-y-4">
       <div>
         <SectionLabel label="Token Usage" />
-        <div className="rounded-lg border border-white/[0.06] bg-white/[0.03] p-3">
+        <div className="rounded-lg border border-line-soft bg-overlay-1 p-3">
           <div className="flex justify-between text-[11px] mb-2">
-            <span className="text-white/40">Used</span>
-            <span className="text-white/50 font-mono">{formatTokens(total)} / 1M</span>
+            <span className="text-fg-subtle">Used</span>
+            <span className="text-fg-muted font-mono">{formatTokens(total)} / 1M</span>
           </div>
-          <div className="h-1 w-full rounded-full bg-white/[0.07]">
+          <div className="h-1 w-full rounded-full bg-overlay-3">
             <div
               className={`h-1 rounded-full transition-all duration-500 ease-out ${barColor}`}
               style={{ width: `${pct}%` }}
             />
           </div>
           {total > 0 && (
-            <div className="mt-2 space-y-0.5 text-[10px] text-white/25">
+            <div className="mt-2 space-y-0.5 text-[10px] text-fg-faint">
               <div className="flex justify-between">
                 <span>Input</span>
                 <span className="font-mono">{formatTokens(usage.inputTokens)}</span>
@@ -434,7 +434,7 @@ function ContextTracker(): React.JSX.Element {
 
       {files.length > 0 && (
         <div className="px-1">
-          <p className="text-[10px] text-white/25">
+          <p className="text-[10px] text-fg-faint">
             {files.length} file{files.length !== 1 ? 's' : ''} touched
           </p>
         </div>
@@ -465,12 +465,12 @@ function RateLimitBar({ window: w, now }: { window: RateLimitWindow; now: number
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-[10px]">
-        <span className="text-white/40">{label}</span>
+        <span className="text-fg-subtle">{label}</span>
         <span className={`font-mono ${valColor}`}>
           {isThrottled ? 'LIMIT' : `resets ${formatResetTime(w.resetsAt, now)}`}
         </span>
       </div>
-      <div className="h-1 w-full rounded-full bg-white/[0.07]">
+      <div className="h-1 w-full rounded-full bg-overlay-3">
         <div
           className={`h-1 rounded-full transition-all duration-500 ease-out ${barColor}`}
           style={{ width: `${pct}%` }}
@@ -495,8 +495,8 @@ function RateLimitCard(): React.JSX.Element | null {
   if (entries.length === 0) return null
 
   const anyThrottled = entries.some((w) => w.status !== 'allowed')
-  const borderColor = anyThrottled ? 'border-red-500/20' : 'border-white/[0.06]'
-  const bgColor = anyThrottled ? 'bg-red-500/[0.04]' : 'bg-white/[0.03]'
+  const borderColor = anyThrottled ? 'border-red-500/20' : 'border-line-soft'
+  const bgColor = anyThrottled ? 'bg-red-500/[0.04]' : 'bg-overlay-1'
 
   return (
     <div>
@@ -576,7 +576,7 @@ function McpPanel(): React.JSX.Element {
     return (
       <div>
         <SectionLabel label="MCP Servers" />
-        <p className="text-[11px] text-white/20 text-center mt-4">No MCP servers configured</p>
+        <p className="text-[11px] text-fg-faint text-center mt-4">No MCP servers configured</p>
       </div>
     )
   }
@@ -584,7 +584,7 @@ function McpPanel(): React.JSX.Element {
   return (
     <div>
       <div className="flex items-center justify-between px-1 mb-2">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-white/20">MCP Servers</p>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-fg-faint">MCP Servers</p>
         {failed > 0 && (
           <button
             onClick={handleReconnect}
@@ -606,7 +606,7 @@ function McpPanel(): React.JSX.Element {
         ))}
       </div>
 
-      <p className="text-[10px] text-white/20 text-center mt-3">
+      <p className="text-[10px] text-fg-faint text-center mt-3">
         {connected > 0 && <span className="text-green-400/50">{connected} connected</span>}
         {connected > 0 && (failed > 0 || pending > 0) && <span> · </span>}
         {failed > 0 && <span className="text-red-400/50">{failed} failed</span>}
@@ -633,13 +633,13 @@ function McpServerCard({ server }: { server: McpServerInfo & { command?: string;
   const cmdText = server.url ?? [server.command, ...(server.args ?? [])].filter(Boolean).join(' ')
 
   return (
-    <div className="rounded-lg border border-white/[0.06] bg-white/[0.03] p-2.5">
+    <div className="rounded-lg border border-line-soft bg-overlay-1 p-2.5">
       <button
         onClick={() => setExpanded((v) => !v)}
         className="w-full flex items-center gap-2"
       >
         <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${statusDot}`} />
-        <span className="text-xs text-white/60 font-medium truncate flex-1 text-left">{server.name}</span>
+        <span className="text-xs text-fg-muted font-medium truncate flex-1 text-left">{server.name}</span>
         <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 ${statusBadge}`}>
           {server.status}
         </span>
@@ -648,21 +648,21 @@ function McpServerCard({ server }: { server: McpServerInfo & { command?: string;
       {expanded && (
         <div className="mt-2 space-y-2">
           {cmdText && (
-            <p className="text-[10px] text-white/25 font-mono truncate" title={cmdText}>{cmdText}</p>
+            <p className="text-[10px] text-fg-faint font-mono truncate" title={cmdText}>{cmdText}</p>
           )}
           {server.tools.length > 0 && (
             <div>
               <div className="flex items-center gap-1 mb-1">
-                <svg width="9" height="9" viewBox="0 0 16 16" fill="none" className="text-white/25">
+                <svg width="9" height="9" viewBox="0 0 16 16" fill="none" className="text-fg-faint">
                   <path d="M14.7 6.3a1 1 0 000-1.4l-1.6-1.6a1 1 0 00-1.4 0l-2.3 2.3-1.3-1.3a1 1 0 00-1.4 0l-4.4 4.4a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l4.4-4.4a1 1 0 000-1.4l-1.3-1.3 2.3-2.3z" stroke="currentColor" strokeWidth="1.2"/>
                 </svg>
-                <span className="text-[10px] text-white/25">{server.tools.length} tool{server.tools.length !== 1 ? 's' : ''}</span>
+                <span className="text-[10px] text-fg-faint">{server.tools.length} tool{server.tools.length !== 1 ? 's' : ''}</span>
               </div>
               <div className="space-y-0.5">
                 {server.tools.map((tool) => (
                   <div key={tool} className="flex items-center gap-1.5 px-1">
-                    <span className="text-[10px] text-white/15">•</span>
-                    <span className="text-[10px] text-white/35 font-mono truncate">{tool}</span>
+                    <span className="text-[10px] text-fg-faint">•</span>
+                    <span className="text-[10px] text-fg-subtle font-mono truncate">{tool}</span>
                   </div>
                 ))}
               </div>

@@ -73,7 +73,7 @@ export default function App(): React.JSX.Element {
   })
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-[#0d0d0d]">
+    <div className="flex h-full w-full overflow-hidden bg-canvas">
       {/* macOS drag region */}
       <div className="drag-region" />
 
@@ -84,7 +84,7 @@ export default function App(): React.JSX.Element {
       <main className="flex flex-1 flex-col overflow-hidden min-w-0">
         <div className="flex-1 flex flex-col overflow-hidden min-h-0">
           {isCanvasOpen ? (
-            <Suspense fallback={<div className="flex items-center justify-center h-full text-white/20 text-xs">Loading workflow canvas…</div>}>
+            <Suspense fallback={<div className="flex items-center justify-center h-full text-fg-faint text-xs">Loading workflow canvas…</div>}>
               <WorkflowCanvas />
             </Suspense>
           ) : (
@@ -104,7 +104,7 @@ export default function App(): React.JSX.Element {
               className="h-[3px] cursor-row-resize hover:bg-blue-500/30 transition-colors"
             />
             <div style={{ height: terminalHeight }} className="min-h-0 flex-shrink-0">
-              <Suspense fallback={<div className="flex items-center justify-center h-full text-white/20 text-xs">Loading terminal…</div>}>
+              <Suspense fallback={<div className="flex items-center justify-center h-full text-fg-faint text-xs">Loading terminal…</div>}>
                 <TerminalPanel cwd={cwd} />
               </Suspense>
             </div>

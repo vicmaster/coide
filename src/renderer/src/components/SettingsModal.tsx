@@ -30,13 +30,13 @@ export default function SettingsModal({ onClose }: { onClose: () => void }): Rea
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
       onClick={handleBackdrop}
     >
-      <div className="w-full max-w-md rounded-2xl bg-[#141414] border border-white/[0.1] p-5 shadow-2xl max-h-[85vh] overflow-y-auto">
+      <div className="w-full max-w-md rounded-2xl bg-surface-3 border border-line-strong p-5 shadow-2xl max-h-[85vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-sm font-semibold text-white/90">Settings</h2>
+          <h2 className="text-sm font-semibold text-fg-strong">Settings</h2>
           <button
             onClick={onClose}
-            className="text-white/30 hover:text-white/60 transition-colors text-lg leading-none"
+            className="text-fg-subtle hover:text-fg-muted transition-colors text-lg leading-none"
           >
             &times;
           </button>
@@ -64,7 +64,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }): Rea
               onClose()
               window.dispatchEvent(new CustomEvent('coide:open-permissions'))
             }}
-            className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-white/60 hover:text-white/80 hover:bg-white/[0.06] transition-colors"
+            className="rounded-lg border border-line bg-overlay-1 px-3 py-1 text-xs text-fg-muted hover:text-fg-strong hover:bg-overlay-2 transition-colors"
           >
             Manage…
           </button>
@@ -85,44 +85,44 @@ export default function SettingsModal({ onClose }: { onClose: () => void }): Rea
         </SettingRow>
 
         <div className="mb-4">
-          <label className="block text-xs text-white/50 mb-1.5">System Prompt</label>
+          <label className="block text-xs text-fg-muted mb-1.5">System Prompt</label>
           <textarea
             value={settings.systemPrompt}
             onChange={(e) => update({ systemPrompt: e.target.value })}
             placeholder="Appended to Claude's system prompt..."
             rows={3}
-            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-white/80 placeholder-white/20 outline-none focus:border-white/[0.15] transition-colors resize-none"
+            className="w-full rounded-lg border border-line bg-overlay-1 px-3 py-2 text-xs text-fg-strong placeholder-fg-faint outline-none focus:border-line-strong transition-colors resize-none"
           />
         </div>
 
         {/* Divider */}
-        <div className="border-t border-white/[0.06] my-4" />
+        <div className="border-t border-line-soft my-4" />
 
         {/* Advanced */}
         <SectionLabel>Advanced</SectionLabel>
 
         <div className="mb-3">
-          <label className="block text-xs text-white/50 mb-1.5">Claude Binary</label>
+          <label className="block text-xs text-fg-muted mb-1.5">Claude Binary</label>
           <input
             type="text"
             value={settings.claudeBinaryPath}
             onChange={(e) => update({ claudeBinaryPath: e.target.value })}
-            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-white/70 font-mono outline-none focus:border-white/[0.15] transition-colors"
+            className="w-full rounded-lg border border-line bg-overlay-1 px-3 py-1.5 text-xs text-fg-muted font-mono outline-none focus:border-line-strong transition-colors"
           />
         </div>
 
         <div className="mb-3">
-          <label className="block text-xs text-white/50 mb-1.5">Default CWD</label>
+          <label className="block text-xs text-fg-muted mb-1.5">Default CWD</label>
           <div className="flex gap-1.5">
             <input
               type="text"
               value={settings.defaultCwd}
               onChange={(e) => update({ defaultCwd: e.target.value })}
-              className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-white/70 font-mono outline-none focus:border-white/[0.15] transition-colors"
+              className="flex-1 rounded-lg border border-line bg-overlay-1 px-3 py-1.5 text-xs text-fg-muted font-mono outline-none focus:border-line-strong transition-colors"
             />
             <button
               onClick={handlePickDefaultCwd}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-2.5 py-1.5 text-xs text-white/40 hover:text-white/60 hover:bg-white/[0.06] transition-colors"
+              className="rounded-lg border border-line bg-overlay-1 px-2.5 py-1.5 text-xs text-fg-subtle hover:text-fg-muted hover:bg-overlay-2 transition-colors"
               title="Browse..."
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -133,13 +133,13 @@ export default function SettingsModal({ onClose }: { onClose: () => void }): Rea
         </div>
 
         <div className="mb-3">
-          <label className="block text-xs text-white/50 mb-1.5">Hooks</label>
+          <label className="block text-xs text-fg-muted mb-1.5">Hooks</label>
           <button
             onClick={() => {
               onClose()
               useHookEditorStore.getState().open()
             }}
-            className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-white/40 hover:text-white/60 hover:bg-white/[0.06] transition-colors"
+            className="rounded-lg border border-line bg-overlay-1 px-3 py-1.5 text-xs text-fg-subtle hover:text-fg-muted hover:bg-overlay-2 transition-colors"
           >
             Configure Hooks...
           </button>
@@ -171,16 +171,16 @@ export default function SettingsModal({ onClose }: { onClose: () => void }): Rea
         </SettingRow>
 
         {/* Footer */}
-        <div className="border-t border-white/[0.06] mt-4 pt-4 flex items-center justify-between">
+        <div className="border-t border-line-soft mt-4 pt-4 flex items-center justify-between">
           <button
             onClick={() => reset()}
-            className="text-[11px] text-white/30 hover:text-white/50 transition-colors"
+            className="text-[11px] text-fg-subtle hover:text-fg-muted transition-colors"
           >
             Reset to Defaults
           </button>
           <button
             onClick={onClose}
-            className="rounded-lg bg-white/[0.08] px-4 py-1.5 text-xs text-white/70 hover:bg-white/[0.12] transition-colors"
+            className="rounded-lg bg-overlay-3 px-4 py-1.5 text-xs text-fg-muted hover:bg-overlay-4 transition-colors"
           >
             Done
           </button>
@@ -192,14 +192,14 @@ export default function SettingsModal({ onClose }: { onClose: () => void }): Rea
 
 function SectionLabel({ children }: { children: React.ReactNode }): React.JSX.Element {
   return (
-    <p className="text-[10px] font-semibold uppercase tracking-wider text-white/25 mb-3">{children}</p>
+    <p className="text-[10px] font-semibold uppercase tracking-wider text-fg-faint mb-3">{children}</p>
   )
 }
 
 function SettingRow({ label, children }: { label: string; children: React.ReactNode }): React.JSX.Element {
   return (
     <div className="flex items-center justify-between mb-3">
-      <label className="text-xs text-white/50">{label}</label>
+      <label className="text-xs text-fg-muted">{label}</label>
       {children}
     </div>
   )
@@ -209,7 +209,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
   return (
     <button
       onClick={() => onChange(!checked)}
-      className={`relative h-5 w-9 rounded-full transition-colors ${checked ? 'bg-blue-600' : 'bg-white/[0.1]'}`}
+      className={`relative h-5 w-9 rounded-full transition-colors ${checked ? 'bg-blue-600' : 'bg-overlay-3'}`}
     >
       <span
         className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform ${checked ? 'translate-x-4' : ''}`}
@@ -231,7 +231,7 @@ function Select({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-xs text-white/70 outline-none focus:border-white/[0.15] transition-colors appearance-none cursor-pointer pr-6"
+      className="rounded-lg border border-line bg-overlay-1 px-2.5 py-1 text-xs text-fg-muted outline-none focus:border-line-strong transition-colors appearance-none cursor-pointer pr-6"
       style={{
         backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23666' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E")`,
         backgroundRepeat: 'no-repeat',
@@ -239,7 +239,7 @@ function Select({
       }}
     >
       {options.map((opt) => (
-        <option key={opt.value} value={opt.value} className="bg-[#1a1a1a] text-white/80">
+        <option key={opt.value} value={opt.value} className="bg-surface-4 text-fg-strong">
           {opt.label}
         </option>
       ))}
@@ -257,15 +257,15 @@ function SegmentedControl({
   options: { value: string; label: string }[]
 }): React.JSX.Element {
   return (
-    <div className="flex rounded-lg border border-white/[0.08] overflow-hidden">
+    <div className="flex rounded-lg border border-line overflow-hidden">
       {options.map((opt) => (
         <button
           key={opt.value}
           onClick={() => onChange(opt.value)}
           className={`px-3 py-1 text-xs transition-colors ${
             value === opt.value
-              ? 'bg-white/[0.1] text-white/80'
-              : 'text-white/30 hover:text-white/50'
+              ? 'bg-overlay-3 text-fg-strong'
+              : 'text-fg-subtle hover:text-fg-muted'
           }`}
         >
           {opt.label}

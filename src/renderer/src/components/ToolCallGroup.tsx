@@ -32,7 +32,7 @@ function TraceLine({ message }: { message: ToolCallMessage }): React.JSX.Element
       <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${dotClass}`} />
       <span
         title={message.tool_name}
-        className={`font-mono text-[11px] w-[120px] flex-shrink-0 truncate ${denied ? 'text-red-400/50' : 'text-white/35'}`}
+        className={`font-mono text-[11px] w-[120px] flex-shrink-0 truncate ${denied ? 'text-red-400/50' : 'text-fg-subtle'}`}
       >
         {formatToolName(message.tool_name)}
       </span>
@@ -45,7 +45,7 @@ function TraceLine({ message }: { message: ToolCallMessage }): React.JSX.Element
           {filePath.split('/').slice(-3).join('/')}
         </button>
       ) : (
-        <span className={`text-[11px] font-mono truncate min-w-0 ${denied ? 'text-red-400/40' : 'text-white/25'}`}>
+        <span className={`text-[11px] font-mono truncate min-w-0 ${denied ? 'text-red-400/40' : 'text-fg-faint'}`}>
           {label.replace(/^\S+\s*/, '')}
         </span>
       )}
@@ -89,16 +89,16 @@ export default function ToolCallGroup({
     <div className={compact ? 'py-0' : 'py-0.5'}>
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center gap-2 py-[3px] px-1 text-left rounded hover:bg-white/[0.025] transition-colors"
+        className="w-full flex items-center gap-2 py-[3px] px-1 text-left rounded hover:bg-overlay-1 transition-colors"
       >
         <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${dotClass}`} />
-        <span className={`text-[11px] font-mono ${anyDenied ? 'text-red-400/40' : 'text-white/30'}`}>
+        <span className={`text-[11px] font-mono ${anyDenied ? 'text-red-400/40' : 'text-fg-subtle'}`}>
           {summary}
         </span>
-        <span className="ml-auto text-white/15 flex-shrink-0 text-[10px]">{expanded ? '▾' : '▸'}</span>
+        <span className="ml-auto text-fg-faint flex-shrink-0 text-[10px]">{expanded ? '▾' : '▸'}</span>
       </button>
       {expanded && (
-        <div className="ml-3 border-l border-white/[0.06] pl-2 mt-0.5">
+        <div className="ml-3 border-l border-line-soft pl-2 mt-0.5">
           {messages.map((m) => (
             <TraceLine key={m.id} message={m} />
           ))}

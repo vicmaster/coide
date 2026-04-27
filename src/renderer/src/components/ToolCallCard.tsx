@@ -117,25 +117,25 @@ function ToolCallCardInner({
       ? 'border-red-400/[0.15] bg-red-500/[0.04]'
       : error?.severity === 'warning'
         ? 'border-orange-400/[0.12] bg-orange-500/[0.03]'
-        : 'border-white/[0.07] bg-white/[0.025]'
+        : 'border-line bg-overlay-1'
 
   return (
-    <div className={`${nested ? 'my-0' : compact ? 'my-0.5' : 'my-1'} ${nested ? 'rounded-md border-white/[0.05] bg-white/[0.015]' : borderClass} rounded-lg border overflow-hidden text-xs`}>
+    <div className={`${nested ? 'my-0' : compact ? 'my-0.5' : 'my-1'} ${nested ? 'rounded-md border-line-soft bg-overlay-1' : borderClass} rounded-lg border overflow-hidden text-xs`}>
       {/* Header row */}
       <button
         onClick={() => setExpanded((v) => !v)}
-        className={`w-full flex items-center gap-2 ${compact ? 'px-2 py-1.5' : 'px-3 py-2'} text-left hover:bg-white/[0.03] transition-colors`}
+        className={`w-full flex items-center gap-2 ${compact ? 'px-2 py-1.5' : 'px-3 py-2'} text-left hover:bg-overlay-1 transition-colors`}
       >
         {/* Status dot */}
         <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${dotClass}`} />
 
         {/* Icon */}
-        <span className="font-mono text-white/25 w-3 text-center flex-shrink-0">
+        <span className="font-mono text-fg-faint w-3 text-center flex-shrink-0">
           {toolIcon(message.tool_name)}
         </span>
 
         {/* Tool name */}
-        <span className={`font-medium flex-shrink-0 ${denied ? 'text-red-400/60' : 'text-white/50'}`}>
+        <span className={`font-medium flex-shrink-0 ${denied ? 'text-red-400/60' : 'text-fg-muted'}`}>
           {message.tool_name}
         </span>
 
@@ -178,16 +178,16 @@ function ToolCallCardInner({
               {summary}
             </span>
           ) : (
-            <span className="text-white/25 font-mono truncate min-w-0">{summary}</span>
+            <span className="text-fg-faint font-mono truncate min-w-0">{summary}</span>
           )
         )}
 
         {/* Expand toggle */}
-        <span className="ml-auto text-white/15 flex-shrink-0">{expanded ? '▲' : '▼'}</span>
+        <span className="ml-auto text-fg-faint flex-shrink-0">{expanded ? '▲' : '▼'}</span>
       </button>
 
       {expanded && (
-        <div className="border-t border-white/[0.06]">
+        <div className="border-t border-line-soft">
           {/* Diff view for file operations */}
           {diff ? (
             <div className="p-3">
@@ -201,8 +201,8 @@ function ToolCallCardInner({
           ) : (
             /* Raw input for other tools */
             <div className="px-3 py-2">
-              <p className="text-[10px] text-white/20 uppercase tracking-wider mb-1.5">Input</p>
-              <pre className="text-[11px] text-white/50 font-mono overflow-x-auto whitespace-pre-wrap break-words leading-relaxed max-h-40 overflow-y-auto">
+              <p className="text-[10px] text-fg-faint uppercase tracking-wider mb-1.5">Input</p>
+              <pre className="text-[11px] text-fg-muted font-mono overflow-x-auto whitespace-pre-wrap break-words leading-relaxed max-h-40 overflow-y-auto">
                 {JSON.stringify(message.input, null, 2)}
               </pre>
             </div>
@@ -210,9 +210,9 @@ function ToolCallCardInner({
 
           {/* Result */}
           {done && !denied && (
-            <div className="px-3 py-2 border-t border-white/[0.05]">
-              <p className="text-[10px] text-white/20 uppercase tracking-wider mb-1.5">Output</p>
-              <pre className="text-[11px] text-white/50 font-mono overflow-x-auto whitespace-pre-wrap break-words leading-relaxed max-h-48 overflow-y-auto">
+            <div className="px-3 py-2 border-t border-line-soft">
+              <p className="text-[10px] text-fg-faint uppercase tracking-wider mb-1.5">Output</p>
+              <pre className="text-[11px] text-fg-muted font-mono overflow-x-auto whitespace-pre-wrap break-words leading-relaxed max-h-48 overflow-y-auto">
                 {message.result || '(empty)'}
               </pre>
             </div>
@@ -220,7 +220,7 @@ function ToolCallCardInner({
 
           {/* Error action buttons */}
           {done && !denied && error && (
-            <div className="px-3 py-2 border-t border-white/[0.05] flex gap-2">
+            <div className="px-3 py-2 border-t border-line-soft flex gap-2">
               <button
                 disabled={isLoading}
                 onClick={() => handleFixThis(message)}
@@ -231,7 +231,7 @@ function ToolCallCardInner({
               <button
                 disabled={isLoading}
                 onClick={() => handleExplainError(message)}
-                className="text-[11px] px-2.5 py-1 rounded bg-white/[0.05] text-white/40 hover:bg-white/[0.08] hover:text-white/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="text-[11px] px-2.5 py-1 rounded bg-overlay-2 text-fg-subtle hover:bg-overlay-3 hover:text-fg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Explain error
               </button>
@@ -239,8 +239,8 @@ function ToolCallCardInner({
           )}
 
           {!done && !denied && (
-            <div className="px-3 py-2 border-t border-white/[0.05]">
-              <span className="text-[11px] text-white/20 italic">Running…</span>
+            <div className="px-3 py-2 border-t border-line-soft">
+              <span className="text-[11px] text-fg-faint italic">Running…</span>
             </div>
           )}
         </div>

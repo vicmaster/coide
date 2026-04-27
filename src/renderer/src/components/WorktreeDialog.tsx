@@ -62,7 +62,7 @@ export default function WorktreeDialog({ cwd, onClose, onCreated }: Props): Reac
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
       <div
-        className="w-[360px] rounded-xl border border-white/[0.1] bg-[#1a1a1a] shadow-2xl"
+        className="w-[360px] rounded-xl border border-line-strong bg-surface-4 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
@@ -71,33 +71,33 @@ export default function WorktreeDialog({ cwd, onClose, onCreated }: Props): Reac
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-purple-400/70">
               <path d="M6 3v12M18 9a3 3 0 100-6 3 3 0 000 6zM6 21a3 3 0 100-6 3 3 0 000 6zM18 9a9 9 0 01-9 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <h2 className="text-[15px] font-semibold text-white/85">New Worktree Session</h2>
+            <h2 className="text-[15px] font-semibold text-fg-strong">New Worktree Session</h2>
           </div>
 
-          <p className="text-[11px] text-white/35 leading-relaxed">
+          <p className="text-[11px] text-fg-subtle leading-relaxed">
             Create an isolated session on a separate branch. Changes stay in the worktree and won't affect your main working directory.
           </p>
 
           <div className="space-y-1.5">
-            <label className="text-[11px] font-medium text-white/50">Branch name</label>
+            <label className="text-[11px] font-medium text-fg-muted">Branch name</label>
             <input
               ref={inputRef}
               type="text"
               value={branch}
               onChange={(e) => setBranch(e.target.value)}
               placeholder="feat/payments"
-              className="w-full rounded-md border border-white/[0.1] bg-white/[0.05] px-3 py-2 text-[12px] text-white/80 font-mono placeholder-white/20 outline-none focus:border-purple-500/40"
+              className="w-full rounded-md border border-line-strong bg-overlay-2 px-3 py-2 text-[12px] text-fg-strong font-mono placeholder-fg-faint outline-none focus:border-purple-500/40"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[11px] font-medium text-white/50">Initial prompt <span className="text-white/20">(optional)</span></label>
+            <label className="text-[11px] font-medium text-fg-muted">Initial prompt <span className="text-fg-faint">(optional)</span></label>
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Implement the payments API…"
               rows={2}
-              className="w-full rounded-md border border-white/[0.1] bg-white/[0.05] px-3 py-2 text-[12px] text-white/80 placeholder-white/20 outline-none focus:border-purple-500/40 resize-none"
+              className="w-full rounded-md border border-line-strong bg-overlay-2 px-3 py-2 text-[12px] text-fg-strong placeholder-fg-faint outline-none focus:border-purple-500/40 resize-none"
             />
           </div>
 
@@ -110,14 +110,14 @@ export default function WorktreeDialog({ cwd, onClose, onCreated }: Props): Reac
           <div className="flex justify-end gap-2 pt-1">
             <button
               onClick={onClose}
-              className="rounded-md border border-white/[0.1] px-3.5 py-1.5 text-[12px] font-medium text-white/50 hover:text-white/70 hover:bg-white/5 transition-colors"
+              className="rounded-md border border-line-strong px-3.5 py-1.5 text-[12px] font-medium text-fg-muted hover:text-fg-muted hover:bg-overlay-2 transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleCreate}
               disabled={!branch.trim() || creating}
-              className="rounded-md bg-purple-600 px-3.5 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-purple-500 disabled:opacity-30 flex items-center gap-1.5"
+              className="rounded-md bg-purple-600 px-3.5 py-1.5 text-[12px] font-semibold text-fg transition-colors hover:bg-purple-500 disabled:opacity-30 flex items-center gap-1.5"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
                 <path d="M6 3v12M18 9a3 3 0 100-6 3 3 0 000 6zM6 21a3 3 0 100-6 3 3 0 000 6zM18 9a9 9 0 01-9 9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>

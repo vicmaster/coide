@@ -59,10 +59,10 @@ export default function HistorySearch({
 
   return (
     <div className="absolute bottom-full left-0 right-0 mb-1 z-20">
-      <div className="rounded-lg border border-white/[0.08] bg-[#1a1a1a] overflow-hidden shadow-xl">
+      <div className="rounded-lg border border-line bg-surface-4 overflow-hidden shadow-xl">
         {/* Search input */}
-        <div className="flex items-center gap-2 px-3 py-2.5 border-b border-white/[0.06]">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/40 flex-shrink-0">
+        <div className="flex items-center gap-2 px-3 py-2.5 border-b border-line-soft">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-fg-subtle flex-shrink-0">
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
@@ -86,16 +86,16 @@ export default function HistorySearch({
               }
             }}
             placeholder="Search past prompts…"
-            className="flex-1 bg-transparent text-[13px] text-white/80 placeholder-white/20 outline-none font-mono"
+            className="flex-1 bg-transparent text-[13px] text-fg-strong placeholder-fg-faint outline-none font-mono"
           />
-          <span className="text-[10px] text-white/20 font-mono flex-shrink-0">Ctrl+R</span>
+          <span className="text-[10px] text-fg-faint font-mono flex-shrink-0">Ctrl+R</span>
         </div>
 
         {/* Results */}
         <div ref={listRef} className="max-h-[240px] overflow-y-auto">
           {items.length === 0 ? (
             <div className="px-3 py-5 text-center">
-              <p className="text-[11px] text-white/25">
+              <p className="text-[11px] text-fg-faint">
                 {query ? 'No matching prompts found' : 'Type to search past prompts'}
               </p>
             </div>
@@ -106,15 +106,15 @@ export default function HistorySearch({
                 onClick={() => onSelect(item)}
                 onMouseEnter={() => onHover(i)}
                 className={`w-full text-left px-3 py-2 transition-colors ${
-                  i === selectedIndex ? 'bg-white/[0.06]' : 'hover:bg-white/[0.03]'
+                  i === selectedIndex ? 'bg-overlay-2' : 'hover:bg-overlay-1'
                 }`}
               >
                 <p className={`text-xs font-mono leading-snug line-clamp-2 ${
-                  i === selectedIndex ? 'text-white/80' : 'text-white/50'
+                  i === selectedIndex ? 'text-fg-strong' : 'text-fg-muted'
                 }`}>
                   {item.text}
                 </p>
-                <p className="text-[10px] text-white/25 mt-1 font-mono">
+                <p className="text-[10px] text-fg-faint mt-1 font-mono">
                   {formatRelativeTime(item.timestamp)} · {shortenCwd(item.cwd)}
                 </p>
               </button>

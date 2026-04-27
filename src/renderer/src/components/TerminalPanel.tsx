@@ -182,16 +182,16 @@ export default function TerminalPanel({ cwd }: { cwd: string }): React.JSX.Eleme
   }, [])
 
   return (
-    <div className="flex flex-col h-full bg-[#0d0d0d] border-t border-white/[0.06]">
+    <div className="flex flex-col h-full bg-canvas border-t border-line-soft">
       {/* Tab bar */}
-      <div className="flex items-center gap-0 px-2 h-8 min-h-[32px] bg-[#0a0a0a] border-b border-white/[0.06]">
+      <div className="flex items-center gap-0 px-2 h-8 min-h-[32px] bg-surface-1 border-b border-line-soft">
         {tabs.map((tab) => (
           <div
             key={tab.id}
             className={`flex items-center gap-1.5 px-3 py-1 text-[11px] cursor-pointer rounded-t transition-colors ${
               tab.id === activeTabId
-                ? 'text-white/70 bg-[#0d0d0d]'
-                : 'text-white/30 hover:text-white/50'
+                ? 'text-fg-muted bg-canvas'
+                : 'text-fg-subtle hover:text-fg-muted'
             }`}
             onClick={() => setActiveTabId(tab.id)}
           >
@@ -203,7 +203,7 @@ export default function TerminalPanel({ cwd }: { cwd: string }): React.JSX.Eleme
             {tabs.length > 1 && (
               <button
                 onClick={(e) => { e.stopPropagation(); closeTab(tab.id) }}
-                className="text-white/20 hover:text-white/60 ml-1"
+                className="text-fg-faint hover:text-fg-muted ml-1"
               >
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
                   <line x1="18" y1="6" x2="6" y2="18" />
@@ -215,7 +215,7 @@ export default function TerminalPanel({ cwd }: { cwd: string }): React.JSX.Eleme
         ))}
         <button
           onClick={createTab}
-          className="text-white/20 hover:text-white/50 px-2 py-1 text-[13px] transition-colors"
+          className="text-fg-faint hover:text-fg-muted px-2 py-1 text-[13px] transition-colors"
           title="New terminal"
         >
           +

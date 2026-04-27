@@ -2,6 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Design tokens — semantic theme variables.
+ * Add a `[data-theme="light"]` block here when introducing the light palette.
+ */
+:root {
+  /* Solid surfaces (elevation tiers) */
+  --canvas: #0d0d0d;
+  --surface-1: #0a0a0a;
+  --surface-2: #111111;
+  --surface-3: #141414;
+  --surface-4: #1a1a1a;
+
+  /* Translucent overlays — for hover/active states layered on solid surfaces */
+  --overlay-1: rgba(255, 255, 255, 0.03);
+  --overlay-2: rgba(255, 255, 255, 0.06);
+  --overlay-3: rgba(255, 255, 255, 0.08);
+  --overlay-4: rgba(255, 255, 255, 0.12);
+
+  /* Foreground tiers */
+  --fg: #ffffff;
+  --fg-strong: rgba(255, 255, 255, 0.85);
+  --fg-muted: rgba(255, 255, 255, 0.60);
+  --fg-subtle: rgba(255, 255, 255, 0.40);
+  --fg-faint: rgba(255, 255, 255, 0.25);
+  --fg-ghost: rgba(255, 255, 255, 0.12);
+
+  /* Borders */
+  --line-soft: rgba(255, 255, 255, 0.06);
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.12);
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -12,7 +44,7 @@ html, body, #root {
   height: 100%;
   width: 100%;
   overflow: hidden;
-  background: #0d0d0d;
+  background: var(--canvas);
   color: #e5e5e5;
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -42,15 +74,15 @@ button, input, textarea, a, [role="button"] {
 .monaco-editor,
 .monaco-editor .overflow-guard,
 .monaco-diff-editor {
-  background-color: #111111 !important;
+  background-color: var(--surface-2) !important;
 }
 
 .monaco-editor .margin {
-  background-color: #111111 !important;
+  background-color: var(--surface-2) !important;
 }
 
 .monaco-editor .monaco-scrollable-element {
-  background-color: #111111 !important;
+  background-color: var(--surface-2) !important;
 }
 
 /* xterm.js terminal overrides */

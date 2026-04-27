@@ -173,13 +173,13 @@ export default function HookEditorModal(): React.JSX.Element | null {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
       onClick={handleBackdrop}
     >
-      <div className="w-full max-w-2xl rounded-2xl bg-[#141414] border border-white/[0.1] shadow-2xl flex flex-col max-h-[75vh]">
+      <div className="w-full max-w-2xl rounded-2xl bg-surface-3 border border-line-strong shadow-2xl flex flex-col max-h-[75vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
-          <h2 className="text-sm font-semibold text-white/90">Hook Configuration</h2>
+          <h2 className="text-sm font-semibold text-fg-strong">Hook Configuration</h2>
           <button
             onClick={close}
-            className="text-white/30 hover:text-white/60 transition-colors text-lg leading-none"
+            className="text-fg-subtle hover:text-fg-muted transition-colors text-lg leading-none"
           >
             &times;
           </button>
@@ -193,8 +193,8 @@ export default function HookEditorModal(): React.JSX.Element | null {
               onClick={() => handleScopeChange(s)}
               className={`px-3 py-1 text-xs rounded-lg transition-colors ${
                 scope === s
-                  ? 'bg-white/[0.1] text-white/80'
-                  : 'text-white/30 hover:text-white/50 hover:bg-white/[0.04]'
+                  ? 'bg-overlay-3 text-fg-strong'
+                  : 'text-fg-subtle hover:text-fg-muted hover:bg-overlay-1'
               }`}
             >
               {s === 'global' ? 'Global' : 'Project'}
@@ -202,14 +202,14 @@ export default function HookEditorModal(): React.JSX.Element | null {
           ))}
         </div>
 
-        <div className="border-t border-white/[0.06]" />
+        <div className="border-t border-line-soft" />
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
           {loading ? (
-            <p className="text-xs text-white/30 text-center py-8">Loading...</p>
+            <p className="text-xs text-fg-subtle text-center py-8">Loading...</p>
           ) : configuredEvents.length === 0 ? (
-            <p className="text-xs text-white/30 text-center py-8">
+            <p className="text-xs text-fg-subtle text-center py-8">
               No hooks configured. Add an event to get started.
             </p>
           ) : (
@@ -233,7 +233,7 @@ export default function HookEditorModal(): React.JSX.Element | null {
 
         {/* Add Event — outside scrollable body so dropdown isn't clipped */}
         {!loading && (
-          <div className="relative px-5 py-2 border-t border-white/[0.06]">
+          <div className="relative px-5 py-2 border-t border-line-soft">
             <AddEventDropdown
               configuredEvents={configuredEvents}
               onAdd={addEvent}
@@ -242,21 +242,21 @@ export default function HookEditorModal(): React.JSX.Element | null {
         )}
 
         {/* Footer */}
-        <div className="border-t border-white/[0.06] px-5 py-3 flex items-center justify-between">
+        <div className="border-t border-line-soft px-5 py-3 flex items-center justify-between">
           <div className="text-xs text-red-400/80 max-w-[60%] truncate">
             {error ?? ''}
           </div>
           <div className="flex gap-2">
             <button
               onClick={close}
-              className="rounded-lg px-4 py-1.5 text-xs text-white/40 hover:text-white/60 transition-colors"
+              className="rounded-lg px-4 py-1.5 text-xs text-fg-subtle hover:text-fg-muted transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={saving}
-              className="rounded-lg bg-white/[0.08] px-4 py-1.5 text-xs text-white/70 hover:bg-white/[0.12] transition-colors disabled:opacity-50"
+              className="rounded-lg bg-overlay-3 px-4 py-1.5 text-xs text-fg-muted hover:bg-overlay-4 transition-colors disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Save'}
             </button>
@@ -293,11 +293,11 @@ function EventSection({
   const [collapsed, setCollapsed] = useState(false)
 
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-white/[0.02]">
+    <div className="rounded-xl border border-line bg-overlay-1">
       <div className="flex items-center justify-between px-3 py-2">
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center gap-1.5 text-xs font-medium text-white/70 hover:text-white/90 transition-colors"
+          className="flex items-center gap-1.5 text-xs font-medium text-fg-muted hover:text-fg-strong transition-colors"
         >
           <svg
             width="10"
@@ -312,7 +312,7 @@ function EventSection({
         </button>
         <button
           onClick={onRemoveEvent}
-          className="text-white/20 hover:text-red-400/70 transition-colors text-sm leading-none"
+          className="text-fg-faint hover:text-red-400/70 transition-colors text-sm leading-none"
           title="Remove event"
         >
           &times;
@@ -334,7 +334,7 @@ function EventSection({
           ))}
           <button
             onClick={onAddMatcherGroup}
-            className="text-[11px] text-white/25 hover:text-white/50 transition-colors"
+            className="text-[11px] text-fg-faint hover:text-fg-muted transition-colors"
           >
             + Add Matcher Group
           </button>
@@ -360,19 +360,19 @@ function MatcherGroupCard({
   onUpdateHandler: (hookIdx: number, updates: Partial<HookHandler>) => void
 }): React.JSX.Element {
   return (
-    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5 space-y-2">
+    <div className="rounded-lg border border-line-soft bg-overlay-1 p-2.5 space-y-2">
       <div className="flex items-center gap-2">
-        <label className="text-[10px] text-white/30 shrink-0">matcher</label>
+        <label className="text-[10px] text-fg-subtle shrink-0">matcher</label>
         <input
           type="text"
           value={group.matcher ?? ''}
           onChange={(e) => onUpdateMatcher(e.target.value)}
           placeholder="e.g. Edit|Write (optional)"
-          className="flex-1 rounded border border-white/[0.06] bg-white/[0.03] px-2 py-1 text-[11px] text-white/60 font-mono placeholder-white/15 outline-none focus:border-white/[0.12] transition-colors"
+          className="flex-1 rounded border border-line-soft bg-overlay-1 px-2 py-1 text-[11px] text-fg-muted font-mono placeholder-fg-faint outline-none focus:border-line-strong transition-colors"
         />
         <button
           onClick={onRemove}
-          className="text-white/15 hover:text-red-400/60 transition-colors text-xs leading-none"
+          className="text-fg-faint hover:text-red-400/60 transition-colors text-xs leading-none"
           title="Remove matcher group"
         >
           &times;
@@ -390,7 +390,7 @@ function MatcherGroupCard({
 
       <button
         onClick={onAddHandler}
-        className="text-[10px] text-white/20 hover:text-white/40 transition-colors pl-1"
+        className="text-[10px] text-fg-faint hover:text-fg-subtle transition-colors pl-1"
       >
         + Add Hook
       </button>
@@ -412,10 +412,10 @@ function HookHandlerRow({
       <select
         value={hook.type}
         onChange={(e) => onUpdate({ type: e.target.value as 'command' | 'prompt' })}
-        className="rounded border border-white/[0.06] bg-white/[0.03] px-1.5 py-1 text-[11px] text-white/50 outline-none focus:border-white/[0.12] transition-colors appearance-none cursor-pointer shrink-0"
+        className="rounded border border-line-soft bg-overlay-1 px-1.5 py-1 text-[11px] text-fg-muted outline-none focus:border-line-strong transition-colors appearance-none cursor-pointer shrink-0"
       >
-        <option value="command" className="bg-[#1a1a1a]">command</option>
-        <option value="prompt" className="bg-[#1a1a1a]">prompt</option>
+        <option value="command" className="bg-surface-4">command</option>
+        <option value="prompt" className="bg-surface-4">prompt</option>
       </select>
 
       {hook.type === 'command' ? (
@@ -424,7 +424,7 @@ function HookHandlerRow({
           value={hook.command ?? ''}
           onChange={(e) => onUpdate({ command: e.target.value })}
           placeholder="bash command..."
-          className="flex-1 rounded border border-white/[0.06] bg-white/[0.03] px-2 py-1 text-[11px] text-white/60 font-mono placeholder-white/15 outline-none focus:border-white/[0.12] transition-colors"
+          className="flex-1 rounded border border-line-soft bg-overlay-1 px-2 py-1 text-[11px] text-fg-muted font-mono placeholder-fg-faint outline-none focus:border-line-strong transition-colors"
         />
       ) : (
         <textarea
@@ -432,7 +432,7 @@ function HookHandlerRow({
           onChange={(e) => onUpdate({ prompt: e.target.value })}
           placeholder="LLM prompt..."
           rows={2}
-          className="flex-1 rounded border border-white/[0.06] bg-white/[0.03] px-2 py-1 text-[11px] text-white/60 font-mono placeholder-white/15 outline-none focus:border-white/[0.12] transition-colors resize-none"
+          className="flex-1 rounded border border-line-soft bg-overlay-1 px-2 py-1 text-[11px] text-fg-muted font-mono placeholder-fg-faint outline-none focus:border-line-strong transition-colors resize-none"
         />
       )}
 
@@ -445,12 +445,12 @@ function HookHandlerRow({
         }}
         placeholder="t/s"
         title="Timeout (seconds)"
-        className="w-12 rounded border border-white/[0.06] bg-white/[0.03] px-1.5 py-1 text-[11px] text-white/40 font-mono placeholder-white/15 outline-none focus:border-white/[0.12] transition-colors text-center shrink-0"
+        className="w-12 rounded border border-line-soft bg-overlay-1 px-1.5 py-1 text-[11px] text-fg-subtle font-mono placeholder-fg-faint outline-none focus:border-line-strong transition-colors text-center shrink-0"
       />
 
       <button
         onClick={onRemove}
-        className="text-white/15 hover:text-red-400/60 transition-colors text-xs leading-none mt-1 shrink-0"
+        className="text-fg-faint hover:text-red-400/60 transition-colors text-xs leading-none mt-1 shrink-0"
         title="Remove hook"
       >
         &times;
@@ -486,12 +486,12 @@ function AddEventDropdown({
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="text-[11px] text-white/25 hover:text-white/50 transition-colors"
+        className="text-[11px] text-fg-faint hover:text-fg-muted transition-colors"
       >
         + Add Event
       </button>
       {open && (
-        <div className="absolute left-0 bottom-full mb-1 rounded-lg border border-white/[0.1] bg-[#1a1a1a] shadow-xl py-1 z-10 max-h-48 overflow-y-auto">
+        <div className="absolute left-0 bottom-full mb-1 rounded-lg border border-line-strong bg-surface-4 shadow-xl py-1 z-10 max-h-48 overflow-y-auto">
           {available.map((event) => (
             <button
               key={event}
@@ -499,7 +499,7 @@ function AddEventDropdown({
                 onAdd(event)
                 setOpen(false)
               }}
-              className="block w-full text-left px-3 py-1.5 text-[11px] text-white/50 hover:text-white/80 hover:bg-white/[0.06] transition-colors"
+              className="block w-full text-left px-3 py-1.5 text-[11px] text-fg-muted hover:text-fg-strong hover:bg-overlay-2 transition-colors"
             >
               {event}
             </button>

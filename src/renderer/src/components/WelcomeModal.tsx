@@ -12,14 +12,14 @@ export default function WelcomeModal(): React.JSX.Element | null {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-white/[0.1] bg-[#141414] shadow-2xl overflow-hidden">
+      <div className="w-full max-w-md rounded-2xl border border-line-strong bg-surface-3 shadow-2xl overflow-hidden">
         {/* Step dots */}
         <div className="flex justify-center gap-2 pt-5 pb-2">
           {([1, 2, 3] as Step[]).map((s) => (
             <div
               key={s}
               className={`h-1.5 rounded-full transition-all duration-300 ${
-                s === step ? 'w-6 bg-blue-500' : s < step ? 'w-1.5 bg-blue-500/40' : 'w-1.5 bg-white/10'
+                s === step ? 'w-6 bg-blue-500' : s < step ? 'w-1.5 bg-blue-500/40' : 'w-1.5 bg-overlay-3'
               }`}
             />
           ))}
@@ -91,8 +91,8 @@ function StepCli({ onNext }: { onNext: () => void }): React.JSX.Element {
   return (
     <div className="text-center space-y-5">
       <div>
-        <h2 className="text-lg font-semibold text-white/90 mb-1">Welcome to coide</h2>
-        <p className="text-[12px] text-white/35">Checking for Claude Code CLI…</p>
+        <h2 className="text-lg font-semibold text-fg-strong mb-1">Welcome to coide</h2>
+        <p className="text-[12px] text-fg-subtle">Checking for Claude Code CLI…</p>
       </div>
 
       {status === 'checking' && (
@@ -110,8 +110,8 @@ function StepCli({ onNext }: { onNext: () => void }): React.JSX.Element {
             </svg>
           </div>
           <p className="text-[13px] font-medium text-green-400/80">Claude Code CLI found</p>
-          <p className="text-[11px] text-white/30 font-mono truncate">{cliPath}</p>
-          {cliVersion && <p className="text-[10px] text-white/20">{cliVersion}</p>}
+          <p className="text-[11px] text-fg-subtle font-mono truncate">{cliPath}</p>
+          {cliVersion && <p className="text-[10px] text-fg-faint">{cliVersion}</p>}
         </div>
       )}
 
@@ -126,14 +126,14 @@ function StepCli({ onNext }: { onNext: () => void }): React.JSX.Element {
               </svg>
             </div>
             <p className="text-[13px] font-medium text-yellow-400/80">Claude Code CLI not found</p>
-            <p className="text-[11px] text-white/35 leading-relaxed">
+            <p className="text-[11px] text-fg-subtle leading-relaxed">
               coide requires the Claude Code CLI to work. Install it first, then come back.
             </p>
             <a
               href="https://docs.anthropic.com/en/docs/claude-code/overview"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block rounded-lg bg-white/[0.08] hover:bg-white/[0.12] px-4 py-2 text-[12px] font-medium text-white/70 transition-colors"
+              className="inline-block rounded-lg bg-overlay-3 hover:bg-overlay-4 px-4 py-2 text-[12px] font-medium text-fg-muted transition-colors"
             >
               Install Claude Code →
             </a>
@@ -141,26 +141,26 @@ function StepCli({ onNext }: { onNext: () => void }): React.JSX.Element {
 
           <button
             onClick={() => checkBinary()}
-            className="rounded-lg border border-white/[0.1] px-4 py-2 text-[12px] font-medium text-white/50 hover:text-white/70 hover:bg-white/5 transition-colors"
+            className="rounded-lg border border-line-strong px-4 py-2 text-[12px] font-medium text-fg-muted hover:text-fg-muted hover:bg-overlay-2 transition-colors"
           >
             Check Again
           </button>
 
           <div className="pt-2 space-y-2">
-            <p className="text-[10px] text-white/20 uppercase tracking-wider font-medium">Or set custom path</p>
+            <p className="text-[10px] text-fg-faint uppercase tracking-wider font-medium">Or set custom path</p>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={customPath}
                 onChange={(e) => setCustomPath(e.target.value)}
                 placeholder="/path/to/claude"
-                className="flex-1 rounded-md border border-white/[0.1] bg-white/[0.05] px-3 py-1.5 text-[12px] text-white/70 font-mono placeholder-white/20 outline-none focus:border-white/20"
+                className="flex-1 rounded-md border border-line-strong bg-overlay-2 px-3 py-1.5 text-[12px] text-fg-muted font-mono placeholder-fg-faint outline-none focus:border-line-strong"
                 onKeyDown={(e) => e.key === 'Enter' && handleVerifyCustom()}
               />
               <button
                 onClick={handleVerifyCustom}
                 disabled={!customPath.trim() || verifying}
-                className="rounded-md bg-blue-600/80 hover:bg-blue-600 px-3 py-1.5 text-[12px] font-medium text-white transition-colors disabled:opacity-30"
+                className="rounded-md bg-blue-600/80 hover:bg-blue-600 px-3 py-1.5 text-[12px] font-medium text-fg transition-colors disabled:opacity-30"
               >
                 {verifying ? '…' : 'Verify'}
               </button>
@@ -172,7 +172,7 @@ function StepCli({ onNext }: { onNext: () => void }): React.JSX.Element {
       {status === 'found' && (
         <button
           onClick={onNext}
-          className="rounded-lg bg-blue-600 hover:bg-blue-500 px-5 py-2 text-[13px] font-medium text-white transition-colors"
+          className="rounded-lg bg-blue-600 hover:bg-blue-500 px-5 py-2 text-[13px] font-medium text-fg transition-colors"
         >
           Continue
         </button>
@@ -200,11 +200,11 @@ function StepFolder({ onNext, onBack }: { onNext: () => void; onBack: () => void
   return (
     <div className="text-center space-y-5">
       <div>
-        <h2 className="text-lg font-semibold text-white/90 mb-1">Pick your project folder</h2>
-        <p className="text-[12px] text-white/35">This is where coide will open new sessions by default.</p>
+        <h2 className="text-lg font-semibold text-fg-strong mb-1">Pick your project folder</h2>
+        <p className="text-[12px] text-fg-subtle">This is where coide will open new sessions by default.</p>
       </div>
 
-      <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+      <div className="rounded-xl border border-line bg-overlay-1 p-4 space-y-3">
         {folder ? (
           <div className="space-y-2">
             <div className="flex justify-center">
@@ -212,11 +212,11 @@ function StepFolder({ onNext, onBack }: { onNext: () => void; onBack: () => void
                 <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
-            <p className="text-[12px] text-white/60 font-mono truncate">{folder}</p>
+            <p className="text-[12px] text-fg-muted font-mono truncate">{folder}</p>
           </div>
         ) : (
           <div className="flex justify-center py-2">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="text-white/15">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="text-fg-faint">
               <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
@@ -224,7 +224,7 @@ function StepFolder({ onNext, onBack }: { onNext: () => void; onBack: () => void
         <button
           onClick={handlePick}
           disabled={picking}
-          className="rounded-lg bg-white/[0.08] hover:bg-white/[0.12] px-4 py-2 text-[12px] font-medium text-white/60 transition-colors disabled:opacity-50"
+          className="rounded-lg bg-overlay-3 hover:bg-overlay-4 px-4 py-2 text-[12px] font-medium text-fg-muted transition-colors disabled:opacity-50"
         >
           {picking ? 'Choosing…' : folder ? 'Change Folder' : 'Choose Folder'}
         </button>
@@ -233,14 +233,14 @@ function StepFolder({ onNext, onBack }: { onNext: () => void; onBack: () => void
       <div className="flex justify-between pt-2">
         <button
           onClick={onBack}
-          className="rounded-lg px-4 py-2 text-[12px] font-medium text-white/30 hover:text-white/50 transition-colors"
+          className="rounded-lg px-4 py-2 text-[12px] font-medium text-fg-subtle hover:text-fg-muted transition-colors"
         >
           ← Back
         </button>
         <button
           onClick={onNext}
           disabled={!folder}
-          className="rounded-lg bg-blue-600 hover:bg-blue-500 px-5 py-2 text-[13px] font-medium text-white transition-colors disabled:opacity-30"
+          className="rounded-lg bg-blue-600 hover:bg-blue-500 px-5 py-2 text-[13px] font-medium text-fg transition-colors disabled:opacity-30"
         >
           Next →
         </button>
@@ -260,24 +260,24 @@ function StepTips(): React.JSX.Element {
   return (
     <div className="text-center space-y-5">
       <div>
-        <h2 className="text-lg font-semibold text-white/90 mb-1">You're all set</h2>
-        <p className="text-[12px] text-white/35">A few shortcuts to get you started.</p>
+        <h2 className="text-lg font-semibold text-fg-strong mb-1">You're all set</h2>
+        <p className="text-[12px] text-fg-subtle">A few shortcuts to get you started.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
         {tips.map((tip) => (
-          <div key={tip.keys} className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3 text-left">
-            <kbd className="text-[12px] font-mono font-medium text-white/50 bg-white/[0.06] px-1.5 py-0.5 rounded">
+          <div key={tip.keys} className="rounded-xl border border-line-soft bg-overlay-1 p-3 text-left">
+            <kbd className="text-[12px] font-mono font-medium text-fg-muted bg-overlay-2 px-1.5 py-0.5 rounded">
               {tip.keys}
             </kbd>
-            <p className="text-[11px] text-white/35 mt-1.5">{tip.label}</p>
+            <p className="text-[11px] text-fg-subtle mt-1.5">{tip.label}</p>
           </div>
         ))}
       </div>
 
       <button
         onClick={() => useSettingsStore.getState().updateSettings({ onboardingComplete: true })}
-        className="rounded-lg bg-blue-600 hover:bg-blue-500 px-6 py-2.5 text-[13px] font-semibold text-white transition-colors"
+        className="rounded-lg bg-blue-600 hover:bg-blue-500 px-6 py-2.5 text-[13px] font-semibold text-fg transition-colors"
       >
         Get Started
       </button>

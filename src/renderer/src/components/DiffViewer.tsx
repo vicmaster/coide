@@ -61,11 +61,11 @@ export default function DiffViewer({
   const fileName = filePath.split('/').pop() ?? filePath
 
   return (
-    <div className="rounded-lg overflow-hidden border border-white/[0.06]">
+    <div className="rounded-lg overflow-hidden border border-line-soft">
       {/* File path header */}
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-white/[0.03] border-b border-white/[0.06]">
-        <span className="text-[10px] font-mono text-white/30 truncate">{fileName}</span>
-        <span className="text-[10px] text-white/15 truncate ml-auto">{filePath}</span>
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-overlay-1 border-b border-line-soft">
+        <span className="text-[10px] font-mono text-fg-subtle truncate">{fileName}</span>
+        <span className="text-[10px] text-fg-faint truncate ml-auto">{filePath}</span>
       </div>
 
       {/* Monaco DiffEditor */}
@@ -98,7 +98,7 @@ export default function DiffViewer({
             }}
           />
         ) : (
-          <div className="flex items-center justify-center h-full text-white/20 text-xs">
+          <div className="flex items-center justify-center h-full text-fg-faint text-xs">
             Loading diff...
           </div>
         )}

@@ -165,32 +165,32 @@ export default function SkillEditorModal(): React.JSX.Element | null {
       onClick={close}
     >
       <div
-        className="w-[90vw] max-w-3xl rounded-xl border border-white/[0.08] bg-[#0d0d0d] shadow-2xl overflow-hidden flex flex-col"
+        className="w-[90vw] max-w-3xl rounded-xl border border-line bg-canvas shadow-2xl overflow-hidden flex flex-col"
         style={{ height: '75vh' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center gap-2 px-4 py-2.5 bg-white/[0.03] border-b border-white/[0.06] flex-shrink-0">
-          <span className="text-sm font-medium text-white/80">
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-overlay-1 border-b border-line-soft flex-shrink-0">
+          <span className="text-sm font-medium text-fg-strong">
             {mode === 'create' ? 'New Skill' : `Edit /${skillName}`}
           </span>
           <button
             onClick={close}
-            className="ml-auto text-white/30 hover:text-white/70 transition-colors text-lg leading-none px-1"
+            className="ml-auto text-fg-subtle hover:text-fg-muted transition-colors text-lg leading-none px-1"
           >
             &times;
           </button>
         </div>
 
         {/* Name + Scope */}
-        <div className="px-4 py-3 border-b border-white/[0.06] flex-shrink-0 space-y-3">
+        <div className="px-4 py-3 border-b border-line-soft flex-shrink-0 space-y-3">
           {/* Name input */}
           <div>
-            <label className="block text-[10px] uppercase tracking-widest text-white/30 mb-1.5">
+            <label className="block text-[10px] uppercase tracking-widest text-fg-subtle mb-1.5">
               Name
             </label>
             <div className="flex items-center gap-1">
-              <span className="text-sm text-white/30">/</span>
+              <span className="text-sm text-fg-subtle">/</span>
               <input
                 type="text"
                 value={name}
@@ -200,7 +200,7 @@ export default function SkillEditorModal(): React.JSX.Element | null {
                 }}
                 disabled={mode === 'edit'}
                 placeholder="my-skill"
-                className="flex-1 rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-1.5 text-sm text-white/80 placeholder-white/20 outline-none focus:border-white/[0.15] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 rounded-md border border-line bg-overlay-1 px-2 py-1.5 text-sm text-fg-strong placeholder-fg-faint outline-none focus:border-line-strong disabled:opacity-50 disabled:cursor-not-allowed"
                 autoFocus
               />
             </div>
@@ -208,7 +208,7 @@ export default function SkillEditorModal(): React.JSX.Element | null {
 
           {/* Description */}
           <div>
-            <label className="block text-[10px] uppercase tracking-widest text-white/30 mb-1.5">
+            <label className="block text-[10px] uppercase tracking-widest text-fg-subtle mb-1.5">
               Description
             </label>
             <input
@@ -216,14 +216,14 @@ export default function SkillEditorModal(): React.JSX.Element | null {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What this skill does and when to use it"
-              className="w-full rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-1.5 text-sm text-white/80 placeholder-white/20 outline-none focus:border-white/[0.15]"
+              className="w-full rounded-md border border-line bg-overlay-1 px-2 py-1.5 text-sm text-fg-strong placeholder-fg-faint outline-none focus:border-line-strong"
             />
           </div>
 
           {/* Scope selector — create mode only */}
           {mode === 'create' && (
             <div>
-              <label className="block text-[10px] uppercase tracking-widest text-white/30 mb-1.5">
+              <label className="block text-[10px] uppercase tracking-widest text-fg-subtle mb-1.5">
                 Scope
               </label>
               <div className="flex gap-1">
@@ -233,15 +233,15 @@ export default function SkillEditorModal(): React.JSX.Element | null {
                     onClick={() => setScope(s)}
                     className={`flex-1 rounded-md py-1.5 text-xs font-medium capitalize transition-colors ${
                       scope === s
-                        ? 'bg-white/10 text-white'
-                        : 'text-white/35 hover:text-white/60 hover:bg-white/5 border border-white/[0.06]'
+                        ? 'bg-overlay-3 text-fg'
+                        : 'text-fg-subtle hover:text-fg-muted hover:bg-overlay-2 border border-line-soft'
                     }`}
                   >
                     {s}
                   </button>
                 ))}
               </div>
-              <p className="mt-1.5 text-[10px] text-white/20">
+              <p className="mt-1.5 text-[10px] text-fg-faint">
                 {scope === 'project'
                   ? 'Saved to .claude/skills/ in your project'
                   : 'Saved to ~/.claude/skills/ (available everywhere)'}
@@ -253,7 +253,7 @@ export default function SkillEditorModal(): React.JSX.Element | null {
         {/* Monaco Editor */}
         <div className="flex-1 min-h-0">
           {loading ? (
-            <div className="flex items-center justify-center h-full text-white/20 text-sm">
+            <div className="flex items-center justify-center h-full text-fg-faint text-sm">
               Loading...
             </div>
           ) : (
@@ -288,21 +288,21 @@ export default function SkillEditorModal(): React.JSX.Element | null {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-4 py-2.5 bg-white/[0.03] border-t border-white/[0.06] flex-shrink-0">
+        <div className="flex items-center justify-between px-4 py-2.5 bg-overlay-1 border-t border-line-soft flex-shrink-0">
           <span className="text-xs text-red-400/80 truncate max-w-[60%]">
             {error ?? ''}
           </span>
           <div className="flex gap-2">
             <button
               onClick={close}
-              className="rounded-md px-3 py-1.5 text-xs text-white/50 hover:text-white/70 hover:bg-white/5 transition-colors"
+              className="rounded-md px-3 py-1.5 text-xs text-fg-muted hover:text-fg-muted hover:bg-overlay-2 transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={saving}
-              className="rounded-md bg-blue-600/90 hover:bg-blue-600 px-4 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-50"
+              className="rounded-md bg-blue-600/90 hover:bg-blue-600 px-4 py-1.5 text-xs font-medium text-fg transition-colors disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Save'}
             </button>

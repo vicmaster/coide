@@ -101,17 +101,17 @@ export default function FilePreviewModal(): React.JSX.Element | null {
       onClick={close}
     >
       <div
-        className="w-[90vw] max-w-5xl rounded-xl border border-white/[0.08] bg-[#0d0d0d] shadow-2xl overflow-hidden flex flex-col"
+        className="w-[90vw] max-w-5xl rounded-xl border border-line bg-canvas shadow-2xl overflow-hidden flex flex-col"
         style={{ height: '75vh' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center gap-2 px-4 py-2.5 bg-white/[0.03] border-b border-white/[0.06] flex-shrink-0">
-          <span className="text-sm font-medium text-white/80 truncate">{fileName}</span>
-          <span className="text-xs text-white/20 truncate ml-1">{resolvedPath}</span>
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-overlay-1 border-b border-line-soft flex-shrink-0">
+          <span className="text-sm font-medium text-fg-strong truncate">{fileName}</span>
+          <span className="text-xs text-fg-faint truncate ml-1">{resolvedPath}</span>
           <button
             onClick={close}
-            className="ml-auto text-white/30 hover:text-white/70 transition-colors text-lg leading-none px-1"
+            className="ml-auto text-fg-subtle hover:text-fg-muted transition-colors text-lg leading-none px-1"
           >
             &times;
           </button>
@@ -120,7 +120,7 @@ export default function FilePreviewModal(): React.JSX.Element | null {
         {/* Body */}
         <div className="flex-1 min-h-0">
           {loading && (
-            <div className="flex items-center justify-center h-full text-white/20 text-sm">
+            <div className="flex items-center justify-center h-full text-fg-faint text-sm">
               Loading...
             </div>
           )}

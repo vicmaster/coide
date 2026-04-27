@@ -57,7 +57,7 @@ function statusColor(status: WorkflowNodeStatus): string {
     case 'awaiting_review':
       return 'bg-orange-400 animate-pulse'
     default:
-      return 'bg-white/20'
+      return 'bg-overlay-4'
   }
 }
 
@@ -72,7 +72,7 @@ function statusBorderColor(status: WorkflowNodeStatus): string {
     case 'awaiting_review':
       return 'border-orange-400/60'
     default:
-      return 'border-white/[0.08]'
+      return 'border-line'
   }
 }
 
@@ -81,9 +81,9 @@ function PromptNode({ data, selected }: NodeProps): React.JSX.Element {
   const output = data.output as string | undefined
   return (
     <div
-      className={`bg-[#111111] rounded-[10px] border-2 px-3 py-2.5 w-[192px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-blue-500/40' : ''}`}
+      className={`bg-surface-2 rounded-[10px] border-2 px-3 py-2.5 w-[192px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-blue-500/40' : ''}`}
     >
-      <Handle type="target" position={Position.Left} className="!bg-white/20 !w-2 !h-2" />
+      <Handle type="target" position={Position.Left} className="!bg-overlay-4 !w-2 !h-2" />
       <div className="flex items-center gap-1.5 mb-1">
         <div className={`w-[7px] h-[7px] rounded-full ${statusColor(status)}`} />
         <span className="text-[9px] font-bold tracking-wider text-blue-400 font-mono">
@@ -95,10 +95,10 @@ function PromptNode({ data, selected }: NodeProps): React.JSX.Element {
           </span>
         )}
       </div>
-      <div className="text-xs font-medium text-white/90 truncate">
+      <div className="text-xs font-medium text-fg-strong truncate">
         {data.label as string}
       </div>
-      <div className="text-[10px] text-white/35 truncate mt-0.5">
+      <div className="text-[10px] text-fg-subtle truncate mt-0.5">
         {(data.prompt as string)?.slice(0, 40)}...
       </div>
       {Array.isArray(data.allowedTools) && (data.allowedTools as string[]).length > 0 && (
@@ -118,7 +118,7 @@ function PromptNode({ data, selected }: NodeProps): React.JSX.Element {
           ✗ {(output as string)?.slice(0, 30) || 'failed'}
         </div>
       )}
-      <Handle type="source" position={Position.Right} className="!bg-white/20 !w-2 !h-2" />
+      <Handle type="source" position={Position.Right} className="!bg-overlay-4 !w-2 !h-2" />
     </div>
   )
 }
@@ -127,19 +127,19 @@ function ConditionNode({ data, selected }: NodeProps): React.JSX.Element {
   const status: WorkflowNodeStatus = (data.status as WorkflowNodeStatus) || 'idle'
   return (
     <div
-      className={`bg-[#111111] rounded-[10px] border-2 px-3 py-2.5 w-[192px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-yellow-500/40' : ''}`}
+      className={`bg-surface-2 rounded-[10px] border-2 px-3 py-2.5 w-[192px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-yellow-500/40' : ''}`}
     >
-      <Handle type="target" position={Position.Left} className="!bg-white/20 !w-2 !h-2" />
+      <Handle type="target" position={Position.Left} className="!bg-overlay-4 !w-2 !h-2" />
       <div className="flex items-center gap-1.5 mb-1">
         <div className={`w-[7px] h-[7px] rounded-full ${statusColor(status)}`} />
         <span className="text-[9px] font-bold tracking-wider text-amber-400 font-mono">
           CONDITION
         </span>
       </div>
-      <div className="text-xs font-medium text-white/80 truncate">
+      <div className="text-xs font-medium text-fg-strong truncate">
         {data.label as string}
       </div>
-      <div className="text-[10px] text-white/30 truncate mt-0.5 font-mono">
+      <div className="text-[10px] text-fg-subtle truncate mt-0.5 font-mono">
         {(data.expression as string)?.slice(0, 35)}
       </div>
       <Handle
@@ -164,19 +164,19 @@ function ScriptNode({ data, selected }: NodeProps): React.JSX.Element {
   const status: WorkflowNodeStatus = (data.status as WorkflowNodeStatus) || 'idle'
   return (
     <div
-      className={`bg-[#111111] rounded-[10px] border-2 px-3 py-2.5 w-[192px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-purple-500/40' : ''}`}
+      className={`bg-surface-2 rounded-[10px] border-2 px-3 py-2.5 w-[192px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-purple-500/40' : ''}`}
     >
-      <Handle type="target" position={Position.Left} className="!bg-white/20 !w-2 !h-2" />
+      <Handle type="target" position={Position.Left} className="!bg-overlay-4 !w-2 !h-2" />
       <div className="flex items-center gap-1.5 mb-1">
         <div className={`w-[7px] h-[7px] rounded-full ${statusColor(status)}`} />
         <span className="text-[9px] font-bold tracking-wider text-purple-400 font-mono">
           SCRIPT
         </span>
       </div>
-      <div className="text-xs font-medium text-white/80 truncate">
+      <div className="text-xs font-medium text-fg-strong truncate">
         {data.label as string}
       </div>
-      <div className="text-[10px] text-white/30 truncate mt-0.5 font-mono">
+      <div className="text-[10px] text-fg-subtle truncate mt-0.5 font-mono">
         {(data.command as string)?.slice(0, 35)}
       </div>
       {status === 'done' && (
@@ -185,7 +185,7 @@ function ScriptNode({ data, selected }: NodeProps): React.JSX.Element {
       {status === 'running' && (
         <div className="text-[9px] text-blue-400/70 font-mono mt-1">⟳ running...</div>
       )}
-      <Handle type="source" position={Position.Right} className="!bg-white/20 !w-2 !h-2" />
+      <Handle type="source" position={Position.Right} className="!bg-overlay-4 !w-2 !h-2" />
     </div>
   )
 }
@@ -194,17 +194,17 @@ function ParallelNode({ data, selected }: NodeProps): React.JSX.Element {
   const status: WorkflowNodeStatus = (data.status as WorkflowNodeStatus) || 'idle'
   return (
     <div
-      className={`bg-[#111111] rounded-[10px] border-2 px-3 py-2.5 w-[160px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-cyan-500/40' : ''}`}
+      className={`bg-surface-2 rounded-[10px] border-2 px-3 py-2.5 w-[160px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-cyan-500/40' : ''}`}
     >
-      <Handle type="target" position={Position.Left} className="!bg-white/20 !w-2 !h-2" />
+      <Handle type="target" position={Position.Left} className="!bg-overlay-4 !w-2 !h-2" />
       <div className="flex items-center gap-1.5 mb-1">
         <div className={`w-[7px] h-[7px] rounded-full ${statusColor(status)}`} />
         <span className="text-[9px] font-bold tracking-wider text-cyan-400 font-mono">
           PARALLEL
         </span>
       </div>
-      <div className="text-xs font-medium text-white/80 truncate">{data.label as string}</div>
-      <div className="text-[9px] text-white/30 font-mono mt-0.5">⇉ fan-out to all branches</div>
+      <div className="text-xs font-medium text-fg-strong truncate">{data.label as string}</div>
+      <div className="text-[9px] text-fg-subtle font-mono mt-0.5">⇉ fan-out to all branches</div>
       <Handle type="source" position={Position.Right} className="!bg-cyan-500/60 !w-2 !h-2" />
     </div>
   )
@@ -214,16 +214,16 @@ function JoinNode({ data, selected }: NodeProps): React.JSX.Element {
   const status: WorkflowNodeStatus = (data.status as WorkflowNodeStatus) || 'idle'
   return (
     <div
-      className={`bg-[#111111] rounded-[10px] border-2 px-3 py-2.5 w-[160px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-cyan-500/40' : ''}`}
+      className={`bg-surface-2 rounded-[10px] border-2 px-3 py-2.5 w-[160px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-cyan-500/40' : ''}`}
     >
       <Handle type="target" position={Position.Left} className="!bg-cyan-500/60 !w-2 !h-2" />
       <div className="flex items-center gap-1.5 mb-1">
         <div className={`w-[7px] h-[7px] rounded-full ${statusColor(status)}`} />
         <span className="text-[9px] font-bold tracking-wider text-cyan-400 font-mono">JOIN</span>
       </div>
-      <div className="text-xs font-medium text-white/80 truncate">{data.label as string}</div>
-      <div className="text-[9px] text-white/30 font-mono mt-0.5">⇇ wait for all</div>
-      <Handle type="source" position={Position.Right} className="!bg-white/20 !w-2 !h-2" />
+      <div className="text-xs font-medium text-fg-strong truncate">{data.label as string}</div>
+      <div className="text-[9px] text-fg-subtle font-mono mt-0.5">⇇ wait for all</div>
+      <Handle type="source" position={Position.Right} className="!bg-overlay-4 !w-2 !h-2" />
     </div>
   )
 }
@@ -233,9 +233,9 @@ function LoopNode({ data, selected }: NodeProps): React.JSX.Element {
   const iteration = data.iteration as number | undefined
   return (
     <div
-      className={`bg-[#111111] rounded-[10px] border-2 px-3 py-2.5 w-[192px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-pink-500/40' : ''}`}
+      className={`bg-surface-2 rounded-[10px] border-2 px-3 py-2.5 w-[192px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-pink-500/40' : ''}`}
     >
-      <Handle type="target" position={Position.Left} className="!bg-white/20 !w-2 !h-2" />
+      <Handle type="target" position={Position.Left} className="!bg-overlay-4 !w-2 !h-2" />
       <div className="flex items-center gap-1.5 mb-1">
         <div className={`w-[7px] h-[7px] rounded-full ${statusColor(status)}`} />
         <span className="text-[9px] font-bold tracking-wider text-pink-400 font-mono">LOOP</span>
@@ -245,11 +245,11 @@ function LoopNode({ data, selected }: NodeProps): React.JSX.Element {
           </span>
         ) : null}
       </div>
-      <div className="text-xs font-medium text-white/80 truncate">{data.label as string}</div>
-      <div className="text-[9px] text-white/30 truncate mt-0.5 font-mono">
+      <div className="text-xs font-medium text-fg-strong truncate">{data.label as string}</div>
+      <div className="text-[9px] text-fg-subtle truncate mt-0.5 font-mono">
         while {(data.condition as string)?.slice(0, 24)}
       </div>
-      <div className="text-[9px] text-white/25 font-mono mt-0.5">
+      <div className="text-[9px] text-fg-faint font-mono mt-0.5">
         max {(data.maxIterations as number) ?? 10}
       </div>
       <Handle
@@ -263,7 +263,7 @@ function LoopNode({ data, selected }: NodeProps): React.JSX.Element {
         type="source"
         position={Position.Right}
         id="exit"
-        className="!bg-white/20 !w-2 !h-2"
+        className="!bg-overlay-4 !w-2 !h-2"
       />
     </div>
   )
@@ -273,23 +273,23 @@ function HumanReviewNode({ data, selected }: NodeProps): React.JSX.Element {
   const status: WorkflowNodeStatus = (data.status as WorkflowNodeStatus) || 'idle'
   return (
     <div
-      className={`bg-[#111111] rounded-[10px] border-2 px-3 py-2.5 w-[192px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-orange-400/40' : ''}`}
+      className={`bg-surface-2 rounded-[10px] border-2 px-3 py-2.5 w-[192px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-orange-400/40' : ''}`}
     >
-      <Handle type="target" position={Position.Left} className="!bg-white/20 !w-2 !h-2" />
+      <Handle type="target" position={Position.Left} className="!bg-overlay-4 !w-2 !h-2" />
       <div className="flex items-center gap-1.5 mb-1">
         <div className={`w-[7px] h-[7px] rounded-full ${statusColor(status)}`} />
         <span className="text-[9px] font-bold tracking-wider text-orange-400 font-mono">
           REVIEW
         </span>
       </div>
-      <div className="text-xs font-medium text-white/80 truncate">{data.label as string}</div>
-      <div className="text-[10px] text-white/35 truncate mt-0.5">
+      <div className="text-xs font-medium text-fg-strong truncate">{data.label as string}</div>
+      <div className="text-[10px] text-fg-subtle truncate mt-0.5">
         {(data.message as string)?.slice(0, 40) || 'Requires human approval'}
       </div>
       {status === 'awaiting_review' && (
         <div className="text-[9px] text-orange-400 font-mono mt-1">⏸ awaiting review</div>
       )}
-      <Handle type="source" position={Position.Right} className="!bg-white/20 !w-2 !h-2" />
+      <Handle type="source" position={Position.Right} className="!bg-overlay-4 !w-2 !h-2" />
     </div>
   )
 }
@@ -299,17 +299,17 @@ function SubworkflowNode({ data, selected }: NodeProps): React.JSX.Element {
   const wfName = (data.childName as string) || '(not selected)'
   return (
     <div
-      className={`bg-[#111111] rounded-[10px] border-2 px-3 py-2.5 w-[192px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-violet-500/40' : ''}`}
+      className={`bg-surface-2 rounded-[10px] border-2 px-3 py-2.5 w-[192px] ${statusBorderColor(status)} ${selected ? 'ring-1 ring-violet-500/40' : ''}`}
     >
-      <Handle type="target" position={Position.Left} className="!bg-white/20 !w-2 !h-2" />
+      <Handle type="target" position={Position.Left} className="!bg-overlay-4 !w-2 !h-2" />
       <div className="flex items-center gap-1.5 mb-1">
         <div className={`w-[7px] h-[7px] rounded-full ${statusColor(status)}`} />
         <span className="text-[9px] font-bold tracking-wider text-violet-400 font-mono">
           SUB-FLOW
         </span>
       </div>
-      <div className="text-xs font-medium text-white/80 truncate">{data.label as string}</div>
-      <div className="text-[10px] text-white/35 truncate mt-0.5">
+      <div className="text-xs font-medium text-fg-strong truncate">{data.label as string}</div>
+      <div className="text-[10px] text-fg-subtle truncate mt-0.5">
         ↳ {wfName}
       </div>
       {status === 'done' && (
@@ -318,7 +318,7 @@ function SubworkflowNode({ data, selected }: NodeProps): React.JSX.Element {
       {status === 'running' && (
         <div className="text-[9px] text-blue-400/70 font-mono mt-1">⟳ running...</div>
       )}
-      <Handle type="source" position={Position.Right} className="!bg-white/20 !w-2 !h-2" />
+      <Handle type="source" position={Position.Right} className="!bg-overlay-4 !w-2 !h-2" />
     </div>
   )
 }
@@ -512,18 +512,18 @@ function NodeConfigPanel(): React.JSX.Element | null {
                 : 'bg-orange-500/15 text-orange-400'
 
   return (
-    <div className="w-[320px] flex-shrink-0 bg-[#111111] border-l border-white/[0.06] flex flex-col overflow-hidden">
+    <div className="w-[320px] flex-shrink-0 bg-surface-2 border-l border-line-soft flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="h-11 flex items-center justify-between px-4 border-b border-white/[0.06]">
+      <div className="h-11 flex items-center justify-between px-4 border-b border-line-soft">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-white/90">Node Config</span>
+          <span className="text-xs font-semibold text-fg-strong">Node Config</span>
           <span className={`text-[8px] font-bold font-mono px-1.5 py-0.5 rounded ${typeColor}`}>
             {nodeTypeLabel}
           </span>
         </div>
         <button
           onClick={() => setSelectedNodeId(null)}
-          className="text-white/40 hover:text-white/70 text-sm"
+          className="text-fg-subtle hover:text-fg-muted text-sm"
         >
           ✕
         </button>
@@ -533,12 +533,12 @@ function NodeConfigPanel(): React.JSX.Element | null {
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {/* Name */}
         <div>
-          <label className="text-[10px] font-medium text-white/40 block mb-1">Name</label>
+          <label className="text-[10px] font-medium text-fg-subtle block mb-1">Name</label>
           <input
             value={node.label}
             onChange={(e) => updateNodeLabel(e.target.value)}
             disabled={isRunning}
-            className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2.5 py-1.5 text-xs text-white/90 focus:border-blue-500/40 focus:outline-none"
+            className="w-full bg-surface-1 border border-line rounded-md px-2.5 py-1.5 text-xs text-fg-strong focus:border-blue-500/40 focus:outline-none"
           />
         </div>
 
@@ -550,15 +550,15 @@ function NodeConfigPanel(): React.JSX.Element | null {
         {/* Condition-specific fields */}
         {node.data.type === 'condition' && (
           <div>
-            <label className="text-[10px] font-medium text-white/40 block mb-1">Expression</label>
+            <label className="text-[10px] font-medium text-fg-subtle block mb-1">Expression</label>
             <textarea
               value={node.data.expression}
               onChange={(e) => updateNodeData({ expression: e.target.value })}
               disabled={isRunning}
               rows={3}
-              className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2.5 py-2 text-[11px] text-white/80 font-mono resize-none focus:border-blue-500/40 focus:outline-none"
+              className="w-full bg-surface-1 border border-line rounded-md px-2.5 py-2 text-[11px] text-fg-strong font-mono resize-none focus:border-blue-500/40 focus:outline-none"
             />
-            <p className="text-[9px] text-white/25 mt-1 font-mono">
+            <p className="text-[9px] text-fg-faint mt-1 font-mono">
               Vars: <code className="text-amber-400/60">output</code>,{' '}
               <code className="text-amber-400/60">vars</code>,{' '}
               <code className="text-amber-400/60">iteration</code>
@@ -569,20 +569,20 @@ function NodeConfigPanel(): React.JSX.Element | null {
         {/* Script-specific fields */}
         {node.data.type === 'script' && (
           <div>
-            <label className="text-[10px] font-medium text-white/40 block mb-1">Command</label>
+            <label className="text-[10px] font-medium text-fg-subtle block mb-1">Command</label>
             <textarea
               value={node.data.command}
               onChange={(e) => updateNodeData({ command: e.target.value })}
               disabled={isRunning}
               rows={3}
-              className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2.5 py-2 text-[11px] text-white/80 font-mono resize-none focus:border-blue-500/40 focus:outline-none"
+              className="w-full bg-surface-1 border border-line rounded-md px-2.5 py-2 text-[11px] text-fg-strong font-mono resize-none focus:border-blue-500/40 focus:outline-none"
             />
           </div>
         )}
 
         {/* Parallel: no config */}
         {node.data.type === 'parallel' && (
-          <div className="text-[10px] text-white/35 leading-relaxed">
+          <div className="text-[10px] text-fg-subtle leading-relaxed">
             Pure fan-out node. Each outgoing edge becomes a concurrent branch. Use a
             <span className="text-cyan-400"> Join </span>
             node downstream to merge their outputs.
@@ -592,7 +592,7 @@ function NodeConfigPanel(): React.JSX.Element | null {
         {/* Join: separator */}
         {node.data.type === 'join' && (
           <div>
-            <label className="text-[10px] font-medium text-white/40 block mb-1">
+            <label className="text-[10px] font-medium text-fg-subtle block mb-1">
               Separator (between branch outputs)
             </label>
             <input
@@ -600,9 +600,9 @@ function NodeConfigPanel(): React.JSX.Element | null {
               placeholder={'\\n\\n---\\n\\n'}
               onChange={(e) => updateNodeData({ separator: e.target.value })}
               disabled={isRunning}
-              className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2.5 py-1.5 text-[11px] text-white/80 font-mono focus:border-blue-500/40 focus:outline-none"
+              className="w-full bg-surface-1 border border-line rounded-md px-2.5 py-1.5 text-[11px] text-fg-strong font-mono focus:border-blue-500/40 focus:outline-none"
             />
-            <p className="text-[9px] text-white/25 mt-1">
+            <p className="text-[9px] text-fg-faint mt-1">
               Join waits for ALL incoming edges before running. Note: if any upstream branch is
               skipped (condition false), the Join will wait forever.
             </p>
@@ -613,7 +613,7 @@ function NodeConfigPanel(): React.JSX.Element | null {
         {node.data.type === 'loop' && (
           <>
             <div>
-              <label className="text-[10px] font-medium text-white/40 block mb-1">
+              <label className="text-[10px] font-medium text-fg-subtle block mb-1">
                 Continue While (expression)
               </label>
               <textarea
@@ -621,16 +621,16 @@ function NodeConfigPanel(): React.JSX.Element | null {
                 onChange={(e) => updateNodeData({ condition: e.target.value })}
                 disabled={isRunning}
                 rows={3}
-                className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2.5 py-2 text-[11px] text-white/80 font-mono resize-none focus:border-blue-500/40 focus:outline-none"
+                className="w-full bg-surface-1 border border-line rounded-md px-2.5 py-2 text-[11px] text-fg-strong font-mono resize-none focus:border-blue-500/40 focus:outline-none"
               />
-              <p className="text-[9px] text-white/25 mt-1 font-mono">
+              <p className="text-[9px] text-fg-faint mt-1 font-mono">
                 Vars: <code className="text-pink-400/60">output</code>,{' '}
                 <code className="text-pink-400/60">vars</code>,{' '}
                 <code className="text-pink-400/60">iteration</code>
               </p>
             </div>
             <div>
-              <label className="text-[10px] font-medium text-white/40 block mb-1">
+              <label className="text-[10px] font-medium text-fg-subtle block mb-1">
                 Max Iterations
               </label>
               <input
@@ -640,12 +640,12 @@ function NodeConfigPanel(): React.JSX.Element | null {
                 value={node.data.maxIterations}
                 onChange={(e) => updateNodeData({ maxIterations: parseInt(e.target.value, 10) || 1 })}
                 disabled={isRunning}
-                className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2.5 py-1.5 text-xs text-white/90 font-mono focus:border-blue-500/40 focus:outline-none"
+                className="w-full bg-surface-1 border border-line rounded-md px-2.5 py-1.5 text-xs text-fg-strong font-mono focus:border-blue-500/40 focus:outline-none"
               />
             </div>
-            <div className="text-[10px] text-white/35 leading-relaxed">
+            <div className="text-[10px] text-fg-subtle leading-relaxed">
               <div><span className="text-pink-400">body</span> handle (bottom): linear chain that runs each iteration.</div>
-              <div><span className="text-white/70">exit</span> handle (right): continues after loop ends.</div>
+              <div><span className="text-fg-muted">exit</span> handle (right): continues after loop ends.</div>
             </div>
           </>
         )}
@@ -663,7 +663,7 @@ function NodeConfigPanel(): React.JSX.Element | null {
         {/* Human review */}
         {node.data.type === 'humanReview' && (
           <div>
-            <label className="text-[10px] font-medium text-white/40 block mb-1">
+            <label className="text-[10px] font-medium text-fg-subtle block mb-1">
               Message for reviewer
             </label>
             <textarea
@@ -672,9 +672,9 @@ function NodeConfigPanel(): React.JSX.Element | null {
               disabled={isRunning}
               rows={3}
               placeholder="What should the reviewer check?"
-              className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2.5 py-2 text-[11px] text-white/80 resize-none focus:border-blue-500/40 focus:outline-none"
+              className="w-full bg-surface-1 border border-line rounded-md px-2.5 py-2 text-[11px] text-fg-strong resize-none focus:border-blue-500/40 focus:outline-none"
             />
-            <p className="text-[9px] text-white/25 mt-1">
+            <p className="text-[9px] text-fg-faint mt-1">
               Pauses execution. Approve → continue; Reject → ends this branch.
             </p>
           </div>
@@ -683,15 +683,15 @@ function NodeConfigPanel(): React.JSX.Element | null {
         {/* Output display */}
         {nodeState && (nodeState.status === 'done' || nodeState.status === 'failed' || nodeState.status === 'running') && (
           <div>
-            <label className="text-[10px] font-medium text-white/40 block mb-1">Output</label>
-            <div className="bg-[#0a0a0a] border border-white/[0.06] rounded-md p-2.5 max-h-40 overflow-y-auto">
+            <label className="text-[10px] font-medium text-fg-subtle block mb-1">Output</label>
+            <div className="bg-surface-1 border border-line-soft rounded-md p-2.5 max-h-40 overflow-y-auto">
               {nodeState.status === 'running' && (
                 <div className="flex items-center gap-1.5 mb-1">
                   <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
                   <span className="text-[9px] text-blue-400 font-mono">Streaming output...</span>
                 </div>
               )}
-              <pre className="text-[10px] text-white/45 font-mono whitespace-pre-wrap break-words">
+              <pre className="text-[10px] text-fg-subtle font-mono whitespace-pre-wrap break-words">
                 {nodeState.output || nodeState.error || '(no output)'}
               </pre>
             </div>
@@ -736,12 +736,12 @@ function PromptNodeConfig({
   return (
     <>
       <div>
-        <label className="text-[10px] font-medium text-white/40 block mb-1">Model</label>
+        <label className="text-[10px] font-medium text-fg-subtle block mb-1">Model</label>
         <select
           value={node.model || ''}
           onChange={(e) => update({ model: e.target.value || undefined })}
           disabled={disabled}
-          className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2.5 py-1.5 text-xs text-white/90 font-mono focus:border-blue-500/40 focus:outline-none"
+          className="w-full bg-surface-1 border border-line rounded-md px-2.5 py-1.5 text-xs text-fg-strong font-mono focus:border-blue-500/40 focus:outline-none"
         >
           <option value="">default</option>
           <option value="opus">opus</option>
@@ -750,22 +750,22 @@ function PromptNodeConfig({
         </select>
       </div>
       <div>
-        <label className="text-[10px] font-medium text-white/40 block mb-1">Prompt</label>
+        <label className="text-[10px] font-medium text-fg-subtle block mb-1">Prompt</label>
         <textarea
           value={node.prompt}
           onChange={(e) => update({ prompt: e.target.value })}
           disabled={disabled}
           rows={5}
-          className="w-full bg-[#0a0a0a] border border-blue-500/30 rounded-md px-2.5 py-2 text-[11px] text-white/80 font-mono leading-relaxed resize-none focus:border-blue-500/50 focus:outline-none"
+          className="w-full bg-surface-1 border border-blue-500/30 rounded-md px-2.5 py-2 text-[11px] text-fg-strong font-mono leading-relaxed resize-none focus:border-blue-500/50 focus:outline-none"
         />
-        <p className="text-[9px] text-white/25 mt-1 font-mono">
+        <p className="text-[9px] text-fg-faint mt-1 font-mono">
           Use <code className="text-blue-400/60">{'{{prev.output}}'}</code>,{' '}
           <code className="text-blue-400/60">{'{{input.key}}'}</code>,{' '}
           <code className="text-blue-400/60">{'{{vars.name}}'}</code>
         </p>
       </div>
       <div>
-        <label className="text-[10px] font-medium text-white/40 block mb-1">
+        <label className="text-[10px] font-medium text-fg-subtle block mb-1">
           System Prompt (optional)
         </label>
         <textarea
@@ -773,15 +773,15 @@ function PromptNodeConfig({
           onChange={(e) => update({ systemPrompt: e.target.value || undefined })}
           disabled={disabled}
           rows={2}
-          className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2.5 py-2 text-[11px] text-white/60 font-mono resize-none focus:border-blue-500/40 focus:outline-none"
+          className="w-full bg-surface-1 border border-line rounded-md px-2.5 py-2 text-[11px] text-fg-muted font-mono resize-none focus:border-blue-500/40 focus:outline-none"
         />
       </div>
 
       {/* Allowed tools */}
       <div>
-        <label className="text-[10px] font-medium text-white/40 block mb-1">
+        <label className="text-[10px] font-medium text-fg-subtle block mb-1">
           Allowed Tools{' '}
-          <span className="text-white/25 font-normal">
+          <span className="text-fg-faint font-normal">
             ({allowedTools.length === 0 ? 'all' : allowedTools.length})
           </span>
         </label>
@@ -796,7 +796,7 @@ function PromptNodeConfig({
                 className={`text-[9px] font-mono px-1.5 py-0.5 rounded border transition-colors ${
                   on
                     ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                    : 'bg-[#0a0a0a] text-white/40 border-white/[0.08] hover:border-white/[0.15]'
+                    : 'bg-surface-1 text-fg-subtle border-line hover:border-line-strong'
                 }`}
               >
                 {tool}
@@ -804,7 +804,7 @@ function PromptNodeConfig({
             )
           })}
         </div>
-        <p className="text-[9px] text-white/25 mt-1">
+        <p className="text-[9px] text-fg-faint mt-1">
           None selected = all tools allowed. Select any to restrict to those only.
         </p>
       </div>
@@ -812,7 +812,7 @@ function PromptNodeConfig({
       {/* Set vars */}
       <div>
         <div className="flex items-center justify-between mb-1">
-          <label className="text-[10px] font-medium text-white/40">Set Variables from Output</label>
+          <label className="text-[10px] font-medium text-fg-subtle">Set Variables from Output</label>
           <button
             onClick={addSetVar}
             disabled={disabled}
@@ -822,7 +822,7 @@ function PromptNodeConfig({
           </button>
         </div>
         {setVars.length === 0 && (
-          <p className="text-[9px] text-white/25">Capture output into workflow variables</p>
+          <p className="text-[9px] text-fg-faint">Capture output into workflow variables</p>
         )}
         {setVars.map((v, i) => (
           <div key={i} className="flex gap-1 mt-1 items-start">
@@ -831,14 +831,14 @@ function PromptNodeConfig({
               placeholder="name"
               onChange={(e) => updateSetVar(i, { name: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') })}
               disabled={disabled}
-              className="flex-1 bg-[#0a0a0a] border border-white/[0.08] rounded px-2 py-1 text-[10px] text-white/80 font-mono focus:outline-none focus:border-blue-500/40"
+              className="flex-1 bg-surface-1 border border-line rounded px-2 py-1 text-[10px] text-fg-strong font-mono focus:outline-none focus:border-blue-500/40"
             />
             <input
               value={v.extractor}
               placeholder="raw | json:path | regex:pat | lines:1-5"
               onChange={(e) => updateSetVar(i, { extractor: e.target.value })}
               disabled={disabled}
-              className="flex-[2] bg-[#0a0a0a] border border-white/[0.08] rounded px-2 py-1 text-[10px] text-white/70 font-mono focus:outline-none focus:border-blue-500/40"
+              className="flex-[2] bg-surface-1 border border-line rounded px-2 py-1 text-[10px] text-fg-muted font-mono focus:outline-none focus:border-blue-500/40"
             />
             <button
               onClick={() => removeSetVar(i)}
@@ -914,12 +914,12 @@ function SubworkflowNodeConfig({
   return (
     <>
       <div>
-        <label className="text-[10px] font-medium text-white/40 block mb-1">Target workflow</label>
+        <label className="text-[10px] font-medium text-fg-subtle block mb-1">Target workflow</label>
         <select
           value={node.workflowId}
           onChange={(e) => update({ workflowId: e.target.value })}
           disabled={disabled}
-          className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2.5 py-1.5 text-xs text-white/90 focus:border-violet-500/40 focus:outline-none"
+          className="w-full bg-surface-1 border border-line rounded-md px-2.5 py-1.5 text-xs text-fg-strong focus:border-violet-500/40 focus:outline-none"
         >
           <option value="">— select —</option>
           {workflows.length > 0 && (
@@ -941,22 +941,22 @@ function SubworkflowNodeConfig({
 
       {childInputs.length > 0 && (
         <div>
-          <label className="text-[10px] font-medium text-white/40 block mb-1">Input mapping</label>
+          <label className="text-[10px] font-medium text-fg-subtle block mb-1">Input mapping</label>
           <div className="space-y-1.5">
             {childInputs.map((inp) => (
               <div key={inp.key}>
-                <div className="text-[10px] text-white/60 font-mono">{inp.key}</div>
+                <div className="text-[10px] text-fg-muted font-mono">{inp.key}</div>
                 <input
                   value={mapping[inp.key] ?? ''}
                   onChange={(e) => updateMapping(inp.key, e.target.value)}
                   placeholder={inp.placeholder || `{{input.${inp.key}}}`}
                   disabled={disabled}
-                  className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2 py-1 text-[10px] text-white/80 font-mono focus:outline-none focus:border-violet-500/40"
+                  className="w-full bg-surface-1 border border-line rounded-md px-2 py-1 text-[10px] text-fg-strong font-mono focus:outline-none focus:border-violet-500/40"
                 />
               </div>
             ))}
           </div>
-          <p className="text-[9px] text-white/25 mt-1">
+          <p className="text-[9px] text-fg-faint mt-1">
             Use <code className="text-amber-400/60">{'{{input.x}}'}</code>,{' '}
             <code className="text-amber-400/60">{'{{vars.y}}'}</code>, or raw text.
           </p>
@@ -964,7 +964,7 @@ function SubworkflowNodeConfig({
       )}
 
       <div>
-        <label className="text-[10px] font-medium text-white/40 block mb-1">
+        <label className="text-[10px] font-medium text-fg-subtle block mb-1">
           Capture vars (comma-separated; blank = all)
         </label>
         <input
@@ -972,9 +972,9 @@ function SubworkflowNodeConfig({
           onChange={(e) => updateCapture(e.target.value)}
           placeholder="e.g. draft, score"
           disabled={disabled}
-          className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded-md px-2 py-1.5 text-[11px] text-white/80 font-mono focus:outline-none focus:border-violet-500/40"
+          className="w-full bg-surface-1 border border-line rounded-md px-2 py-1.5 text-[11px] text-fg-strong font-mono focus:outline-none focus:border-violet-500/40"
         />
-        <p className="text-[9px] text-white/25 mt-1">
+        <p className="text-[9px] text-fg-faint mt-1">
           Child's final vars with these names are copied into this workflow's vars.
         </p>
       </div>
@@ -1395,10 +1395,10 @@ export default function WorkflowCanvas(): React.JSX.Element {
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
-      <div className="h-[46px] bg-[#111111] border-b border-white/[0.06] flex items-center px-3 gap-2 flex-shrink-0">
+      <div className="h-[46px] bg-surface-2 border-b border-line-soft flex items-center px-3 gap-2 flex-shrink-0">
         <button
           onClick={closeCanvas}
-          className="text-white/40 hover:text-white/70 text-sm flex-shrink-0"
+          className="text-fg-subtle hover:text-fg-muted text-sm flex-shrink-0"
           title="Back to workflow list"
         >
           ←
@@ -1406,18 +1406,18 @@ export default function WorkflowCanvas(): React.JSX.Element {
         <input
           value={currentWorkflow.name}
           onChange={(e) => updateCurrentWorkflow({ name: e.target.value })}
-          className="bg-transparent text-sm font-semibold text-white/90 focus:outline-none border-b border-transparent focus:border-blue-500/40 min-w-0 flex-1 max-w-[240px]"
+          className="bg-transparent text-sm font-semibold text-fg-strong focus:outline-none border-b border-transparent focus:border-blue-500/40 min-w-0 flex-1 max-w-[240px]"
         />
 
-        <div className="w-px h-5 bg-white/[0.08]" />
+        <div className="w-px h-5 bg-overlay-3" />
 
         {/* Add-node dropdown */}
         <AddNodeMenu onAdd={addNode} disabled={isRunning} />
 
-        <div className="w-px h-5 bg-white/[0.08]" />
+        <div className="w-px h-5 bg-overlay-3" />
 
         {/* Panel toggles — segmented */}
-        <div className="flex items-center bg-[#0a0a0a] border border-white/[0.08] rounded overflow-hidden">
+        <div className="flex items-center bg-surface-1 border border-line rounded overflow-hidden">
           <SegButton
             active={showInputsEditor}
             onClick={() => { closeSidePanels(); setShowInputsEditor(true) }}
@@ -1427,7 +1427,7 @@ export default function WorkflowCanvas(): React.JSX.Element {
           >
             Inputs{currentWorkflow.inputs?.length ? ` · ${currentWorkflow.inputs.length}` : ''}
           </SegButton>
-          <div className="w-px h-4 bg-white/[0.08]" />
+          <div className="w-px h-4 bg-overlay-3" />
           <SegButton
             active={showVars}
             onClick={() => { closeSidePanels(); setShowVars(true) }}
@@ -1436,7 +1436,7 @@ export default function WorkflowCanvas(): React.JSX.Element {
           >
             Vars{varsCount > 0 ? ` · ${varsCount}` : ''}
           </SegButton>
-          <div className="w-px h-4 bg-white/[0.08]" />
+          <div className="w-px h-4 bg-overlay-3" />
           <SegButton
             active={showHistory}
             onClick={() => { closeSidePanels(); setShowHistory(true) }}
@@ -1445,7 +1445,7 @@ export default function WorkflowCanvas(): React.JSX.Element {
           >
             History{executions.length ? ` · ${executions.length}` : ''}
           </SegButton>
-          <div className="w-px h-4 bg-white/[0.08]" />
+          <div className="w-px h-4 bg-overlay-3" />
           <SegButton
             active={showMetrics}
             onClick={() => { closeSidePanels(); setShowMetrics(true) }}
@@ -1454,7 +1454,7 @@ export default function WorkflowCanvas(): React.JSX.Element {
           >
             Metrics
           </SegButton>
-          <div className="w-px h-4 bg-white/[0.08]" />
+          <div className="w-px h-4 bg-overlay-3" />
           <SegButton
             active={showTriggers}
             onClick={() => { closeSidePanels(); setShowTriggers(true) }}
@@ -1494,7 +1494,7 @@ export default function WorkflowCanvas(): React.JSX.Element {
           className={`text-[10px] font-medium px-3 py-1 rounded transition-colors disabled:opacity-40 flex-shrink-0 ${
             saveFlash
               ? 'text-green-400 bg-green-500/15'
-              : 'text-white/70 bg-white/[0.06] hover:bg-white/[0.1]'
+              : 'text-fg-muted bg-overlay-2 hover:bg-overlay-3'
           }`}
         >
           {saveFlash ? '✓ Saved' : 'Save'}
@@ -1502,7 +1502,7 @@ export default function WorkflowCanvas(): React.JSX.Element {
         {isRunning ? (
           <button
             onClick={handleAbort}
-            className="text-[10px] font-semibold text-white bg-red-600 px-3 py-1 rounded hover:bg-red-700 flex-shrink-0"
+            className="text-[10px] font-semibold text-fg bg-red-600 px-3 py-1 rounded hover:bg-red-700 flex-shrink-0"
           >
             ■ Stop
           </button>
@@ -1531,16 +1531,16 @@ export default function WorkflowCanvas(): React.JSX.Element {
             nodeTypes={nodeTypes}
             fitView
             proOptions={{ hideAttribution: true }}
-            className="bg-[#0a0a0a]"
+            className="bg-surface-1"
           >
             <Background color="#ffffff08" variant={BackgroundVariant.Dots} gap={20} />
             <Controls
-              className="!bg-[#111111] !border-white/[0.08] !rounded-lg [&>button]:!bg-[#111111] [&>button]:!border-white/[0.06] [&>button]:!text-white/50 [&>button:hover]:!bg-white/[0.08]"
+              className="!bg-surface-2 !border-line !rounded-lg [&>button]:!bg-surface-2 [&>button]:!border-line-soft [&>button]:!text-fg-muted [&>button:hover]:!bg-overlay-3"
             />
             <MiniMap
               nodeColor="#3b82f620"
               maskColor="#0a0a0a90"
-              className="!bg-[#111111] !border-white/[0.08] !rounded-lg"
+              className="!bg-surface-2 !border-line !rounded-lg"
             />
           </ReactFlow>
         </div>
@@ -1593,7 +1593,7 @@ export default function WorkflowCanvas(): React.JSX.Element {
       {reviewQueue.length > 0 && <ReviewDialog request={reviewQueue[0]} />}
 
       {/* Status bar */}
-      <div className="h-7 bg-[#0f0f0f] border-t border-white/[0.06] flex items-center px-4 gap-4 flex-shrink-0">
+      <div className="h-7 bg-surface-1 border-t border-line-soft flex items-center px-4 gap-4 flex-shrink-0">
         {isRunning ? (
           <span className="text-[10px] text-blue-400 font-mono">
             ⟳ Running {doneCount}/{runningNodeCount}
@@ -1608,10 +1608,10 @@ export default function WorkflowCanvas(): React.JSX.Element {
         ) : execution?.status === 'aborted' ? (
           <span className="text-[10px] text-amber-400 font-mono">⏹ Aborted</span>
         ) : (
-          <span className="text-[10px] text-white/25 font-mono">Ready</span>
+          <span className="text-[10px] text-fg-faint font-mono">Ready</span>
         )}
         <div className="flex-1" />
-        <span className="text-[9px] text-white/20 font-mono">⌘⇧W toggle</span>
+        <span className="text-[9px] text-fg-faint font-mono">⌘⇧W toggle</span>
       </div>
     </div>
   )
@@ -1675,19 +1675,19 @@ function AddNodeMenu({
         disabled={disabled}
         className={`text-[10px] px-2.5 py-1 rounded border disabled:opacity-40 flex items-center gap-1 ${
           open
-            ? 'text-white bg-white/[0.08] border-white/[0.12]'
-            : 'text-white/70 bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.08]'
+            ? 'text-fg bg-overlay-3 border-line-strong'
+            : 'text-fg-muted bg-overlay-1 border-line hover:bg-overlay-3'
         }`}
       >
         <span className="font-semibold">+ Add</span>
-        <span className="text-white/40">▾</span>
+        <span className="text-fg-subtle">▾</span>
       </button>
       {open && (
-        <div className="absolute top-full left-0 mt-1 bg-[#0f0f0f] border border-white/[0.1] rounded-lg shadow-2xl z-20 w-[240px] py-1">
+        <div className="absolute top-full left-0 mt-1 bg-surface-1 border border-line-strong rounded-lg shadow-2xl z-20 w-[240px] py-1">
           {items.map((group, gi) => (
             <div key={group.group}>
-              {gi > 0 && <div className="h-px bg-white/[0.06] my-1" />}
-              <div className="text-[9px] font-mono uppercase tracking-wider text-white/30 px-3 py-1">
+              {gi > 0 && <div className="h-px bg-overlay-2 my-1" />}
+              <div className="text-[9px] font-mono uppercase tracking-wider text-fg-subtle px-3 py-1">
                 {group.group}
               </div>
               {group.nodes.map((n) => (
@@ -1697,12 +1697,12 @@ function AddNodeMenu({
                     onAdd(n.type)
                     setOpen(false)
                   }}
-                  className="w-full text-left px-3 py-1.5 hover:bg-white/[0.04] flex items-center gap-2"
+                  className="w-full text-left px-3 py-1.5 hover:bg-overlay-1 flex items-center gap-2"
                 >
                   <div className={`w-1.5 h-1.5 rounded-full ${n.dot}`} />
                   <div className="flex-1 min-w-0">
-                    <div className="text-[11px] text-white/85">{n.label}</div>
-                    <div className="text-[9px] text-white/35 truncate">{n.desc}</div>
+                    <div className="text-[11px] text-fg-strong">{n.label}</div>
+                    <div className="text-[9px] text-fg-subtle truncate">{n.desc}</div>
                   </div>
                 </button>
               ))}
@@ -1734,14 +1734,14 @@ function SegButton({
       ? 'text-blue-400 bg-blue-500/15'
       : activeTone === 'emerald'
         ? 'text-emerald-400 bg-emerald-500/15'
-        : 'text-white bg-white/[0.1]'
+        : 'text-fg bg-overlay-3'
   return (
     <button
       onClick={onClick}
       disabled={disabled}
       title={title}
       className={`text-[10px] px-2.5 py-1 disabled:opacity-40 ${
-        active ? activeClass : 'text-white/60 hover:bg-white/[0.04]'
+        active ? activeClass : 'text-fg-muted hover:bg-overlay-1'
       }`}
     >
       {children}
@@ -1771,31 +1771,31 @@ function OverflowMenu({
         disabled={disabled}
         className={`text-[12px] w-7 h-7 rounded border flex items-center justify-center disabled:opacity-40 ${
           open
-            ? 'text-white bg-white/[0.08] border-white/[0.12]'
-            : 'text-white/60 bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.08]'
+            ? 'text-fg bg-overlay-3 border-line-strong'
+            : 'text-fg-muted bg-overlay-1 border-line hover:bg-overlay-3'
         }`}
         title="More actions"
       >
         ⋯
       </button>
       {open && (
-        <div className="absolute top-full right-0 mt-1 bg-[#0f0f0f] border border-white/[0.1] rounded-lg shadow-2xl z-20 w-[200px] py-1">
+        <div className="absolute top-full right-0 mt-1 bg-surface-1 border border-line-strong rounded-lg shadow-2xl z-20 w-[200px] py-1">
           <button
             onClick={() => { onImport(); setOpen(false) }}
-            className="w-full text-left px-3 py-1.5 text-[11px] text-white/75 hover:bg-white/[0.04]"
+            className="w-full text-left px-3 py-1.5 text-[11px] text-fg-muted hover:bg-overlay-1"
           >
             Import workflow…
           </button>
           <button
             onClick={() => { onExport(); setOpen(false) }}
-            className="w-full text-left px-3 py-1.5 text-[11px] text-white/75 hover:bg-white/[0.04]"
+            className="w-full text-left px-3 py-1.5 text-[11px] text-fg-muted hover:bg-overlay-1"
           >
             Export workflow…
           </button>
-          <div className="h-px bg-white/[0.06] my-1" />
+          <div className="h-px bg-overlay-2 my-1" />
           <button
             onClick={() => { onShareToMarketplace(); setOpen(false) }}
-            className="w-full text-left px-3 py-1.5 text-[11px] text-emerald-400/85 hover:bg-white/[0.04]"
+            className="w-full text-left px-3 py-1.5 text-[11px] text-emerald-400/85 hover:bg-overlay-1"
           >
             Share to marketplace…
           </button>
@@ -1832,7 +1832,7 @@ function RunButton({
       <button
         onClick={() => onRun()}
         disabled={disabled}
-        className="text-[10px] font-semibold text-white bg-green-600 px-3 py-1 rounded-l hover:bg-green-700 disabled:opacity-40"
+        className="text-[10px] font-semibold text-fg bg-green-600 px-3 py-1 rounded-l hover:bg-green-700 disabled:opacity-40"
         title={currentCwd ? `Run on ${currentCwd}` : 'Run'}
       >
         ▶ Run
@@ -1840,45 +1840,45 @@ function RunButton({
       <button
         onClick={() => setOpen((v) => !v)}
         disabled={disabled}
-        className="text-[10px] font-semibold text-white bg-green-700 hover:bg-green-600 px-1.5 rounded-r border-l border-green-900/50 disabled:opacity-40"
+        className="text-[10px] font-semibold text-fg bg-green-700 hover:bg-green-600 px-1.5 rounded-r border-l border-green-900/50 disabled:opacity-40"
         title="Run on…"
       >
         ▾
       </button>
       {open && (
-        <div className="absolute top-full right-0 mt-1 bg-[#0f0f0f] border border-white/[0.1] rounded-lg shadow-2xl z-20 w-[280px] py-1">
+        <div className="absolute top-full right-0 mt-1 bg-surface-1 border border-line-strong rounded-lg shadow-2xl z-20 w-[280px] py-1">
           {currentCwd && (
             <>
-              <div className="text-[9px] font-mono uppercase tracking-wider text-white/30 px-3 py-1">
+              <div className="text-[9px] font-mono uppercase tracking-wider text-fg-subtle px-3 py-1">
                 Current
               </div>
               <button
                 onClick={() => { setOpen(false); onRun(currentCwd) }}
-                className="w-full text-left px-3 py-1.5 hover:bg-white/[0.04] flex items-center gap-2"
+                className="w-full text-left px-3 py-1.5 hover:bg-overlay-1 flex items-center gap-2"
               >
                 <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
                 <div className="flex-1 min-w-0">
-                  <div className="text-[11px] text-white/85 truncate">{shortPath(currentCwd)}</div>
+                  <div className="text-[11px] text-fg-strong truncate">{shortPath(currentCwd)}</div>
                 </div>
               </button>
             </>
           )}
           {recents.length > 0 && (
             <>
-              <div className="h-px bg-white/[0.06] my-1" />
-              <div className="text-[9px] font-mono uppercase tracking-wider text-white/30 px-3 py-1">
+              <div className="h-px bg-overlay-2 my-1" />
+              <div className="text-[9px] font-mono uppercase tracking-wider text-fg-subtle px-3 py-1">
                 Recent
               </div>
               {recents.map((rc) => (
                 <button
                   key={rc}
                   onClick={() => { setOpen(false); onRun(rc) }}
-                  className="w-full text-left px-3 py-1.5 hover:bg-white/[0.04] flex items-center gap-2"
+                  className="w-full text-left px-3 py-1.5 hover:bg-overlay-1 flex items-center gap-2"
                   title={rc}
                 >
-                  <div className="w-1.5 h-1.5 rounded-full bg-white/40" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-fg-subtle" />
                   <div className="flex-1 min-w-0">
-                    <div className="text-[11px] text-white/70 truncate font-mono">
+                    <div className="text-[11px] text-fg-muted truncate font-mono">
                       {shortPath(rc)}
                     </div>
                   </div>
@@ -1886,10 +1886,10 @@ function RunButton({
               ))}
             </>
           )}
-          <div className="h-px bg-white/[0.06] my-1" />
+          <div className="h-px bg-overlay-2 my-1" />
           <button
             onClick={() => { setOpen(false); onPickCwd() }}
-            className="w-full text-left px-3 py-1.5 hover:bg-white/[0.04] text-[11px] text-blue-400"
+            className="w-full text-left px-3 py-1.5 hover:bg-overlay-1 text-[11px] text-blue-400"
           >
             Run on other project…
           </button>
@@ -1910,23 +1910,23 @@ function VarsPanel({
 }): React.JSX.Element {
   const entries = Object.entries(vars)
   return (
-    <div className="w-[320px] flex-shrink-0 bg-[#111111] border-l border-white/[0.06] flex flex-col overflow-hidden">
-      <div className="h-11 flex items-center justify-between px-4 border-b border-white/[0.06]">
-        <span className="text-xs font-semibold text-white/90">Workflow Variables</span>
-        <button onClick={onClose} className="text-white/40 hover:text-white/70 text-sm">✕</button>
+    <div className="w-[320px] flex-shrink-0 bg-surface-2 border-l border-line-soft flex flex-col overflow-hidden">
+      <div className="h-11 flex items-center justify-between px-4 border-b border-line-soft">
+        <span className="text-xs font-semibold text-fg-strong">Workflow Variables</span>
+        <button onClick={onClose} className="text-fg-subtle hover:text-fg-muted text-sm">✕</button>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        <p className="text-[10px] text-white/30 leading-relaxed">
+        <p className="text-[10px] text-fg-subtle leading-relaxed">
           Variables set during execution via prompt node&apos;s <span className="text-blue-400">Set Variables</span> configuration.
           Use <code className="text-blue-400/60">{'{{vars.name}}'}</code> to reference them.
         </p>
         {entries.length === 0 ? (
-          <p className="text-[10px] text-white/25 italic">No variables set yet.</p>
+          <p className="text-[10px] text-fg-faint italic">No variables set yet.</p>
         ) : (
           entries.map(([name, value]) => (
-            <div key={name} className="bg-[#0a0a0a] border border-white/[0.06] rounded-md p-2.5">
+            <div key={name} className="bg-surface-1 border border-line-soft rounded-md p-2.5">
               <div className="text-[10px] font-mono text-emerald-400">{name}</div>
-              <pre className="text-[10px] text-white/55 font-mono whitespace-pre-wrap break-words mt-1 max-h-32 overflow-y-auto">
+              <pre className="text-[10px] text-fg-muted font-mono whitespace-pre-wrap break-words mt-1 max-h-32 overflow-y-auto">
                 {value || '(empty)'}
               </pre>
             </div>
@@ -1980,14 +1980,14 @@ function MetricsPanel({
   const totalTok = tokens.input + tokens.output + tokens.cacheRead + tokens.cacheCreation
 
   return (
-    <div className="w-[380px] flex-shrink-0 bg-[#111111] border-l border-white/[0.06] flex flex-col overflow-hidden">
-      <div className="h-11 flex items-center justify-between px-4 border-b border-white/[0.06]">
-        <span className="text-xs font-semibold text-white/90">Metrics</span>
-        <button onClick={onClose} className="text-white/40 hover:text-white/70 text-sm">✕</button>
+    <div className="w-[380px] flex-shrink-0 bg-surface-2 border-l border-line-soft flex flex-col overflow-hidden">
+      <div className="h-11 flex items-center justify-between px-4 border-b border-line-soft">
+        <span className="text-xs font-semibold text-fg-strong">Metrics</span>
+        <button onClick={onClose} className="text-fg-subtle hover:text-fg-muted text-sm">✕</button>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {!metrics || metrics.totalRuns === 0 ? (
-          <div className="text-[11px] text-white/40 leading-relaxed">
+          <div className="text-[11px] text-fg-subtle leading-relaxed">
             No executions yet. Run this workflow to start collecting metrics.
           </div>
         ) : (
@@ -2010,10 +2010,10 @@ function MetricsPanel({
 
             {/* Status breakdown */}
             <div>
-              <div className="text-[10px] font-mono uppercase tracking-wider text-white/30 mb-1.5">
+              <div className="text-[10px] font-mono uppercase tracking-wider text-fg-subtle mb-1.5">
                 Status breakdown
               </div>
-              <div className="bg-[#0a0a0a] border border-white/[0.06] rounded p-2 space-y-1">
+              <div className="bg-surface-1 border border-line-soft rounded p-2 space-y-1">
                 <BreakdownRow label="Success" count={metrics.successRuns} total={metrics.totalRuns} color="bg-green-500" />
                 <BreakdownRow label="Failed" count={metrics.failedRuns} total={metrics.totalRuns} color="bg-red-500" />
                 <BreakdownRow label="Aborted" count={metrics.abortedRuns} total={metrics.totalRuns} color="bg-amber-500" />
@@ -2023,14 +2023,14 @@ function MetricsPanel({
             {/* Tokens detail */}
             {totalTok > 0 && (
               <div>
-                <div className="text-[10px] font-mono uppercase tracking-wider text-white/30 mb-1.5">
+                <div className="text-[10px] font-mono uppercase tracking-wider text-fg-subtle mb-1.5">
                   Token usage
                 </div>
-                <div className="bg-[#0a0a0a] border border-white/[0.06] rounded p-2 space-y-1 text-[11px] font-mono">
-                  <div className="flex justify-between"><span className="text-white/50">Input</span><span className="text-white/80">{formatTokens(tokens.input)}</span></div>
-                  <div className="flex justify-between"><span className="text-white/50">Output</span><span className="text-white/80">{formatTokens(tokens.output)}</span></div>
-                  <div className="flex justify-between"><span className="text-white/50">Cache read</span><span className="text-white/60">{formatTokens(tokens.cacheRead)}</span></div>
-                  <div className="flex justify-between"><span className="text-white/50">Cache write</span><span className="text-white/60">{formatTokens(tokens.cacheCreation)}</span></div>
+                <div className="bg-surface-1 border border-line-soft rounded p-2 space-y-1 text-[11px] font-mono">
+                  <div className="flex justify-between"><span className="text-fg-muted">Input</span><span className="text-fg-strong">{formatTokens(tokens.input)}</span></div>
+                  <div className="flex justify-between"><span className="text-fg-muted">Output</span><span className="text-fg-strong">{formatTokens(tokens.output)}</span></div>
+                  <div className="flex justify-between"><span className="text-fg-muted">Cache read</span><span className="text-fg-muted">{formatTokens(tokens.cacheRead)}</span></div>
+                  <div className="flex justify-between"><span className="text-fg-muted">Cache write</span><span className="text-fg-muted">{formatTokens(tokens.cacheCreation)}</span></div>
                 </div>
               </div>
             )}
@@ -2038,13 +2038,13 @@ function MetricsPanel({
             {/* Top failing nodes */}
             {metrics.topFailingNodes.length > 0 && (
               <div>
-                <div className="text-[10px] font-mono uppercase tracking-wider text-white/30 mb-1.5">
+                <div className="text-[10px] font-mono uppercase tracking-wider text-fg-subtle mb-1.5">
                   Most failing nodes
                 </div>
-                <div className="bg-[#0a0a0a] border border-white/[0.06] rounded p-2 space-y-1">
+                <div className="bg-surface-1 border border-line-soft rounded p-2 space-y-1">
                   {metrics.topFailingNodes.map((n) => (
                     <div key={n.nodeId} className="flex items-center justify-between text-[11px]">
-                      <span className="text-white/80 truncate flex-1">{n.nodeLabel}</span>
+                      <span className="text-fg-strong truncate flex-1">{n.nodeLabel}</span>
                       <span className="text-red-400 font-mono ml-2">{n.failures}×</span>
                     </div>
                   ))}
@@ -2054,7 +2054,7 @@ function MetricsPanel({
 
             {/* Last run */}
             {metrics.lastRunAt && (
-              <div className="text-[10px] text-white/35 font-mono pt-1 border-t border-white/[0.04]">
+              <div className="text-[10px] text-fg-subtle font-mono pt-1 border-t border-line-soft">
                 Last run: {new Date(metrics.lastRunAt).toLocaleString()} · {metrics.lastStatus}
               </div>
             )}
@@ -2079,10 +2079,10 @@ function StatCard({
       : accent === 'amber' ? 'text-amber-400'
         : accent === 'red' ? 'text-red-400'
           : accent === 'blue' ? 'text-blue-400'
-            : 'text-white/90'
+            : 'text-fg-strong'
   return (
-    <div className="bg-[#0a0a0a] border border-white/[0.06] rounded p-2.5">
-      <div className="text-[9px] font-mono uppercase tracking-wider text-white/40">{label}</div>
+    <div className="bg-surface-1 border border-line-soft rounded p-2.5">
+      <div className="text-[9px] font-mono uppercase tracking-wider text-fg-subtle">{label}</div>
       <div className={`text-lg font-semibold mt-0.5 ${tone}`}>{value}</div>
     </div>
   )
@@ -2102,11 +2102,11 @@ function BreakdownRow({
   const pct = total > 0 ? Math.round((count / total) * 100) : 0
   return (
     <div className="flex items-center gap-2 text-[11px]">
-      <div className="w-16 text-white/60">{label}</div>
-      <div className="flex-1 bg-white/[0.04] h-1.5 rounded-full overflow-hidden">
+      <div className="w-16 text-fg-muted">{label}</div>
+      <div className="flex-1 bg-overlay-1 h-1.5 rounded-full overflow-hidden">
         <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
       </div>
-      <div className="w-12 text-right font-mono text-white/60">{count} ({pct}%)</div>
+      <div className="w-12 text-right font-mono text-fg-muted">{count} ({pct}%)</div>
     </div>
   )
 }
@@ -2177,35 +2177,35 @@ function TriggersPanel({
   }
 
   return (
-    <div className="w-[420px] flex-shrink-0 bg-[#111111] border-l border-white/[0.06] flex flex-col overflow-hidden">
-      <div className="h-11 flex items-center justify-between px-4 border-b border-white/[0.06]">
-        <span className="text-xs font-semibold text-white/90">Triggers</span>
-        <button onClick={onClose} className="text-white/40 hover:text-white/70 text-sm">✕</button>
+    <div className="w-[420px] flex-shrink-0 bg-surface-2 border-l border-line-soft flex flex-col overflow-hidden">
+      <div className="h-11 flex items-center justify-between px-4 border-b border-line-soft">
+        <span className="text-xs font-semibold text-fg-strong">Triggers</span>
+        <button onClick={onClose} className="text-fg-subtle hover:text-fg-muted text-sm">✕</button>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         <div className="flex gap-1.5">
           <button
             onClick={() => addTrigger('cron')}
-            className="flex-1 text-[10px] text-white/75 bg-white/[0.04] border border-white/[0.08] rounded px-2 py-1.5 hover:bg-white/[0.08]"
+            className="flex-1 text-[10px] text-fg-muted bg-overlay-1 border border-line rounded px-2 py-1.5 hover:bg-overlay-3"
           >
             + Schedule
           </button>
           <button
             onClick={() => addTrigger('fileWatcher')}
-            className="flex-1 text-[10px] text-white/75 bg-white/[0.04] border border-white/[0.08] rounded px-2 py-1.5 hover:bg-white/[0.08]"
+            className="flex-1 text-[10px] text-fg-muted bg-overlay-1 border border-line rounded px-2 py-1.5 hover:bg-overlay-3"
           >
             + File watch
           </button>
           <button
             onClick={() => addTrigger('webhook')}
-            className="flex-1 text-[10px] text-white/75 bg-white/[0.04] border border-white/[0.08] rounded px-2 py-1.5 hover:bg-white/[0.08]"
+            className="flex-1 text-[10px] text-fg-muted bg-overlay-1 border border-line rounded px-2 py-1.5 hover:bg-overlay-3"
           >
             + Webhook
           </button>
         </div>
 
         {triggers.length === 0 && (
-          <div className="text-[11px] text-white/40 leading-relaxed">
+          <div className="text-[11px] text-fg-subtle leading-relaxed">
             No triggers configured. Add a schedule, file watcher, or webhook to fire this workflow
             automatically. Changes take effect after Save.
           </div>
@@ -2222,7 +2222,7 @@ function TriggersPanel({
           />
         ))}
 
-        <p className="text-[9px] text-white/25 leading-relaxed pt-2 border-t border-white/[0.04]">
+        <p className="text-[9px] text-fg-faint leading-relaxed pt-2 border-t border-line-soft">
           Triggers require this app to stay running. Changes are applied on Save.
         </p>
       </div>
@@ -2266,7 +2266,7 @@ function TriggerCard({
   }
 
   return (
-    <div className="bg-[#0a0a0a] border border-white/[0.08] rounded-md p-3 space-y-2">
+    <div className="bg-surface-1 border border-line rounded-md p-3 space-y-2">
       <div className="flex items-center gap-2">
         <span className={`text-[8px] font-bold tracking-wider font-mono px-1.5 py-0.5 rounded ${typeColor}`}>
           {typeLabel}
@@ -2275,7 +2275,7 @@ function TriggerCard({
           value={trigger.name ?? ''}
           onChange={(e) => onUpdate({ name: e.target.value })}
           placeholder="Label (optional)"
-          className="flex-1 bg-transparent text-[11px] text-white/80 focus:outline-none min-w-0"
+          className="flex-1 bg-transparent text-[11px] text-fg-strong focus:outline-none min-w-0"
         />
         <label className="flex items-center gap-1 cursor-pointer select-none">
           <input
@@ -2284,21 +2284,21 @@ function TriggerCard({
             onChange={(e) => onUpdate({ enabled: e.target.checked })}
             className="accent-green-500 w-3 h-3"
           />
-          <span className="text-[10px] text-white/50">on</span>
+          <span className="text-[10px] text-fg-muted">on</span>
         </label>
       </div>
 
       {trigger.type === 'cron' && (
         <>
           <div>
-            <label className="text-[9px] text-white/40 block mb-0.5">Cron schedule</label>
+            <label className="text-[9px] text-fg-subtle block mb-0.5">Cron schedule</label>
             <input
               value={trigger.schedule}
               onChange={(e) => onUpdate({ schedule: e.target.value })}
               placeholder="*/15 * * * *"
-              className="w-full bg-[#111] border border-white/[0.08] rounded px-2 py-1 text-[11px] text-white/85 font-mono focus:border-cyan-500/40 focus:outline-none"
+              className="w-full bg-surface-2 border border-line rounded px-2 py-1 text-[11px] text-fg-strong font-mono focus:border-cyan-500/40 focus:outline-none"
             />
-            <p className="text-[9px] text-white/25 mt-0.5 font-mono">
+            <p className="text-[9px] text-fg-faint mt-0.5 font-mono">
               e.g. <span className="text-cyan-400/70">0 9 * * 1-5</span> (9am weekdays)
             </p>
           </div>
@@ -2309,19 +2309,19 @@ function TriggerCard({
       {trigger.type === 'fileWatcher' && (
         <>
           <div>
-            <label className="text-[9px] text-white/40 block mb-0.5">Paths (glob, one per line)</label>
+            <label className="text-[9px] text-fg-subtle block mb-0.5">Paths (glob, one per line)</label>
             <textarea
               value={trigger.paths.join('\n')}
               onChange={(e) => onUpdate({ paths: e.target.value.split('\n').map((p) => p.trim()).filter(Boolean) })}
               rows={2}
               placeholder="src/**/*.ts"
-              className="w-full bg-[#111] border border-white/[0.08] rounded px-2 py-1 text-[11px] text-white/85 font-mono resize-none focus:border-emerald-500/40 focus:outline-none"
+              className="w-full bg-surface-2 border border-line rounded px-2 py-1 text-[11px] text-fg-strong font-mono resize-none focus:border-emerald-500/40 focus:outline-none"
             />
           </div>
           <CwdField cwd={trigger.cwd} onChange={(cwd) => onUpdate({ cwd })} />
           <div className="flex gap-3">
             {(['add', 'change', 'unlink'] as const).map((ev) => (
-              <label key={ev} className="flex items-center gap-1 text-[10px] text-white/60 cursor-pointer">
+              <label key={ev} className="flex items-center gap-1 text-[10px] text-fg-muted cursor-pointer">
                 <input
                   type="checkbox"
                   checked={trigger.events?.includes(ev) ?? false}
@@ -2338,13 +2338,13 @@ function TriggerCard({
             ))}
           </div>
           <div>
-            <label className="text-[9px] text-white/40 block mb-0.5">Debounce (ms)</label>
+            <label className="text-[9px] text-fg-subtle block mb-0.5">Debounce (ms)</label>
             <input
               type="number"
               min={0}
               value={trigger.debounceMs ?? 1000}
               onChange={(e) => onUpdate({ debounceMs: parseInt(e.target.value, 10) || 0 })}
-              className="w-24 bg-[#111] border border-white/[0.08] rounded px-2 py-1 text-[11px] text-white/85 font-mono focus:outline-none"
+              className="w-24 bg-surface-2 border border-line rounded px-2 py-1 text-[11px] text-fg-strong font-mono focus:outline-none"
             />
           </div>
         </>
@@ -2354,22 +2354,22 @@ function TriggerCard({
         <>
           <CwdField cwd={trigger.cwd} onChange={(cwd) => onUpdate({ cwd })} />
           <div>
-            <label className="text-[9px] text-white/40 block mb-0.5">URL (local only)</label>
+            <label className="text-[9px] text-fg-subtle block mb-0.5">URL (local only)</label>
             <div className="flex gap-1">
               <input
                 value={webhookUrl ?? 'Server not running'}
                 readOnly
-                className="flex-1 bg-[#111] border border-white/[0.08] rounded px-2 py-1 text-[10px] text-white/70 font-mono focus:outline-none"
+                className="flex-1 bg-surface-2 border border-line rounded px-2 py-1 text-[10px] text-fg-muted font-mono focus:outline-none"
               />
               <button
                 onClick={copyUrl}
                 disabled={!webhookUrl}
-                className="text-[10px] text-white/75 bg-white/[0.06] border border-white/[0.08] rounded px-2 py-1 hover:bg-white/[0.12] disabled:opacity-40"
+                className="text-[10px] text-fg-muted bg-overlay-2 border border-line rounded px-2 py-1 hover:bg-overlay-4 disabled:opacity-40"
               >
                 Copy
               </button>
             </div>
-            <p className="text-[9px] text-white/25 mt-0.5">
+            <p className="text-[9px] text-fg-faint mt-0.5">
               POST to fire. JSON body becomes input values. Token-gated.
             </p>
           </div>
@@ -2407,17 +2407,17 @@ function CwdField({
   }
   return (
     <div>
-      <label className="text-[9px] text-white/40 block mb-0.5">Working directory</label>
+      <label className="text-[9px] text-fg-subtle block mb-0.5">Working directory</label>
       <div className="flex gap-1">
         <input
           value={cwd}
           onChange={(e) => onChange(e.target.value)}
           placeholder="/path/to/project"
-          className="flex-1 bg-[#111] border border-white/[0.08] rounded px-2 py-1 text-[11px] text-white/85 font-mono focus:outline-none min-w-0"
+          className="flex-1 bg-surface-2 border border-line rounded px-2 py-1 text-[11px] text-fg-strong font-mono focus:outline-none min-w-0"
         />
         <button
           onClick={pick}
-          className="text-[10px] text-white/70 bg-white/[0.06] border border-white/[0.08] rounded px-2 py-1 hover:bg-white/[0.12]"
+          className="text-[10px] text-fg-muted bg-overlay-2 border border-line rounded px-2 py-1 hover:bg-overlay-4"
         >
           Pick…
         </button>
@@ -2454,23 +2454,23 @@ function HistoryPanel({
   }
 
   return (
-    <div className="w-[360px] flex-shrink-0 bg-[#111111] border-l border-white/[0.06] flex flex-col overflow-hidden">
-      <div className="h-11 flex items-center justify-between px-4 border-b border-white/[0.06]">
-        <span className="text-xs font-semibold text-white/90">Execution History</span>
-        <button onClick={onClose} className="text-white/40 hover:text-white/70 text-sm">✕</button>
+    <div className="w-[360px] flex-shrink-0 bg-surface-2 border-l border-line-soft flex flex-col overflow-hidden">
+      <div className="h-11 flex items-center justify-between px-4 border-b border-line-soft">
+        <span className="text-xs font-semibold text-fg-strong">Execution History</span>
+        <button onClick={onClose} className="text-fg-subtle hover:text-fg-muted text-sm">✕</button>
       </div>
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {executions.length === 0 && (
-          <p className="text-[10px] text-white/25 italic">No past executions.</p>
+          <p className="text-[10px] text-fg-faint italic">No past executions.</p>
         )}
         {executions.map((rec) => (
           <div
             key={rec.id}
             onClick={() => setSelectedId(rec.id)}
-            className={`bg-[#0a0a0a] border rounded-md p-2.5 cursor-pointer transition-colors ${
+            className={`bg-surface-1 border rounded-md p-2.5 cursor-pointer transition-colors ${
               selectedId === rec.id
                 ? 'border-blue-500/40'
-                : 'border-white/[0.06] hover:border-white/[0.12]'
+                : 'border-line-soft hover:border-line-strong'
             }`}
           >
             <div className="flex items-center justify-between">
@@ -2486,7 +2486,7 @@ function HistoryPanel({
                 >
                   {rec.status}
                 </span>
-                <span className="text-[10px] text-white/55 font-mono">
+                <span className="text-[10px] text-fg-muted font-mono">
                   {new Date(rec.startedAt).toLocaleString()}
                 </span>
               </div>
@@ -2497,7 +2497,7 @@ function HistoryPanel({
                 ×
               </button>
             </div>
-            <div className="text-[9px] text-white/30 mt-1 font-mono">
+            <div className="text-[9px] text-fg-subtle mt-1 font-mono">
               {Math.round((rec.finishedAt - rec.startedAt) / 1000)}s ·{' '}
               {Object.keys(rec.nodeStates).length} nodes
               {Object.keys(rec.finalVars).length > 0
@@ -2511,9 +2511,9 @@ function HistoryPanel({
         ))}
 
         {selected && (
-          <div className="mt-3 bg-[#0a0a0a] border border-white/[0.08] rounded-md p-3 space-y-3">
+          <div className="mt-3 bg-surface-1 border border-line rounded-md p-3 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-semibold text-white/80">Details</span>
+              <span className="text-[10px] font-semibold text-fg-strong">Details</span>
               <button
                 onClick={() => replayIntoCurrent(selected)}
                 className="text-[9px] text-blue-400 hover:text-blue-300 font-mono"
@@ -2523,9 +2523,9 @@ function HistoryPanel({
             </div>
             {Object.keys(selected.inputValues).length > 0 && (
               <div>
-                <div className="text-[9px] text-white/40 mb-1">Inputs</div>
+                <div className="text-[9px] text-fg-subtle mb-1">Inputs</div>
                 {Object.entries(selected.inputValues).map(([k, v]) => (
-                  <div key={k} className="text-[9px] font-mono text-white/60">
+                  <div key={k} className="text-[9px] font-mono text-fg-muted">
                     <span className="text-blue-400">{k}</span>={v.slice(0, 60)}
                     {v.length > 60 ? '…' : ''}
                   </div>
@@ -2534,9 +2534,9 @@ function HistoryPanel({
             )}
             {Object.keys(selected.finalVars).length > 0 && (
               <div>
-                <div className="text-[9px] text-white/40 mb-1">Final Variables</div>
+                <div className="text-[9px] text-fg-subtle mb-1">Final Variables</div>
                 {Object.entries(selected.finalVars).map(([k, v]) => (
-                  <div key={k} className="text-[9px] font-mono text-white/60">
+                  <div key={k} className="text-[9px] font-mono text-fg-muted">
                     <span className="text-emerald-400">{k}</span>=
                     {v.slice(0, 60)}
                     {v.length > 60 ? '…' : ''}
@@ -2545,9 +2545,9 @@ function HistoryPanel({
               </div>
             )}
             <div>
-              <div className="text-[9px] text-white/40 mb-1">Nodes</div>
+              <div className="text-[9px] text-fg-subtle mb-1">Nodes</div>
               {Object.values(selected.nodeStates).map((ns) => (
-                <div key={ns.nodeId} className="text-[9px] font-mono text-white/50 flex gap-2">
+                <div key={ns.nodeId} className="text-[9px] font-mono text-fg-muted flex gap-2">
                   <span
                     className={
                       ns.status === 'done'
@@ -2556,7 +2556,7 @@ function HistoryPanel({
                           ? 'text-red-500'
                           : ns.status === 'skipped'
                             ? 'text-yellow-500/60'
-                            : 'text-white/40'
+                            : 'text-fg-subtle'
                     }
                   >
                     {ns.status}
@@ -2615,16 +2615,16 @@ function RunDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <form
         onSubmit={handleSubmit}
-        className="bg-[#111111] border border-white/[0.1] rounded-xl w-[440px] max-h-[80vh] flex flex-col shadow-2xl"
+        className="bg-surface-2 border border-line-strong rounded-xl w-[440px] max-h-[80vh] flex flex-col shadow-2xl"
       >
-        <div className="px-5 py-4 border-b border-white/[0.06]">
-          <h2 className="text-sm font-semibold text-white/90">Run Workflow</h2>
-          <p className="text-[11px] text-white/35 mt-0.5">Fill in the inputs before running</p>
+        <div className="px-5 py-4 border-b border-line-soft">
+          <h2 className="text-sm font-semibold text-fg-strong">Run Workflow</h2>
+          <p className="text-[11px] text-fg-subtle mt-0.5">Fill in the inputs before running</p>
         </div>
         <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
           {inputs.map((input) => (
             <div key={input.key}>
-              <label className="text-[11px] font-medium text-white/50 block mb-1.5">
+              <label className="text-[11px] font-medium text-fg-muted block mb-1.5">
                 {input.label}
               </label>
               <textarea
@@ -2634,23 +2634,23 @@ function RunDialog({
                 }
                 placeholder={input.placeholder}
                 rows={2}
-                className="w-full bg-[#0a0a0a] border border-white/[0.1] rounded-lg px-3 py-2 text-xs text-white/90 placeholder-white/20 font-mono resize-none focus:border-blue-500/40 focus:outline-none"
+                className="w-full bg-surface-1 border border-line-strong rounded-lg px-3 py-2 text-xs text-fg-strong placeholder-fg-faint font-mono resize-none focus:border-blue-500/40 focus:outline-none"
               />
             </div>
           ))}
         </div>
-        <div className="px-5 py-3 border-t border-white/[0.06] flex justify-end gap-2">
+        <div className="px-5 py-3 border-t border-line-soft flex justify-end gap-2">
           <button
             type="button"
             onClick={onCancel}
-            className="text-[11px] text-white/50 bg-white/[0.06] px-4 py-1.5 rounded-md hover:bg-white/[0.1]"
+            className="text-[11px] text-fg-muted bg-overlay-2 px-4 py-1.5 rounded-md hover:bg-overlay-3"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={hasEmptyInputs}
-            className="text-[11px] font-semibold text-white bg-green-600 px-4 py-1.5 rounded-md hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="text-[11px] font-semibold text-fg bg-green-600 px-4 py-1.5 rounded-md hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             ▶ Run
           </button>
@@ -2672,30 +2672,30 @@ function ReviewDialog({ request }: { request: ReviewRequest }): React.JSX.Elemen
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-[#111111] border border-orange-400/30 rounded-xl w-[560px] max-h-[80vh] flex flex-col shadow-2xl">
-        <div className="px-5 py-4 border-b border-white/[0.06]">
+      <div className="bg-surface-2 border border-orange-400/30 rounded-xl w-[560px] max-h-[80vh] flex flex-col shadow-2xl">
+        <div className="px-5 py-4 border-b border-line-soft">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse" />
-            <h2 className="text-sm font-semibold text-white/90">Human Review Needed</h2>
+            <h2 className="text-sm font-semibold text-fg-strong">Human Review Needed</h2>
             <span className="text-[9px] font-mono text-orange-400/70">{request.label}</span>
           </div>
           {request.message && (
-            <p className="text-[11px] text-white/55 mt-1 leading-relaxed">{request.message}</p>
+            <p className="text-[11px] text-fg-muted mt-1 leading-relaxed">{request.message}</p>
           )}
         </div>
-        <div className="px-5 py-3 border-b border-white/[0.06] space-y-2 overflow-y-auto flex-1 max-h-[50vh]">
+        <div className="px-5 py-3 border-b border-line-soft space-y-2 overflow-y-auto flex-1 max-h-[50vh]">
           <div>
-            <div className="text-[10px] font-medium text-white/40 mb-1">Previous Node Output</div>
-            <pre className="bg-[#0a0a0a] border border-white/[0.06] rounded-md p-3 text-[11px] text-white/70 font-mono whitespace-pre-wrap break-words max-h-60 overflow-y-auto">
+            <div className="text-[10px] font-medium text-fg-subtle mb-1">Previous Node Output</div>
+            <pre className="bg-surface-1 border border-line-soft rounded-md p-3 text-[11px] text-fg-muted font-mono whitespace-pre-wrap break-words max-h-60 overflow-y-auto">
               {request.prevOutput || '(empty)'}
             </pre>
           </div>
           {Object.keys(request.vars).length > 0 && (
             <div>
-              <div className="text-[10px] font-medium text-white/40 mb-1">Workflow Variables</div>
-              <div className="bg-[#0a0a0a] border border-white/[0.06] rounded-md p-3">
+              <div className="text-[10px] font-medium text-fg-subtle mb-1">Workflow Variables</div>
+              <div className="bg-surface-1 border border-line-soft rounded-md p-3">
                 {Object.entries(request.vars).map(([k, v]) => (
-                  <div key={k} className="text-[10px] font-mono text-white/60">
+                  <div key={k} className="text-[10px] font-mono text-fg-muted">
                     <span className="text-emerald-400">{k}</span>={v.slice(0, 120)}
                     {v.length > 120 ? '…' : ''}
                   </div>
@@ -2713,7 +2713,7 @@ function ReviewDialog({ request }: { request: ReviewRequest }): React.JSX.Elemen
           </button>
           <button
             onClick={() => respond(true)}
-            className="text-[11px] font-semibold text-white bg-green-600 px-4 py-1.5 rounded-md hover:bg-green-700"
+            className="text-[11px] font-semibold text-fg bg-green-600 px-4 py-1.5 rounded-md hover:bg-green-700"
           >
             ✓ Approve
           </button>
@@ -2747,20 +2747,20 @@ function InputsEditor({
   }
 
   return (
-    <div className="w-[272px] flex-shrink-0 bg-[#111111] border-l border-white/[0.06] flex flex-col overflow-hidden">
-      <div className="h-11 flex items-center justify-between px-4 border-b border-white/[0.06]">
-        <span className="text-xs font-semibold text-white/90">Workflow Inputs</span>
-        <button onClick={onClose} className="text-white/40 hover:text-white/70 text-sm">✕</button>
+    <div className="w-[272px] flex-shrink-0 bg-surface-2 border-l border-line-soft flex flex-col overflow-hidden">
+      <div className="h-11 flex items-center justify-between px-4 border-b border-line-soft">
+        <span className="text-xs font-semibold text-fg-strong">Workflow Inputs</span>
+        <button onClick={onClose} className="text-fg-subtle hover:text-fg-muted text-sm">✕</button>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        <p className="text-[10px] text-white/30 leading-relaxed">
+        <p className="text-[10px] text-fg-subtle leading-relaxed">
           Define inputs that users fill in before running. Use{' '}
           <code className="text-blue-400/60">{'{{input.key}}'}</code> in node prompts.
         </p>
         {inputs.map((inp, i) => (
-          <div key={i} className="space-y-2 pb-3 border-b border-white/[0.04]">
+          <div key={i} className="space-y-2 pb-3 border-b border-line-soft">
             <div className="flex items-center justify-between">
-              <span className="text-[9px] text-white/25 font-mono">#{i + 1}</span>
+              <span className="text-[9px] text-fg-faint font-mono">#{i + 1}</span>
               <button
                 onClick={() => removeInput(i)}
                 className="text-[10px] text-red-400/60 hover:text-red-400"
@@ -2769,29 +2769,29 @@ function InputsEditor({
               </button>
             </div>
             <div>
-              <label className="text-[9px] text-white/35 block mb-0.5">Key</label>
+              <label className="text-[9px] text-fg-subtle block mb-0.5">Key</label>
               <input
                 value={inp.key}
                 onChange={(e) =>
                   updateInput(i, { key: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') })
                 }
-                className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded px-2 py-1 text-[10px] text-white/80 font-mono focus:outline-none focus:border-blue-500/40"
+                className="w-full bg-surface-1 border border-line rounded px-2 py-1 text-[10px] text-fg-strong font-mono focus:outline-none focus:border-blue-500/40"
               />
             </div>
             <div>
-              <label className="text-[9px] text-white/35 block mb-0.5">Label</label>
+              <label className="text-[9px] text-fg-subtle block mb-0.5">Label</label>
               <input
                 value={inp.label}
                 onChange={(e) => updateInput(i, { label: e.target.value })}
-                className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded px-2 py-1 text-[10px] text-white/80 focus:outline-none focus:border-blue-500/40"
+                className="w-full bg-surface-1 border border-line rounded px-2 py-1 text-[10px] text-fg-strong focus:outline-none focus:border-blue-500/40"
               />
             </div>
             <div>
-              <label className="text-[9px] text-white/35 block mb-0.5">Placeholder</label>
+              <label className="text-[9px] text-fg-subtle block mb-0.5">Placeholder</label>
               <input
                 value={inp.placeholder ?? ''}
                 onChange={(e) => updateInput(i, { placeholder: e.target.value })}
-                className="w-full bg-[#0a0a0a] border border-white/[0.08] rounded px-2 py-1 text-[10px] text-white/70 focus:outline-none focus:border-blue-500/40"
+                className="w-full bg-surface-1 border border-line rounded px-2 py-1 text-[10px] text-fg-muted focus:outline-none focus:border-blue-500/40"
               />
             </div>
           </div>
@@ -2836,17 +2836,17 @@ function TemplatesView({
   }, [])
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0a]">
-      <div className="h-[46px] bg-[#111111] border-b border-white/[0.06] flex items-center px-4 gap-3 flex-shrink-0">
-        <button onClick={onClose} className="text-white/40 hover:text-white/70 text-sm mr-1">
+    <div className="flex flex-col h-full bg-surface-1">
+      <div className="h-[46px] bg-surface-2 border-b border-line-soft flex items-center px-4 gap-3 flex-shrink-0">
+        <button onClick={onClose} className="text-fg-subtle hover:text-fg-muted text-sm mr-1">
           ←
         </button>
-        <span className="text-sm font-semibold text-white/90">Workflow Templates</span>
-        <div className="flex items-center bg-[#0a0a0a] border border-white/[0.08] rounded overflow-hidden ml-3">
+        <span className="text-sm font-semibold text-fg-strong">Workflow Templates</span>
+        <div className="flex items-center bg-surface-1 border border-line rounded overflow-hidden ml-3">
           <SegButton active={tab === 'builtin'} onClick={() => setTab('builtin')} activeTone="blue">
             Built-in{templates.length ? ` · ${templates.length}` : ''}
           </SegButton>
-          <div className="w-px h-4 bg-white/[0.08]" />
+          <div className="w-px h-4 bg-overlay-3" />
           <SegButton
             active={tab === 'marketplace'}
             onClick={() => setTab('marketplace')}
@@ -2855,7 +2855,7 @@ function TemplatesView({
           >
             Marketplace
           </SegButton>
-          <div className="w-px h-4 bg-white/[0.08]" />
+          <div className="w-px h-4 bg-overlay-3" />
           <SegButton active={tab === 'saved'} onClick={() => setTab('saved')} activeTone="white">
             Saved{workflows.length ? ` · ${workflows.length}` : ''}
           </SegButton>
@@ -2863,13 +2863,13 @@ function TemplatesView({
         <div className="flex-1" />
         <button
           onClick={onImport}
-          className="text-[10px] text-white/70 bg-white/[0.06] border border-white/[0.08] px-3 py-1 rounded hover:bg-white/[0.1]"
+          className="text-[10px] text-fg-muted bg-overlay-2 border border-line px-3 py-1 rounded hover:bg-overlay-3"
         >
           Import…
         </button>
         <button
           onClick={onCreateNew}
-          className="text-[10px] font-semibold text-white bg-blue-600 px-3 py-1 rounded hover:bg-blue-700"
+          className="text-[10px] font-semibold text-fg bg-blue-600 px-3 py-1 rounded hover:bg-blue-700"
         >
           + Blank Workflow
         </button>
@@ -2881,16 +2881,16 @@ function TemplatesView({
             {templates.map((tpl) => (
               <div
                 key={tpl.id}
-                className="bg-[#111111] rounded-lg border border-white/[0.06] p-4 flex flex-col gap-2"
+                className="bg-surface-2 rounded-lg border border-line-soft p-4 flex flex-col gap-2"
               >
-                <div className="text-sm font-semibold text-white/90">{tpl.name}</div>
-                <div className="text-[11px] text-white/40 leading-relaxed flex-1">
+                <div className="text-sm font-semibold text-fg-strong">{tpl.name}</div>
+                <div className="text-[11px] text-fg-subtle leading-relaxed flex-1">
                   {tpl.description}
                 </div>
-                <div className="text-[9px] text-white/25 font-mono">{tpl.nodes.length} nodes</div>
+                <div className="text-[9px] text-fg-faint font-mono">{tpl.nodes.length} nodes</div>
                 <button
                   onClick={() => onUseTemplate(tpl)}
-                  className="mt-1 text-[11px] font-medium text-white bg-blue-600 rounded-md py-1.5 hover:bg-blue-700"
+                  className="mt-1 text-[11px] font-medium text-fg bg-blue-600 rounded-md py-1.5 hover:bg-blue-700"
                 >
                   Use Template
                 </button>
@@ -2905,7 +2905,7 @@ function TemplatesView({
 
         {tab === 'saved' && (
           workflows.length === 0 ? (
-            <div className="text-[12px] text-white/40">
+            <div className="text-[12px] text-fg-subtle">
               No saved workflows yet. Create one from a template, the marketplace, or a blank canvas.
             </div>
           ) : (
@@ -2914,10 +2914,10 @@ function TemplatesView({
                 <div
                   key={wf.id}
                   onClick={() => onOpenWorkflow(wf.id)}
-                  className="bg-[#111111] rounded-lg border border-white/[0.06] p-4 flex flex-col gap-1 cursor-pointer hover:border-white/[0.12] transition-colors"
+                  className="bg-surface-2 rounded-lg border border-line-soft p-4 flex flex-col gap-1 cursor-pointer hover:border-line-strong transition-colors"
                 >
-                  <div className="text-sm font-medium text-white/80">{wf.name}</div>
-                  <div className="text-[9px] text-white/25 font-mono">
+                  <div className="text-sm font-medium text-fg-strong">{wf.name}</div>
+                  <div className="text-[9px] text-fg-faint font-mono">
                     {wf.nodes.length} nodes · updated{' '}
                     {new Date(wf.updatedAt).toLocaleDateString()}
                   </div>
@@ -3001,18 +3001,18 @@ function MarketplaceTab({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by name, tag, or author…"
-          className="flex-1 bg-[#0a0a0a] border border-white/[0.08] rounded-md px-3 py-1.5 text-xs text-white/85 focus:border-emerald-500/40 focus:outline-none"
+          className="flex-1 bg-surface-1 border border-line rounded-md px-3 py-1.5 text-xs text-fg-strong focus:border-emerald-500/40 focus:outline-none"
         />
         <button
           onClick={() => load(true)}
           disabled={state.loading}
-          className="text-[10px] text-white/70 bg-white/[0.06] border border-white/[0.08] px-3 py-1.5 rounded hover:bg-white/[0.1] disabled:opacity-40"
+          className="text-[10px] text-fg-muted bg-overlay-2 border border-line px-3 py-1.5 rounded hover:bg-overlay-3 disabled:opacity-40"
         >
           {state.loading ? 'Refreshing…' : 'Refresh'}
         </button>
         <button
           onClick={() => window.api.workflow.marketplaceOpen()}
-          className="text-[10px] text-white/60 hover:text-white/85 px-2"
+          className="text-[10px] text-fg-muted hover:text-fg-strong px-2"
           title="Open the marketplace repo on GitHub"
         >
           Open repo ↗
@@ -3026,11 +3026,11 @@ function MarketplaceTab({
       )}
 
       {state.loading && !state.index && (
-        <div className="text-[12px] text-white/40">Loading marketplace…</div>
+        <div className="text-[12px] text-fg-subtle">Loading marketplace…</div>
       )}
 
       {state.index && filteredEntries.length === 0 && !state.loading && (
-        <div className="text-[12px] text-white/40">
+        <div className="text-[12px] text-fg-subtle">
           {query ? `No templates match "${query}".` : 'No templates available.'}
         </div>
       )}
@@ -3043,13 +3043,13 @@ function MarketplaceTab({
           return (
             <div
               key={entry.id}
-              className="bg-[#111111] rounded-lg border border-white/[0.06] p-4 flex flex-col gap-2"
+              className="bg-surface-2 rounded-lg border border-line-soft p-4 flex flex-col gap-2"
             >
               <div className="flex items-start justify-between gap-2">
-                <div className="text-sm font-semibold text-white/90 leading-tight">{entry.name}</div>
-                <div className="text-[9px] text-white/30 font-mono shrink-0">v{entry.version}</div>
+                <div className="text-sm font-semibold text-fg-strong leading-tight">{entry.name}</div>
+                <div className="text-[9px] text-fg-subtle font-mono shrink-0">v{entry.version}</div>
               </div>
-              <div className="text-[11px] text-white/40 leading-relaxed flex-1">
+              <div className="text-[11px] text-fg-subtle leading-relaxed flex-1">
                 {entry.description}
               </div>
               <div className="flex flex-wrap gap-1">
@@ -3062,7 +3062,7 @@ function MarketplaceTab({
                   </span>
                 ))}
               </div>
-              <div className="text-[9px] text-white/25 font-mono">by {entry.author}</div>
+              <div className="text-[9px] text-fg-faint font-mono">by {entry.author}</div>
               <button
                 onClick={() => install(entry)}
                 disabled={installing === entry.id || upToDate}
@@ -3070,8 +3070,8 @@ function MarketplaceTab({
                   upToDate
                     ? 'text-emerald-300 bg-emerald-500/10 cursor-default'
                     : updateAvailable
-                      ? 'text-white bg-amber-600 hover:bg-amber-700'
-                      : 'text-white bg-emerald-600 hover:bg-emerald-700'
+                      ? 'text-fg bg-amber-600 hover:bg-amber-700'
+                      : 'text-fg bg-emerald-600 hover:bg-emerald-700'
                 } disabled:opacity-60`}
               >
                 {installing === entry.id
@@ -3088,7 +3088,7 @@ function MarketplaceTab({
       </div>
 
       {state.index && (
-        <div className="text-[9px] text-white/25 font-mono mt-6 text-right">
+        <div className="text-[9px] text-fg-faint font-mono mt-6 text-right">
           Updated {state.index.updatedAt}
         </div>
       )}

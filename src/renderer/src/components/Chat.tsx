@@ -907,14 +907,14 @@ export default function Chat({
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-white/[0.06] px-4 pt-[46px] pb-2.5">
+      <div className="flex items-center justify-between border-b border-line-soft px-4 pt-[46px] pb-2.5">
         <div className="flex items-center gap-2.5">
           <span
             className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${isLoading ? 'bg-yellow-400 animate-pulse' : 'bg-green-500/70'}`}
           />
           <button
             onClick={handlePickFolder}
-            className="text-xs text-white/40 font-mono truncate max-w-[260px] hover:text-white/70 transition-colors text-left"
+            className="text-xs text-fg-subtle font-mono truncate max-w-[260px] hover:text-fg-muted transition-colors text-left"
             title="Click to change project folder"
           >
             {cwd}
@@ -923,7 +923,7 @@ export default function Chat({
             <span className={`flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded flex-shrink-0 ${
               activeSession.worktree
                 ? 'bg-green-500/15 text-green-400/70'
-                : 'bg-white/[0.06] text-white/30'
+                : 'bg-overlay-2 text-fg-subtle'
             }`}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="6" y1="3" x2="6" y2="15" />
@@ -1010,7 +1010,7 @@ export default function Chat({
               </button>
             )
           })()}
-          <div className="flex items-center rounded-md border border-white/[0.06] overflow-hidden" title="Model — click to switch, click active to reset to default (opus).">
+          <div className="flex items-center rounded-md border border-line-soft overflow-hidden" title="Model — click to switch, click active to reset to default (opus).">
             {MODELS.map((m) => {
               const isActive = model === m
               const isDefault = !model && m === 'opus'
@@ -1021,7 +1021,7 @@ export default function Chat({
                   className={`px-1.5 py-0.5 text-[10px] transition-colors ${
                     isActive || isDefault
                       ? 'bg-violet-500/20 text-violet-400 font-medium'
-                      : 'text-white/25 hover:text-white/50 hover:bg-white/[0.04]'
+                      : 'text-fg-faint hover:text-fg-muted hover:bg-overlay-1'
                   }`}
                 >
                   {m}
@@ -1029,7 +1029,7 @@ export default function Chat({
               )
             })}
           </div>
-          <div className="flex items-center rounded-md border border-white/[0.06] overflow-hidden" title="Effort level — controls reasoning depth. Click active level to reset to default.">
+          <div className="flex items-center rounded-md border border-line-soft overflow-hidden" title="Effort level — controls reasoning depth. Click active level to reset to default.">
             {EFFORT_LEVELS.map((level) => {
               const value = level === 'med' ? 'medium' : level
               const isActive = effort === value
@@ -1042,8 +1042,8 @@ export default function Chat({
                     isActive
                       ? 'bg-violet-500/20 text-violet-400 font-medium'
                       : isDefault
-                        ? 'text-white/40 border-b border-b-white/10'
-                        : 'text-white/25 hover:text-white/50 hover:bg-white/[0.04]'
+                        ? 'text-fg-subtle border-b border-b-line-strong'
+                        : 'text-fg-faint hover:text-fg-muted hover:bg-overlay-1'
                   }`}
                 >
                   {level}
@@ -1057,7 +1057,7 @@ export default function Chat({
             className={`rounded-md px-2 py-0.5 text-[11px] transition-colors flex items-center gap-1 ${
               planMode
                 ? 'border border-blue-500/40 bg-blue-500/10 text-blue-400'
-                : 'text-white/25 hover:text-white/50'
+                : 'text-fg-faint hover:text-fg-muted'
             }`}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1075,7 +1075,7 @@ export default function Chat({
             className={`rounded-md px-2 py-0.5 text-[11px] transition-colors flex items-center gap-1 ${
               compactMode
                 ? 'border border-teal-500/40 bg-teal-500/10 text-teal-400'
-                : 'text-white/25 hover:text-white/50'
+                : 'text-fg-faint hover:text-fg-muted'
             }`}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1092,7 +1092,7 @@ export default function Chat({
             className={`rounded-md px-2 py-0.5 text-[11px] transition-colors flex items-center gap-1 ${
               skipPermissions
                 ? 'border border-amber-500/40 bg-amber-500/10 text-amber-400'
-                : 'text-white/25 hover:text-white/50'
+                : 'text-fg-faint hover:text-fg-muted'
             }`}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1103,7 +1103,7 @@ export default function Chat({
           <button
             onClick={() => setSettingsOpen(true)}
             title="Settings"
-            className="rounded-md px-2 py-0.5 text-white/25 hover:text-white/50 transition-colors"
+            className="rounded-md px-2 py-0.5 text-fg-faint hover:text-fg-muted transition-colors"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3" />
@@ -1114,7 +1114,7 @@ export default function Chat({
             <button
               onClick={() => setSearchOpen((o) => !o)}
               title="Find in conversation (⌘F)"
-              className={`rounded-md px-2 py-0.5 transition-colors ${searchOpen ? 'text-white/50' : 'text-white/25 hover:text-white/50'}`}
+              className={`rounded-md px-2 py-0.5 transition-colors ${searchOpen ? 'text-fg-muted' : 'text-fg-faint hover:text-fg-muted'}`}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="8" />
@@ -1126,7 +1126,7 @@ export default function Chat({
             <button
               onClick={copyConversation}
               title="Copy conversation as markdown"
-              className={`rounded-md px-2 py-0.5 transition-colors ${copied ? 'text-green-400' : 'text-white/25 hover:text-white/50'}`}
+              className={`rounded-md px-2 py-0.5 transition-colors ${copied ? 'text-green-400' : 'text-fg-faint hover:text-fg-muted'}`}
             >
               {copied ? (
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1145,7 +1145,7 @@ export default function Chat({
               onClick={onToggleTerminal}
               title="Toggle terminal (⌘J)"
               className={`rounded-md px-2 py-0.5 transition-colors ${
-                terminalOpen ? 'text-white/50 hover:text-white/70' : 'text-white/25 hover:text-white/50'
+                terminalOpen ? 'text-fg-muted hover:text-fg-muted' : 'text-fg-faint hover:text-fg-muted'
               }`}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1157,7 +1157,7 @@ export default function Chat({
           <button
             onClick={onToggleRightPanel}
             className={`rounded-md px-2 py-0.5 text-[11px] transition-colors ${
-              rightPanelOpen ? 'text-white/50 hover:text-white/70' : 'text-white/25 hover:text-white/50'
+              rightPanelOpen ? 'text-fg-muted hover:text-fg-muted' : 'text-fg-faint hover:text-fg-muted'
             }`}
           >
             ⊞
@@ -1194,7 +1194,7 @@ export default function Chat({
         {messages.length === 0 && !isLoading && (
           <div className="flex h-full flex-col items-center justify-center gap-3">
             <p className="text-[32px] font-semibold tracking-tight text-white/[0.07]">coide</p>
-            <p className="text-xs text-white/20">Start typing or pick a skill from the sidebar</p>
+            <p className="text-xs text-fg-faint">Start typing or pick a skill from the sidebar</p>
           </div>
         )}
 
@@ -1212,9 +1212,9 @@ export default function Chat({
                     style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vItem.start}px)` }}
                   >
                     <div className={`flex items-center gap-3 ${compactMode ? 'py-1' : 'py-2'}`}>
-                      <div className="flex-1 h-px bg-white/[0.06]" />
-                      <span className="text-[10px] font-medium text-white/25 uppercase tracking-wider">{item.label}</span>
-                      <div className="flex-1 h-px bg-white/[0.06]" />
+                      <div className="flex-1 h-px bg-overlay-2" />
+                      <span className="text-[10px] font-medium text-fg-faint uppercase tracking-wider">{item.label}</span>
+                      <div className="flex-1 h-px bg-overlay-2" />
                     </div>
                   </div>
                 )
@@ -1232,10 +1232,10 @@ export default function Chat({
                       {activeSessionId && thinkingSessions.has(activeSessionId) ? (
                         <ThinkingIndicator startTime={thinkingSessions.get(activeSessionId)!} compact={compactMode} />
                       ) : (
-                        <div className={`rounded-2xl border border-white/10 bg-white/5 ${compactMode ? 'px-3 py-2' : 'px-4 py-3'}`}>
+                        <div className={`rounded-2xl border border-line-strong bg-overlay-2 ${compactMode ? 'px-3 py-2' : 'px-4 py-3'}`}>
                           <div className="flex gap-1">
                             {BOUNCE_DOTS.map((i) => (
-                              <span key={i} className="h-2 w-2 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
+                              <span key={i} className="h-2 w-2 rounded-full bg-fg-subtle animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
                             ))}
                           </div>
                         </div>
@@ -1283,18 +1283,18 @@ export default function Chat({
                           autoFocus
                           value={editText}
                           onChange={(e) => setEditText(e.target.value)}
-                          className="w-full resize-none rounded-2xl bg-blue-600 px-4 py-3 text-white outline-none text-sm leading-relaxed"
+                          className="w-full resize-none rounded-2xl bg-blue-600 px-4 py-3 text-fg outline-none text-sm leading-relaxed"
                           rows={Math.max(2, editText.split('\n').length)}
                           onKeyDown={(e) => {
                             if (e.key === 'Escape') { setEditingMessageId(null); setEditText('') }
                           }}
                         />
                         <div className="flex justify-end gap-2 mt-2">
-                          <button onClick={() => { setEditingMessageId(null); setEditText('') }} className="rounded-lg px-3 py-1 text-xs text-white/50 hover:text-white/80 transition-colors">Cancel</button>
+                          <button onClick={() => { setEditingMessageId(null); setEditText('') }} className="rounded-lg px-3 py-1 text-xs text-fg-muted hover:text-fg-strong transition-colors">Cancel</button>
                           <button
                             disabled={!editText.trim()}
                             onClick={() => { const mid = editingMessageId!; const text = editText; setEditingMessageId(null); setEditText(''); editAndResend(mid, text) }}
-                            className="rounded-lg bg-blue-500 px-3 py-1 text-xs font-medium text-white hover:bg-blue-400 disabled:opacity-25 transition-colors"
+                            className="rounded-lg bg-blue-500 px-3 py-1 text-xs font-medium text-fg hover:bg-blue-400 disabled:opacity-25 transition-colors"
                           >Save</button>
                         </div>
                       </div>
@@ -1329,7 +1329,7 @@ export default function Chat({
       {showJumpBottom && (
         <button
           onClick={() => virtualizer.scrollToIndex(virtualItems.length - 1, { align: 'end', behavior: 'smooth' })}
-          className="absolute left-1/2 -translate-x-1/2 bottom-[90px] z-10 rounded-full bg-white/[0.1] border border-white/[0.1] px-3 py-1.5 text-[11px] text-white/50 hover:text-white/80 hover:bg-white/[0.15] transition-all backdrop-blur-sm shadow-lg flex items-center gap-1.5"
+          className="absolute left-1/2 -translate-x-1/2 bottom-[90px] z-10 rounded-full bg-overlay-3 border border-line-strong px-3 py-1.5 text-[11px] text-fg-muted hover:text-fg-strong hover:bg-overlay-4 transition-all backdrop-blur-sm shadow-lg flex items-center gap-1.5"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="6 9 12 15 18 9" />
@@ -1342,8 +1342,8 @@ export default function Chat({
       <ChatInput cwd={cwd} isLoading={isLoading} sendMessage={sendMessage} />
 
       {/* Status line */}
-      <div className="flex items-center justify-center gap-3 px-4 py-1 text-[10px] font-mono text-white/25 border-t border-white/[0.04]">
-        <span className="text-white/35">{model || 'opus'}</span>
+      <div className="flex items-center justify-center gap-3 px-4 py-1 text-[10px] font-mono text-fg-faint border-t border-line-soft">
+        <span className="text-fg-subtle">{model || 'opus'}</span>
         {effort && <span className="text-violet-400/50">{effort}</span>}
         {usage && (() => {
           const total = usage.inputTokens + usage.outputTokens
@@ -1358,7 +1358,7 @@ export default function Chat({
         })()}
         <RateLimitPill />
         {claudeSessionId && (
-          <span className="text-white/15">{claudeSessionId.slice(0, 8)}</span>
+          <span className="text-fg-faint">{claudeSessionId.slice(0, 8)}</span>
         )}
       </div>
 
@@ -1461,11 +1461,11 @@ const MessageRow = React.memo(function MessageRow({ message, isLoading, onEdit, 
     const textMsg = message as TextMessage
     return (
       <div className="flex justify-end group/msg">
-        <div className={`relative max-w-[75%] rounded-2xl bg-blue-600 text-white ${compact ? 'px-3 py-2' : 'px-4 py-3'}`}>
+        <div className={`relative max-w-[75%] rounded-2xl bg-blue-600 text-fg ${compact ? 'px-3 py-2' : 'px-4 py-3'}`}>
           {onEdit && (
             <button
               onClick={() => onEdit(textMsg.id, textMsg.text)}
-              className="absolute -left-8 top-2 rounded-md p-1 text-white/0 group-hover/msg:text-white/40 hover:!text-white/70 transition-colors"
+              className="absolute -left-8 top-2 rounded-md p-1 text-white/0 group-hover/msg:text-fg-subtle hover:!text-fg-muted transition-colors"
               title="Edit message"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1503,7 +1503,7 @@ const MessageRow = React.memo(function MessageRow({ message, isLoading, onEdit, 
           {textMsg.files && textMsg.files.length > 0 && (
             <div className="flex gap-1.5 flex-wrap mb-2">
               {textMsg.files.map((file) => (
-                <span key={file.id} className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-0.5 text-[11px]">
+                <span key={file.id} className="inline-flex items-center gap-1.5 rounded-md bg-overlay-3 px-2 py-0.5 text-[11px]">
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-60">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                     <polyline points="14 2 14 8 20 8" />
@@ -1542,10 +1542,10 @@ const MessageRow = React.memo(function MessageRow({ message, isLoading, onEdit, 
   }
 
   return (
-    <div className={`group/msg relative max-w-[85%] rounded-2xl border border-white/10 bg-white/5 text-white/90 ${compact ? 'px-3 py-2' : 'px-4 py-3'}`}>
+    <div className={`group/msg relative max-w-[85%] rounded-2xl border border-line-strong bg-overlay-2 text-fg-strong ${compact ? 'px-3 py-2' : 'px-4 py-3'}`}>
       <button
         onClick={copyText}
-        className={`absolute -right-8 top-2 rounded-md p-1 transition-colors ${copied ? 'text-green-400' : 'text-white/0 group-hover/msg:text-white/40 hover:!text-white/70'}`}
+        className={`absolute -right-8 top-2 rounded-md p-1 transition-colors ${copied ? 'text-green-400' : 'text-white/0 group-hover/msg:text-fg-subtle hover:!text-fg-muted'}`}
         title="Copy response"
       >
         {copied ? (

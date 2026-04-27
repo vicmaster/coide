@@ -593,7 +593,7 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
   }, [processImageFile])
 
   return (
-    <div className="border-t border-white/[0.06] p-3 relative">
+    <div className="border-t border-line-soft p-3 relative">
       {autocompleteVisible && (
         <SlashAutocomplete
           items={acItems}
@@ -684,24 +684,24 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
               <img
                 src={img.dataUrl}
                 alt=""
-                className="h-12 w-12 rounded-lg object-cover border border-white/10"
+                className="h-12 w-12 rounded-lg object-cover border border-line-strong"
               />
               <button
                 onClick={() => removeImage(i)}
-                className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-red-500 text-fg text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 ×
               </button>
             </div>
           ))}
           {stagedFiles.map((file) => (
-            <div key={file.id} className="relative group flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5">
-              <span className="text-[10px] text-white/30 font-mono uppercase">{file.name.split('.').pop()}</span>
-              <span className="text-[12px] text-white/60 max-w-[120px] truncate">{file.name}</span>
-              <span className="text-[10px] text-white/20">{file.size < 1024 ? `${file.size}B` : file.size < 1024 * 1024 ? `${(file.size / 1024).toFixed(0)}KB` : `${(file.size / 1024 / 1024).toFixed(1)}MB`}</span>
+            <div key={file.id} className="relative group flex items-center gap-2 rounded-lg border border-line-strong bg-overlay-1 px-2.5 py-1.5">
+              <span className="text-[10px] text-fg-subtle font-mono uppercase">{file.name.split('.').pop()}</span>
+              <span className="text-[12px] text-fg-muted max-w-[120px] truncate">{file.name}</span>
+              <span className="text-[10px] text-fg-faint">{file.size < 1024 ? `${file.size}B` : file.size < 1024 * 1024 ? `${(file.size / 1024).toFixed(0)}KB` : `${(file.size / 1024 / 1024).toFixed(1)}MB`}</span>
               <button
                 onClick={() => removeFile(file.id)}
-                className="text-white/20 hover:text-red-400 transition-colors"
+                className="text-fg-faint hover:text-red-400 transition-colors"
               >
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -711,11 +711,11 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
           ))}
         </div>
       )}
-      <div className={`flex items-end gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] focus-within:border-white/[0.15] transition-colors ${compact ? 'px-2.5 py-1.5' : 'px-3 py-2.5'}`}>
+      <div className={`flex items-end gap-2 rounded-xl border border-line bg-overlay-1 focus-within:border-line-strong transition-colors ${compact ? 'px-2.5 py-1.5' : 'px-3 py-2.5'}`}>
         <button
           onClick={pickFiles}
           title="Attach files"
-          className="flex-shrink-0 text-white/25 hover:text-white/50 transition-colors disabled:opacity-25 pb-0.5"
+          className="flex-shrink-0 text-fg-faint hover:text-fg-muted transition-colors disabled:opacity-25 pb-0.5"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
@@ -735,13 +735,13 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
           onKeyDown={handleKeyDown}
           placeholder={isLoading ? 'Type to queue next message…' : 'Message Claude…'}
           rows={1}
-          className="flex-1 resize-none bg-transparent text-sm text-white/90 placeholder-white/20 outline-none leading-relaxed"
+          className="flex-1 resize-none bg-transparent text-sm text-fg-strong placeholder-fg-faint outline-none leading-relaxed"
           style={{ maxHeight: '300px', overflow: 'auto' }}
         />
         <button
           onClick={handleSend}
           disabled={!input.trim() && stagedImages.length === 0 && stagedFiles.length === 0}
-          className={`flex-shrink-0 rounded-lg px-2.5 py-1 text-xs font-medium text-white transition-colors disabled:opacity-25 ${
+          className={`flex-shrink-0 rounded-lg px-2.5 py-1 text-xs font-medium text-fg transition-colors disabled:opacity-25 ${
             isLoading ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-blue-600 hover:bg-blue-500'
           }`}
         >

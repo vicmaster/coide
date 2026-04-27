@@ -72,7 +72,7 @@ export default function AtMentionAutocomplete({
     <div className="absolute bottom-full left-0 right-0 mb-1 z-50">
       <div
         ref={listRef}
-        className="mx-3 rounded-lg border border-white/[0.1] bg-[#1a1a1a] shadow-xl overflow-y-auto"
+        className="mx-3 rounded-lg border border-line-strong bg-surface-4 shadow-xl overflow-y-auto"
         style={{ maxHeight: '320px' }}
       >
         {items.map((item, i) => (
@@ -84,10 +84,10 @@ export default function AtMentionAutocomplete({
             }}
             onMouseEnter={() => onHover(i)}
             className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors ${
-              i === selectedIndex ? 'bg-white/[0.08]' : 'hover:bg-white/[0.04]'
+              i === selectedIndex ? 'bg-overlay-3' : 'hover:bg-overlay-1'
             }`}
           >
-            <span className="text-xs text-white/80 font-mono truncate flex-1">{item.label ?? item.path}</span>
+            <span className="text-xs text-fg-strong font-mono truncate flex-1">{item.label ?? item.path}</span>
             <span
               className={`text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded flex-shrink-0 ${TYPE_STYLES[item.type] ?? ''}`}
             >
