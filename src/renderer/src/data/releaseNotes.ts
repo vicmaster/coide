@@ -8,6 +8,11 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     version: 'next',
     date: '',
+    notes: []
+  },
+  {
+    version: '0.23.0',
+    date: '2026-04-28',
     notes: [
       'Memory tab — view/edit auto-memories and CLAUDE.md files from the right panel'
     ]
