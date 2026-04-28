@@ -2,13 +2,14 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { useSessionsStore, type Task, type Agent, type ToolCallMessage, type SessionUsage, type Message, type McpServerInfo } from '../store/sessions'
 import { useRateLimitStore, type RateLimitWindow } from '../store/rateLimit'
 import FileChangelog from './FileChangelog'
+import MemoryTab from './MemoryTab'
 
 const EMPTY_AGENTS: Agent[] = []
 const EMPTY_TASKS: Task[] = []
 const EMPTY_MESSAGES: Message[] = []
 const EMPTY_USAGE: SessionUsage = { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 }
 
-type Tab = 'agents' | 'context' | 'mcp'
+type Tab = 'agents' | 'context' | 'mcp' | 'memory'
 
 export default function RightPanel(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<Tab>('agents')
@@ -18,7 +19,7 @@ export default function RightPanel(): React.JSX.Element {
       {/* Header — matches sidebar and chat header height */}
       <div className="flex items-end px-3 pt-[46px] pb-2.5 border-b border-line-soft">
         <div className="flex gap-0.5">
-          {(['agents', 'context', 'mcp'] as Tab[]).map((tab) => (
+          {(['agents', 'context', 'mcp', 'memory'] as Tab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -35,10 +36,23 @@ export default function RightPanel(): React.JSX.Element {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-3">
-        {activeTab === 'agents' && <AgentsTab />}
-        {activeTab === 'context' && <ContextTab />}
-        {activeTab === 'mcp' && <McpPanel />}
+      <div className="flex-1 min-h-0 flex flex-col">
+        {activeTab === 'agents' && (
+          <div className="flex-1 overflow-y-auto p-3">
+            <AgentsTab />
+          </div>
+        )}
+        {activeTab === 'context' && (
+          <div className="flex-1 overflow-y-auto p-3">
+            <ContextTab />
+          </div>
+        )}
+        {activeTab === 'mcp' && (
+          <div className="flex-1 overflow-y-auto p-3">
+            <McpPanel />
+          </div>
+        )}
+        {activeTab === 'memory' && <MemoryTab />}
       </div>
     </aside>
   )

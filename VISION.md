@@ -267,7 +267,6 @@ Electron Renderer Process (React)
 - [ ] Focus view — reader mode toggle that hides tool calls and shows only prompts + responses
 - [ ] Monitor tool — stream events from background scripts and processes via IPC
 - [ ] Checkpointing / `/rewind` — rewind conversation and code to a previous point, time-travel UI leveraging per-turn diffs
-- [ ] Auto-memory + CLAUDE.md editor — persistent cross-session learnings panel plus in-app CLAUDE.md editor for global and project memory files
 - [ ] `/diff` interactive viewer — dedicated per-turn diff browser with left/right navigation between Claude turns and the current git diff
 - [ ] `/tasks` background bash manager — track and manage long-running bash processes spawned by Claude (tests, dev servers), inspect output and kill selectively
 - [ ] `/insights` session analyzer — report on project areas touched, interaction patterns, and friction points across past sessions

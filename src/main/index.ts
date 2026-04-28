@@ -5,6 +5,7 @@ import { homedir, tmpdir } from 'os'
 import { execFile as execFileImported } from 'child_process'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { runClaude, abortClaude, respondPermission, resolveClaudeBinary } from './claude'
+import { listMemoryFiles, readMemoryFile, writeMemoryFile, deleteMemoryFile } from './memory'
 import { spawnTerminal, writeTerminal, resizeTerminal, killTerminal, killAllTerminals } from './terminal'
 import { processFile, FILES_DIR } from './fileExtractor'
 import { type CoideSettings, DEFAULT_SETTINGS } from '../shared/types'
@@ -256,6 +257,50 @@ ipcMain.handle(
       } else {
         await writeFile(filePath, originalContent, 'utf-8')
       }
+      return { success: true }
+    } catch (err) {
+      return { error: String(err) }
+    }
+  }
+)
+
+ipcMain.handle('memory:list', async (_event, { cwd }: { cwd: string }) => {
+  try {
+    return await listMemoryFiles(cwd)
+  } catch (err) {
+    return { error: String(err), files: [], projectMemoryDir: '' }
+  }
+})
+
+ipcMain.handle(
+  'memory:read',
+  async (_event, { filePath, cwd }: { filePath: string; cwd: string }) => {
+    try {
+      const content = await readMemoryFile(filePath, cwd)
+      return { content }
+    } catch (err) {
+      return { error: String(err) }
+    }
+  }
+)
+
+ipcMain.handle(
+  'memory:write',
+  async (_event, { filePath, content, cwd }: { filePath: string; content: string; cwd: string }) => {
+    try {
+      await writeMemoryFile(filePath, content, cwd)
+      return { success: true }
+    } catch (err) {
+      return { error: String(err) }
+    }
+  }
+)
+
+ipcMain.handle(
+  'memory:delete',
+  async (_event, { filePath, cwd }: { filePath: string; cwd: string }) => {
+    try {
+      await deleteMemoryFile(filePath, cwd)
       return { success: true }
     } catch (err) {
       return { error: String(err) }

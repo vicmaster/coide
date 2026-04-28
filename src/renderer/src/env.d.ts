@@ -7,6 +7,21 @@ type SkillInfo = {
   filePath: string
 }
 
+type MemorySource = 'project-memory' | 'global-claude' | 'project-claude' | 'subagent-claude'
+type MemoryType = 'user' | 'feedback' | 'project' | 'reference'
+
+type MemoryFile = {
+  filePath: string
+  source: MemorySource
+  name: string
+  description?: string
+  memoryType?: MemoryType
+  exists: boolean
+  size?: number
+  mtime?: number
+  isIndex?: boolean
+}
+
 interface Window {
   api: {
     claude: {
@@ -46,6 +61,16 @@ interface Window {
       list: (cwd: string) => Promise<{ global: SkillInfo[]; project: SkillInfo[] }>
       write: (scope: 'global' | 'project', name: string, content: string, cwd: string) => Promise<{ success?: boolean; error?: string }>
       delete: (filePath: string) => Promise<{ success?: boolean; error?: string }>
+    }
+    memory: {
+      list: (cwd: string) => Promise<{
+        projectMemoryDir: string
+        files: MemoryFile[]
+        error?: string
+      }>
+      read: (filePath: string, cwd: string) => Promise<{ content?: string; error?: string }>
+      write: (filePath: string, content: string, cwd: string) => Promise<{ success?: boolean; error?: string }>
+      delete: (filePath: string, cwd: string) => Promise<{ success?: boolean; error?: string }>
     }
     settings: {
       sync: (settings: Record<string, unknown>) => Promise<void>

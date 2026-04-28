@@ -46,6 +46,15 @@ const api = {
   agents: {
     list: (cwd: string) => ipcRenderer.invoke('agents:list', { cwd })
   },
+  memory: {
+    list: (cwd: string) => ipcRenderer.invoke('memory:list', { cwd }),
+    read: (filePath: string, cwd: string) =>
+      ipcRenderer.invoke('memory:read', { filePath, cwd }),
+    write: (filePath: string, content: string, cwd: string) =>
+      ipcRenderer.invoke('memory:write', { filePath, content, cwd }),
+    delete: (filePath: string, cwd: string) =>
+      ipcRenderer.invoke('memory:delete', { filePath, cwd })
+  },
   skills: {
     list: (cwd: string) => ipcRenderer.invoke('skills:list', { cwd }),
     write: (scope: string, name: string, content: string, cwd: string) =>
