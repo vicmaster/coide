@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import Editor from '@monaco-editor/react'
 import { useSessionsStore } from '../store/sessions'
+import { useUiStore } from '../store/ui'
 import { useMonacoCoideTheme } from '../hooks/useMonacoCoideTheme'
 import MarkdownRenderer from './MarkdownRenderer'
 
@@ -43,6 +44,8 @@ export default function MemoryTab(): React.JSX.Element {
   const [selected, setSelected] = useState<MemoryFile | null>(null)
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
+  const pendingFilePath = useUiStore((s) => s.pendingMemoryFilePath)
+  const consumePendingFile = useUiStore((s) => s.consumePendingMemoryFile)
 
   const refresh = useCallback(async () => {
     if (!cwd) return
@@ -59,6 +62,26 @@ export default function MemoryTab(): React.JSX.Element {
   useEffect(() => {
     refresh()
   }, [refresh])
+
+  // Honor cross-tab "open this memory file" requests.
+  useEffect(() => {
+    if (!pendingFilePath) return
+    const match = files.find((f) => f.filePath === pendingFilePath)
+    if (match) {
+      setSelected(match)
+      consumePendingFile()
+    } else if (files.length > 0) {
+      // File not in list yet — synthesize a placeholder so the editor still opens.
+      const name = pendingFilePath.split('/').pop() ?? pendingFilePath
+      setSelected({
+        filePath: pendingFilePath,
+        source: 'subagent-claude',
+        name,
+        exists: true
+      })
+      consumePendingFile()
+    }
+  }, [pendingFilePath, files, consumePendingFile])
 
   if (!cwd) {
     return (

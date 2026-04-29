@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useSessionsStore, type ImageAttachment, type FileAttachment, type TextMessage, type QueuedMessage } from '../store/sessions'
 import { useSettingsStore } from '../store/settings'
+import { useUiStore } from '../store/ui'
 import SlashAutocomplete, { useSlashItems, type AutocompleteItem } from './SlashAutocomplete'
 import AtMentionAutocomplete, { useAtMentionItems, type MentionItem } from './AtMentionAutocomplete'
 import HistorySearch, { type HistoryItem } from './HistorySearch'
@@ -20,6 +21,24 @@ type ChatInputProps = {
 
 export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProps): React.JSX.Element {
   const [input, setInput] = useState('')
+  const pendingPrefill = useUiStore((s) => s.pendingInputPrefill)
+  const consumePrefill = useUiStore((s) => s.consumeInputPrefill)
+
+  useEffect(() => {
+    if (!pendingPrefill) return
+    setInput((prev) => {
+      const sep = prev.length === 0 || prev.endsWith(' ') || prev.endsWith('\n') ? '' : ' '
+      return prev + sep + pendingPrefill
+    })
+    consumePrefill()
+    requestAnimationFrame(() => {
+      const ta = textareaRef.current
+      if (ta) {
+        ta.focus()
+        ta.setSelectionRange(ta.value.length, ta.value.length)
+      }
+    })
+  }, [pendingPrefill, consumePrefill])
   const [stagedImages, setStagedImages] = useState<ImageAttachment[]>([])
   const [stagedFiles, setStagedFiles] = useState<FileAttachment[]>([])
   const [fileError, setFileError] = useState<string | null>(null)

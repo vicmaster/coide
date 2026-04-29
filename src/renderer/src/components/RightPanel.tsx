@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { useSessionsStore, type Task, type Agent, type ToolCallMessage, type SessionUsage, type Message, type McpServerInfo } from '../store/sessions'
 import { useRateLimitStore, type RateLimitWindow } from '../store/rateLimit'
+import { useUiStore } from '../store/ui'
 import FileChangelog from './FileChangelog'
 import MemoryTab from './MemoryTab'
+import AvailableAgents from './AvailableAgents'
 
 const EMPTY_AGENTS: Agent[] = []
 const EMPTY_TASKS: Task[] = []
@@ -10,16 +12,18 @@ const EMPTY_MESSAGES: Message[] = []
 const EMPTY_USAGE: SessionUsage = { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 }
 
 type Tab = 'agents' | 'context' | 'mcp' | 'memory'
+const TABS: Tab[] = ['agents', 'context', 'mcp', 'memory']
 
 export default function RightPanel(): React.JSX.Element {
-  const [activeTab, setActiveTab] = useState<Tab>('agents')
+  const activeTab = useUiStore((s) => s.rightPanelTab)
+  const setActiveTab = useUiStore((s) => s.setRightPanelTab)
 
   return (
     <aside className="flex h-full w-64 flex-col bg-surface-2 border-l border-line-soft">
       {/* Header — matches sidebar and chat header height */}
       <div className="flex items-end px-3 pt-[46px] pb-2.5 border-b border-line-soft">
         <div className="flex gap-0.5">
-          {(['agents', 'context', 'mcp', 'memory'] as Tab[]).map((tab) => (
+          {TABS.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -61,6 +65,8 @@ export default function RightPanel(): React.JSX.Element {
 function AgentsTab(): React.JSX.Element {
   return (
     <div className="space-y-4">
+      <AvailableAgents />
+      <div className="h-px bg-overlay-2" />
       <AgentTree />
       <div className="h-px bg-overlay-2" />
       <TodoList />
