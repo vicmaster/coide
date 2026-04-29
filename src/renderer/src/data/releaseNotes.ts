@@ -8,6 +8,11 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     version: 'next',
     date: '',
+    notes: []
+  },
+  {
+    version: '0.24.0',
+    date: '2026-04-29',
     notes: [
       'Available Agents in right panel — see your subagents with personality icons, click to @-mention or jump to edit'
     ]
