@@ -8,7 +8,11 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     version: 'next',
     date: '',
-    notes: []
+    notes: [
+      'Fix: send image-only messages without requiring text',
+      'Fix: long URLs now wrap inside the user message bubble instead of overflowing',
+      'Fix: built-in slash commands like /login, /model, /config keep their leading slash'
+    ]
   },
   {
     version: '0.24.0',

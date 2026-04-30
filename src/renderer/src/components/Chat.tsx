@@ -18,6 +18,7 @@ import { useHighlightMatches } from '../hooks/useHighlightMatches'
 import { parseMcpFromInit } from '../utils/mcpParsing'
 import { useRateLimitStore } from '../store/rateLimit'
 import { useLoopsStore } from '../store/loops'
+import { BUILT_IN_COMMANDS } from '../data/commands'
 
 const EMPTY_MESSAGES: Message[] = []
 const BOUNCE_DOTS = [0, 1, 2]
@@ -706,26 +707,31 @@ export default function Chat({
 
   const sendMessage = useCallback(async (text: string, images?: ImageAttachment[], files?: FileAttachment[]): Promise<void> => {
     const currentActiveId = useSessionsStore.getState().activeSessionId
-    if (!text.trim() || (currentActiveId && loadingSessions.has(currentActiveId))) return
+    const hasAttachments = (images?.length ?? 0) > 0 || (files?.length ?? 0) > 0
+    if ((!text.trim() && !hasAttachments) || (currentActiveId && loadingSessions.has(currentActiveId))) return
 
     let prompt = text.trim()
 
-    // Claude CLI treats /foo as a skill invocation. If it's not a real skill,
-    // strip the leading / so it becomes a normal prompt instead of "Unknown skill" error.
+    // Claude CLI treats /foo as a skill invocation. If it's neither a real skill
+    // nor a built-in CLI command, strip the leading / so it becomes a normal prompt
+    // instead of an "Unknown skill" error.
     if (prompt.startsWith('/')) {
       const slashName = prompt.slice(1).split(/\s/)[0]
-      const session = useSessionsStore.getState().sessions.find(
-        (s) => s.id === useSessionsStore.getState().activeSessionId
-      )
-      const skillCwd = session?.cwd ?? localStorage.getItem('cwd') ?? defaultCwd
-      try {
-        const skills = await window.api.skills.list(skillCwd)
-        const allNames = [...skills.global, ...skills.project].map((s) => s.name)
-        if (!allNames.includes(slashName)) {
-          prompt = prompt.slice(1) // strip leading /
+      const builtInNames = new Set(BUILT_IN_COMMANDS.map((c) => c.name.slice(1).split(/\s/)[0]))
+      if (!builtInNames.has(slashName)) {
+        const session = useSessionsStore.getState().sessions.find(
+          (s) => s.id === useSessionsStore.getState().activeSessionId
+        )
+        const skillCwd = session?.cwd ?? localStorage.getItem('cwd') ?? defaultCwd
+        try {
+          const skills = await window.api.skills.list(skillCwd)
+          const allNames = [...skills.global, ...skills.project].map((s) => s.name)
+          if (!allNames.includes(slashName)) {
+            prompt = prompt.slice(1) // strip leading /
+          }
+        } catch {
+          prompt = prompt.slice(1) // on error, be safe and strip
         }
-      } catch {
-        prompt = prompt.slice(1) // on error, be safe and strip
       }
     }
 
@@ -742,21 +748,22 @@ export default function Chat({
     const fls = files ?? []
 
     // Build the full prompt with attachment data for Claude CLI
+    const sep = (): string => (prompt ? '\n\n' : '')
     if (imgs.length > 0) {
       const imagePaths = imgs.map((img) => `[Image: ${img.path}]`).join('\n')
-      prompt = `${prompt}\n\n${imagePaths}`
+      prompt = `${prompt}${sep()}${imagePaths}`
     }
     if (fls.length > 0) {
       const imageFiles = fls.filter((f) => f.category === 'image')
       if (imageFiles.length > 0) {
         const imgPaths = imageFiles.map((f) => `[Image: ${f.path}]`).join('\n')
-        prompt = `${prompt}\n\n${imgPaths}`
+        prompt = `${prompt}${sep()}${imgPaths}`
       }
       const fileParts = fls
         .filter((f) => f.category !== 'image' && f.extractedText)
         .map((f) => `<attached_file name="${f.name}">\n${f.extractedText}\n</attached_file>`)
       if (fileParts.length > 0) {
-        prompt = `${prompt}\n\n${fileParts.join('\n\n')}`
+        prompt = `${prompt}${sep()}${fileParts.join('\n\n')}`
       }
     }
 
@@ -1513,7 +1520,7 @@ const MessageRow = React.memo(function MessageRow({ message, isLoading, onEdit, 
               ))}
             </div>
           )}
-          <div className="whitespace-pre-wrap">{textMsg.text}</div>
+          <div className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{textMsg.text}</div>
         </div>
       </div>
     )
