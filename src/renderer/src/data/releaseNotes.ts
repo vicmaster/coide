@@ -8,6 +8,11 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     version: 'next',
     date: '',
+    notes: []
+  },
+  {
+    version: '0.24.1',
+    date: '2026-04-30',
     notes: [
       'Fix: send image-only messages without requiring text',
       'Fix: long URLs now wrap inside the user message bubble instead of overflowing',
