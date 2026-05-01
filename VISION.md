@@ -264,7 +264,6 @@ Electron Renderer Process (React)
 - [ ] Voice mode — speech-to-text input and text-to-speech responses via Web Speech API
 - [ ] Vim mode — vim keybindings for the chat input textarea
 - [ ] `/cost` per-model breakdown — enhance /stats with per-model cost and cache-hit breakdown
-- [ ] Focus view — reader mode toggle that hides tool calls and shows only prompts + responses
 - [ ] Monitor tool — stream events from background scripts and processes via IPC
 - [ ] Checkpointing / `/rewind` — rewind conversation and code to a previous point, time-travel UI leveraging per-turn diffs
 - [ ] `/diff` interactive viewer — dedicated per-turn diff browser with left/right navigation between Claude turns and the current git diff
