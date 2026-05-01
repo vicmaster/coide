@@ -24,6 +24,7 @@ export const BUILT_IN_COMMANDS = [
   { name: '/review', description: 'Review recent changes' },
   { name: '/stats', description: 'Show session statistics and usage' },
   { name: '/status', description: 'Show session status' },
+  { name: '/tasks', description: 'Show background processes spawned by Claude' },
   { name: '/terminal-setup', description: 'Install shell integration' },
   { name: '/vim', description: 'Toggle vim keybinding mode' }
 ]

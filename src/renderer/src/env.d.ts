@@ -36,6 +36,7 @@ interface Window {
       onPermission: (callback: (permission: unknown) => void) => () => void
       respondPermission: (approved: boolean, coideSessionId?: string) => void
       abort: (coideSessionId?: string) => void
+      dispose: (coideSessionId: string) => Promise<void>
       saveImage: (base64: string, mediaType: string) => Promise<string>
       checkBinary: (customPath?: string) => Promise<{ found: boolean; path: string; version?: string }>
     }
@@ -93,5 +94,26 @@ interface Window {
       read: (scope: 'global' | 'project', cwd: string) => Promise<{ hooks: Record<string, unknown> }>
       write: (scope: 'global' | 'project', hooks: Record<string, unknown>, cwd: string) => Promise<{ success?: boolean; error?: string }>
     }
+    processes: {
+      list: (coideSessionId: string) => Promise<BgProcessRow[]>
+      kill: (coideSessionId: string, shellId: string) => Promise<{ ok: boolean; error?: string }>
+      clear: (coideSessionId: string) => Promise<void>
+      onUpdate: (callback: (event: { coideSessionId: string; processes: BgProcessRow[] }) => void) => () => void
+    }
   }
+}
+
+type BgProcessRow = {
+  shellId: string
+  taskId: string | null
+  description: string | null
+  command: string
+  outputFile: string | null
+  startedAt: number
+  endedAt: number | null
+  pid: number | null
+  status: 'running' | 'exited' | 'killed' | 'orphaned' | 'untracked' | 'stopped'
+  exitCode: number | null
+  lastOutput: string | null
+  lastOutputAt: number | null
 }

@@ -24,6 +24,8 @@ const api = {
 
     abort: (coideSessionId?: string) => ipcRenderer.invoke('claude:abort', coideSessionId),
 
+    dispose: (coideSessionId: string) => ipcRenderer.invoke('claude:dispose', coideSessionId),
+
     saveImage: (base64: string, mediaType: string): Promise<string> =>
       ipcRenderer.invoke('claude:save-image', { base64, mediaType }),
 
@@ -131,6 +133,19 @@ const api = {
       const handler = (_e: Electron.IpcRendererEvent, data: unknown): void => callback(data)
       ipcRenderer.on('workflow:event', handler)
       return () => ipcRenderer.removeListener('workflow:event', handler)
+    }
+  },
+  processes: {
+    list: (coideSessionId: string): Promise<unknown[]> =>
+      ipcRenderer.invoke('processes:list', { coideSessionId }),
+    kill: (coideSessionId: string, shellId: string): Promise<{ ok: boolean; error?: string }> =>
+      ipcRenderer.invoke('processes:kill', { coideSessionId, shellId }),
+    clear: (coideSessionId: string): Promise<void> =>
+      ipcRenderer.invoke('processes:clear', { coideSessionId }),
+    onUpdate: (callback: (event: { coideSessionId: string; processes: unknown[] }) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: { coideSessionId: string; processes: unknown[] }): void => callback(data)
+      ipcRenderer.on('processes:update', handler)
+      return () => ipcRenderer.removeListener('processes:update', handler)
     }
   },
   terminal: {

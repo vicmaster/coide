@@ -8,7 +8,11 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     version: 'next',
     date: '',
-    notes: []
+    notes: [
+      '/tasks panel — track background bash processes Claude spawns; Kill button, live output tail, status-bar chip',
+      'Unified bottom panel — Terminal tabs and Processes share one tab bar; Cmd+J opens Terminal, /tasks opens Processes',
+      'Persistent Claude per session — backgrounded processes now actually outlive a turn (sleep 60 sleeps for 60s)'
+    ]
   },
   {
     version: '0.24.1',

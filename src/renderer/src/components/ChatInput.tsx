@@ -271,6 +271,9 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
       case 'loop stop':
         window.dispatchEvent(new CustomEvent('coide:stop-loop'))
         break
+      case 'tasks':
+        useUiStore.getState().focusProcessesTab()
+        break
       case 'fork': {
         const store = useSessionsStore.getState()
         const currentSid = store.activeSessionId
@@ -290,7 +293,10 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
         break
       }
       default:
-        sendMessage(name)
+        // Built-in commands without a coide-native handler are forwarded to Claude.
+        // Prepend the slash so /login, /model, /config, etc. land as real CLI commands
+        // rather than being stripped by the prompt sender.
+        sendMessage('/' + name)
         break
     }
   }, [sendMessage, defaultCwd])
@@ -354,6 +360,13 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
     if (text.trim().toLowerCase() === '/loop stop') {
       setInput('')
       window.dispatchEvent(new CustomEvent('coide:stop-loop'))
+      return
+    }
+
+    // Intercept /tasks — opens bottom panel and focuses Processes tab
+    if (text.trim().toLowerCase() === '/tasks') {
+      setInput('')
+      useUiStore.getState().focusProcessesTab()
       return
     }
 

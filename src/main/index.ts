@@ -4,7 +4,8 @@ import { readdir, readFile, mkdir, writeFile, rm } from 'fs/promises'
 import { homedir, tmpdir } from 'os'
 import { execFile as execFileImported } from 'child_process'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { runClaude, abortClaude, respondPermission, resolveClaudeBinary } from './claude'
+import { runClaude, abortClaude, respondPermission, resolveClaudeBinary, disposeSession as disposeClaudeSession, disposeAll as disposeAllClaudeSessions } from './claude'
+import * as processes from './processes'
 import { listMemoryFiles, readMemoryFile, writeMemoryFile, deleteMemoryFile } from './memory'
 import { spawnTerminal, writeTerminal, resizeTerminal, killTerminal, killAllTerminals } from './terminal'
 import { processFile, FILES_DIR } from './fileExtractor'
@@ -121,6 +122,8 @@ function createWindow(): void {
     // DevTools: Cmd+Option+I in dev mode
   })
 
+  processes.attachWindow(mainWindow)
+
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
@@ -146,6 +149,10 @@ ipcMain.handle(
   }
 )
 
+ipcMain.handle('claude:dispose', (_event, coideSessionId: string) => {
+  disposeClaudeSession(coideSessionId)
+})
+
 ipcMain.handle('claude:abort', (_event, coideSessionId?: string) => {
   abortClaude(coideSessionId)
 })
@@ -167,6 +174,18 @@ ipcMain.handle('claude:check-binary', async (_event, { customPath }: { customPat
 
 ipcMain.handle('claude:permission-response', (_event, { approved, coideSessionId }: { approved: boolean; coideSessionId?: string }) => {
   respondPermission(approved, coideSessionId)
+})
+
+ipcMain.handle('processes:list', (_event, { coideSessionId }: { coideSessionId: string }) => {
+  return processes.listProcesses(coideSessionId)
+})
+
+ipcMain.handle('processes:kill', async (_event, { coideSessionId, shellId }: { coideSessionId: string; shellId: string }) => {
+  return processes.killShell(coideSessionId, shellId)
+})
+
+ipcMain.handle('processes:clear', (_event, { coideSessionId }: { coideSessionId: string }) => {
+  processes.dropSession(coideSessionId)
 })
 
 ipcMain.handle('settings:sync', (_event, settings: Partial<CoideSettings>) => {
@@ -814,6 +833,7 @@ app.whenReady().then(async () => {
 
 app.on('will-quit', () => {
   killAllTerminals()
+  disposeAllClaudeSessions()
   stopTriggerRuntime()
   stopWebhookServer()
   rm(IMAGES_DIR, { recursive: true, force: true }).catch(() => {})

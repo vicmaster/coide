@@ -4,10 +4,8 @@ import { writeFile as writeFileAsync, readFile as readFileAsync, unlink as unlin
 import { homedir } from 'os'
 import { join } from 'path'
 import { type CoideSettings, DEFAULT_SETTINGS } from '../shared/types'
-// Use eval('require') to bypass vite/rollup bundling for native modules
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const pty = (eval('require') as NodeRequire)('node-pty') as typeof import('node-pty')
-import { execFile } from 'child_process'
+import * as processes from './processes'
+import { execFile, spawn as spawnChild, type ChildProcessWithoutNullStreams } from 'child_process'
 
 const LOG = '/tmp/coide-debug.log'
 
@@ -142,36 +140,75 @@ type PendingPermission = {
   originalContent?: string | null
 }
 
+type TurnState = {
+  resolve: (sessionId: string | null) => void
+  reject: (e: Error) => void
+  settled: boolean
+  prompt: string
+}
+
 type PtySession = {
-  pty: pty.IPty
+  proc: ChildProcessWithoutNullStreams
   win: BrowserWindow
   coideSessionId: string
+  alive: boolean
+  cwd: string
+  worktreeName?: string
+  spawnFingerprint: string
+  resumeSessionId: string | null
   pendingPermissions: PendingPermission[]
   waitingForPermission: boolean
   pendingEventBuffer: Record<string, unknown>[]
-  settled: boolean
+  currentTurn: TurnState | null
+  lineBuffer: string
+  staleResumeDetected: boolean
+  retryInFlight: boolean
 }
 
 const ptySessions = new Map<string, PtySession>()
 
+function killSessionPty(sess: PtySession): void {
+  sess.alive = false
+  try { sess.proc.kill('SIGTERM') } catch {}
+  setTimeout(() => {
+    try { sess.proc.kill('SIGKILL') } catch {}
+  }, 500)
+}
+
 export function abortClaude(coideSessionId?: string): void {
-  const killSession = (session: PtySession, id: string): void => {
-    try { session.pty.kill('SIGTERM') } catch {}
-    // Force-kill after 500ms if still alive
-    setTimeout(() => {
-      try { session.pty.kill('SIGKILL') } catch {}
-    }, 500)
-    ptySessions.delete(id)
+  const interrupt = (sess: PtySession): void => {
+    if (sess.alive) {
+      // SIGINT asks Claude to stop the current turn but stay alive for the next one.
+      try { sess.proc.kill('SIGINT') } catch {}
+    }
+    if (sess.currentTurn && !sess.currentTurn.settled) {
+      sess.currentTurn.settled = true
+      try { sess.currentTurn.reject(new Error('Aborted by user')) } catch {}
+      sess.currentTurn = null
+    }
+    sess.win.webContents.send('claude:event', { coideSessionId: sess.coideSessionId, type: 'stream_end' })
   }
 
   if (coideSessionId) {
-    const session = ptySessions.get(coideSessionId)
-    if (session) killSession(session, coideSessionId)
+    const sess = ptySessions.get(coideSessionId)
+    if (sess) interrupt(sess)
   } else {
-    for (const [id, session] of ptySessions) {
-      killSession(session, id)
-    }
+    for (const sess of ptySessions.values()) interrupt(sess)
   }
+}
+
+export function disposeSession(coideSessionId: string): void {
+  const sess = ptySessions.get(coideSessionId)
+  if (!sess) return
+  killSessionPty(sess)
+  ptySessions.delete(coideSessionId)
+  usageCallbacks.delete(coideSessionId)
+}
+
+export function disposeAll(): void {
+  for (const sess of ptySessions.values()) killSessionPty(sess)
+  ptySessions.clear()
+  usageCallbacks.clear()
 }
 
 export async function respondPermission(approved: boolean, coideSessionId?: string): Promise<void> {
@@ -200,6 +237,7 @@ export async function respondPermission(approved: boolean, coideSessionId?: stri
       input: toolInfo.input,
       originalContent: toolInfo.originalContent
     })
+    void processes.noteToolInput(coideSessionId, toolInfo.tool_id, toolInfo.tool_name, toolInfo.input)
 
     if (sess.pendingPermissions.length > 0) return
 
@@ -210,13 +248,10 @@ export async function respondPermission(approved: boolean, coideSessionId?: stri
       handleEvent(raw, win, coideSessionId)
     }
 
-    // If the run already finished (settle() was called while we were waiting),
-    // the buffered result event just emitted stream_end via handleEvent, so
-    // just clean up the map. Otherwise, if the PTY exited without a result,
-    // emit stream_end ourselves before cleaning up.
-    if (sess.settled) {
-      ptySessions.delete(coideSessionId)
-    } else if (!sess.pty.pid) {
+    // PTY stays alive across turns — nothing to clean up here. If the PTY
+    // unexpectedly died while waiting for permission, emit a stream_end and
+    // drop it so the next prompt respawns.
+    if (!sess.alive) {
       win.webContents.send('claude:event', { ...tag, type: 'stream_end' })
       ptySessions.delete(coideSessionId)
     }
@@ -251,8 +286,18 @@ export async function respondPermission(approved: boolean, coideSessionId?: stri
     sess.pendingEventBuffer = []
     sess.waitingForPermission = false
 
-    try { if (sess.pty.pid) sess.pty.kill('SIGTERM') } catch {}
-    ptySessions.delete(coideSessionId)
+    // Reject the in-flight turn so the IPC promise resolves on the renderer side.
+    if (sess.currentTurn && !sess.currentTurn.settled) {
+      sess.currentTurn.settled = true
+      try { sess.currentTurn.reject(new Error('Permission denied')) } catch {}
+      sess.currentTurn = null
+    }
+
+    // On deny we tear down the PTY: with --permission-mode bypassPermissions Claude
+    // has likely already executed the tool, so the only safe way to cancel any
+    // queued follow-up tool calls in the same turn is to kill Claude. Background
+    // processes from previous turns are lost; the next prompt respawns.
+    disposeSession(coideSessionId)
   }
 }
 
@@ -306,6 +351,7 @@ function handleEvent(raw: Record<string, unknown>, win: BrowserWindow, coideSess
           tool_id: block.tool_use_id,
           content: resultContent
         })
+        processes.noteToolResult(coideSessionId, block.tool_use_id as string, resultContent)
       }
     }
   }
@@ -318,6 +364,9 @@ function handleEvent(raw: Record<string, unknown>, win: BrowserWindow, coideSess
       resultCallbacks.delete(coideSessionId)
     }
     usageCallbacks.delete(coideSessionId)
+    // Claude is exiting; any background bash children become orphaned (still tracked
+    // by PID so they can be killed, but Claude no longer owns them).
+    processes.clearSession(coideSessionId)
 
     win.webContents.send('claude:event', {
       ...tag,
@@ -347,7 +396,75 @@ function handleEvent(raw: Record<string, unknown>, win: BrowserWindow, coideSess
     })
   }
 
+  if (type === 'system' && raw.subtype === 'task_started') {
+    processes.noteTaskStarted(
+      coideSessionId,
+      String(raw.tool_use_id ?? ''),
+      String(raw.task_id ?? ''),
+      raw.description != null ? String(raw.description) : null
+    )
+  }
+
+  if (type === 'system' && raw.subtype === 'task_updated') {
+    processes.noteTaskUpdated(
+      coideSessionId,
+      String(raw.tool_use_id ?? ''),
+      (raw.patch ?? {}) as Record<string, unknown>
+    )
+  }
+
+  if (type === 'system' && raw.subtype === 'task_notification') {
+    processes.noteTaskNotification(
+      coideSessionId,
+      String(raw.tool_use_id ?? ''),
+      raw.status != null ? String(raw.status) : null,
+      raw.output_file != null ? String(raw.output_file) : null
+    )
+  }
+
   // 'assistant' usage is extracted in the onData loop (before tool logic) so it's not missed on `continue`
+}
+
+const MAX_LINE_BUFFER = 1024 * 1024
+const MAX_EVENT_BUFFER = 500
+
+function buildSpawnArgs(
+  cwd: string,
+  _resumeSessionId: string | null,
+  settings: CoideSettings,
+  worktreeName: string | undefined
+): { args: string[]; fingerprint: string } {
+  // --input-format=stream-json doesn't support --resume the way --print mode does
+  // (it expects "deferred" sessions, which coide doesn't create). Conversation
+  // history is held by coide's local store; each coide session gets its own Claude
+  // process that lives across turns, but doesn't try to resume across app restarts.
+  const args = ['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose']
+  if (settings.model) args.push('--model', settings.model)
+  const coideSystemPrompt = [
+    'You are running inside coide, a desktop GUI for Claude Code.',
+    'Tool call results are NOT shown inline — they are hidden inside collapsible cards the user may not open.',
+    'You MUST always include relevant output (file contents, command results, directory listings, etc.) directly in your text response.',
+    'Never say "here it is" or "see above" without actually showing the content in your message.',
+    `The current working directory is: ${cwd}. When the user says "your directory" or "this directory", they mean this path.`
+  ].join(' ')
+  const fullSystemPrompt = settings.systemPrompt
+    ? `${coideSystemPrompt}\n\n${settings.systemPrompt}`
+    : coideSystemPrompt
+  args.push('--append-system-prompt', fullSystemPrompt)
+  if (settings.effort) args.push('--effort', settings.effort)
+  if (settings.allowedTools && settings.allowedTools.length > 0) {
+    args.push('--allowed-tools', settings.allowedTools.join(','))
+  }
+  if (settings.planMode) args.push('--permission-mode', 'plan')
+  else args.push('--permission-mode', 'bypassPermissions')
+  if (worktreeName) args.push('--worktree', worktreeName)
+  // Fingerprint excludes resumeSessionId — resume is only used for first spawn after app restart
+  const fingerprint = JSON.stringify([cwd, settings.model, settings.effort, settings.allowedTools, settings.planMode, settings.systemPrompt, worktreeName])
+  return { args, fingerprint }
+}
+
+function formatUserMessage(prompt: string): string {
+  return JSON.stringify({ type: 'user', message: { role: 'user', content: prompt } }) + '\n'
 }
 
 export function runClaude(
@@ -365,102 +482,126 @@ export function runClaude(
       return
     }
 
-    const skipPermissions = settings.skipPermissions
     notificationsEnabled = settings.notifications
-    const claudeBin = resolveClaudeBinary(settings.claudeBinaryPath)
 
-    const args = ['-p', prompt, '--output-format', 'stream-json', '--verbose']
-    if (sessionId) args.push('--resume', sessionId)
-    if (settings.model) args.push('--model', settings.model)
-    const coideSystemPrompt = [
-      'You are running inside coide, a desktop GUI for Claude Code.',
-      'Tool call results are NOT shown inline — they are hidden inside collapsible cards the user may not open.',
-      'You MUST always include relevant output (file contents, command results, directory listings, etc.) directly in your text response.',
-      'Never say "here it is" or "see above" without actually showing the content in your message.',
-      `The current working directory is: ${cwd}. When the user says "your directory" or "this directory", they mean this path.`
-    ].join(' ')
-    const fullSystemPrompt = settings.systemPrompt
-      ? `${coideSystemPrompt}\n\n${settings.systemPrompt}`
-      : coideSystemPrompt
-    args.push('--append-system-prompt', fullSystemPrompt)
-    if (settings.effort) args.push('--effort', settings.effort)
-    if (settings.allowedTools && settings.allowedTools.length > 0) {
-      args.push('--allowed-tools', settings.allowedTools.join(','))
+    const existing = ptySessions.get(coideSessionId)
+    const fp = buildSpawnArgs(cwd, sessionId, settings, worktreeName).fingerprint
+
+    // Reuse existing session when the spawn-relevant settings match. If they differ
+    // (model/effort/cwd/etc), tear down and spawn fresh.
+    if (existing && existing.alive && existing.spawnFingerprint === fp) {
+      sendPromptToSession(existing, prompt, resolve, reject)
+      return
     }
-    // Permission mode: plan mode takes priority, otherwise bypass permissions
-    // (coide handles its own permission UI via the skipPermissions setting)
-    if (settings.planMode) args.push('--permission-mode', 'plan')
-    else args.push('--permission-mode', 'bypassPermissions')
-    if (worktreeName) args.push('--worktree', worktreeName)
+    if (existing) disposeSession(coideSessionId)
 
-    const env = { ...process.env } as Record<string, string>
-    delete env['CLAUDECODE']
-    delete env['CLAUDE_CODE_SESSION_ID']
+    const sess = spawnSession(cwd, sessionId, coideSessionId, win, settings, worktreeName, fp)
+    sendPromptToSession(sess, prompt, resolve, reject)
+  })
+}
 
-    log(`Spawning PTY [${coideSessionId.slice(0, 8)}]: ${claudeBin} ${args.filter(a => a !== prompt).join(' ')}`)
-    log(`CWD: ${cwd}`)
+function sendPromptToSession(
+  sess: PtySession,
+  prompt: string,
+  resolve: (sessionId: string | null) => void,
+  reject: (e: Error) => void
+): void {
+  sess.pendingPermissions = []
+  sess.waitingForPermission = false
+  sess.pendingEventBuffer = []
+  sess.currentTurn = { resolve, reject, settled: false, prompt }
+  try {
+    sess.proc.stdin.write(formatUserMessage(prompt))
+  } catch (err) {
+    sess.currentTurn = null
+    sess.alive = false
+    reject(new Error(`Failed to send prompt: ${err}`))
+  }
+}
 
-    const ptyProc = pty.spawn(claudeBin, args, {
-      name: 'xterm',
-      cols: 220,
-      rows: 50,
-      cwd,
-      env
-    })
+function spawnSession(
+  cwd: string,
+  resumeSessionId: string | null,
+  coideSessionId: string,
+  win: BrowserWindow,
+  settings: CoideSettings,
+  worktreeName: string | undefined,
+  fingerprint: string
+): PtySession {
+  const claudeBin = resolveClaudeBinary(settings.claudeBinaryPath)
+  const { args } = buildSpawnArgs(cwd, resumeSessionId, settings, worktreeName)
 
-    const tag = { coideSessionId }
+  const env = { ...process.env } as Record<string, string>
+  delete env['CLAUDECODE']
+  delete env['CLAUDE_CODE_SESSION_ID']
 
-    const sess: PtySession = {
-      pty: ptyProc,
-      win,
-      coideSessionId,
-      pendingPermissions: [],
-      waitingForPermission: false,
-      pendingEventBuffer: [],
-      settled: false
+  log(`Spawning Claude [${coideSessionId.slice(0, 8)}]: ${claudeBin} ${args.join(' ')}`)
+  log(`CWD: ${cwd}`)
+
+  // child_process.spawn (not node-pty) — Claude's --input-format=stream-json
+  // requires stdin to be a real pipe; node-pty's TTY is rejected with
+  // "Input must be provided either through stdin or as a prompt argument".
+  const proc = spawnChild(claudeBin, args, {
+    cwd,
+    env,
+    stdio: ['pipe', 'pipe', 'pipe']
+  }) as ChildProcessWithoutNullStreams
+
+  const sess: PtySession = {
+    proc,
+    win,
+    coideSessionId,
+    alive: true,
+    cwd,
+    worktreeName,
+    spawnFingerprint: fingerprint,
+    resumeSessionId,
+    pendingPermissions: [],
+    waitingForPermission: false,
+    pendingEventBuffer: [],
+    currentTurn: null,
+    lineBuffer: '',
+    staleResumeDetected: false,
+    retryInFlight: false
+  }
+  ptySessions.set(coideSessionId, sess)
+  processes.attachClaudePid(coideSessionId, () => proc.pid ?? null)
+  attachListeners(sess, settings)
+  return sess
+}
+
+function attachListeners(sess: PtySession, settings: CoideSettings): void {
+  const { proc, win, coideSessionId } = sess
+  const tag = { coideSessionId }
+  const skipPermissions = settings.skipPermissions
+
+  function settle(fn: (turn: TurnState) => void): void {
+    const turn = sess.currentTurn
+    if (!turn || turn.settled) return
+    turn.settled = true
+    fn(turn)
+    sess.currentTurn = null
+  }
+
+  function retryWithoutResume(): void {
+    if (sess.retryInFlight) return
+    sess.retryInFlight = true
+    log(`Stale resume detected for [${coideSessionId.slice(0, 8)}] — retrying without --resume`)
+    const savedTurn = sess.currentTurn
+    sess.currentTurn = null
+    killSessionPty(sess)
+    ptySessions.delete(coideSessionId)
+    usageCallbacks.delete(coideSessionId)
+    win.webContents.send('claude:event', { ...tag, type: 'session_reset', reason: 'stale_resume' })
+    if (savedTurn) {
+      runClaude(savedTurn.prompt, sess.cwd, null, coideSessionId, win, settings, sess.worktreeName).then(savedTurn.resolve, savedTurn.reject)
     }
-    ptySessions.set(coideSessionId, sess)
+  }
 
-    let lineBuffer = ''
-    const MAX_LINE_BUFFER = 1024 * 1024 // 1 MB cap on line buffer
-    const MAX_EVENT_BUFFER = 500 // Max buffered events while waiting for permission
-    // Stale-resume auto-recovery: when Claude CLI can't find the conversation we asked
-    // to resume, silently retry once without --resume so the user's message still lands.
-    let staleResumeDetected = false
-    let retryInFlight = false
-
-    function settle(fn: () => void): void {
-      if (sess.settled) return
-      sess.settled = true
-      fn()
-      setTimeout(() => {
-        try { ptyProc.kill('SIGTERM') } catch {}
-        // If a permission prompt is still pending, keep the session in the map
-        // so respondPermission can flush buffered events and emit stream_end.
-        // respondPermission cleans up when the user responds.
-        if (!sess.waitingForPermission) {
-          ptySessions.delete(coideSessionId)
-        }
-      }, 200)
-    }
-
-    function retryWithoutResume(): void {
-      if (retryInFlight) return
-      retryInFlight = true
-      sess.settled = true // suppress the current run's error-result from reaching the renderer
-      log(`Stale resume detected for [${coideSessionId.slice(0, 8)}] — retrying without --resume`)
-      try { ptyProc.kill('SIGTERM') } catch {}
-      ptySessions.delete(coideSessionId)
-      usageCallbacks.delete(coideSessionId)
-      // Inform renderer so it can clear the stale claudeSessionId in the store
-      win.webContents.send('claude:event', { ...tag, type: 'session_reset', reason: 'stale_resume' })
-      runClaude(prompt, cwd, null, coideSessionId, win, settings, worktreeName).then(resolve, reject)
-    }
-
-    async function processToolBlocks(
-      toolBlocks: Array<Record<string, unknown>>,
-      needsPermission: boolean
-    ): Promise<boolean> {
+  async function processToolBlocks(
+    toolBlocks: Array<Record<string, unknown>>,
+    needsPermission: boolean
+  ): Promise<boolean> {
       if (needsPermission) {
         if (skipPermissions) {
           for (const block of toolBlocks) {
@@ -468,6 +609,7 @@ export function runClaude(
             const originalContent = await captureOriginalContent(block.name as string, toolInput)
             win.webContents.send('claude:event', { ...tag, type: 'tool_start', tool_id: block.id as string, tool_name: block.name as string })
             win.webContents.send('claude:event', { ...tag, type: 'tool_input', tool_id: block.id as string, tool_name: block.name as string, input: toolInput, originalContent })
+            void processes.noteToolInput(coideSessionId, block.id as string, block.name as string, toolInput)
           }
         } else {
           for (const block of toolBlocks) {
@@ -485,6 +627,7 @@ export function runClaude(
             } else {
               win.webContents.send('claude:event', { ...tag, type: 'tool_start', tool_id: toolInfo.tool_id, tool_name: toolInfo.tool_name })
               win.webContents.send('claude:event', { ...tag, type: 'tool_input', tool_id: toolInfo.tool_id, tool_name: toolInfo.tool_name, input: toolInfo.input })
+              void processes.noteToolInput(coideSessionId, toolInfo.tool_id, toolInfo.tool_name, toolInfo.input)
             }
           }
           sess.waitingForPermission = true
@@ -492,185 +635,183 @@ export function runClaude(
         }
       } else {
         for (const block of toolBlocks) {
+          const toolInput = (block.input ?? {}) as Record<string, unknown>
           win.webContents.send('claude:event', { ...tag, type: 'tool_start', tool_id: block.id as string, tool_name: block.name as string })
-          win.webContents.send('claude:event', { ...tag, type: 'tool_input', tool_id: block.id as string, tool_name: block.name as string, input: (block.input ?? {}) as Record<string, unknown> })
+          win.webContents.send('claude:event', { ...tag, type: 'tool_input', tool_id: block.id as string, tool_name: block.name as string, input: toolInput })
+          void processes.noteToolInput(coideSessionId, block.id as string, block.name as string, toolInput)
         }
       }
       return false
     }
 
-    ptyProc.onData((data: string) => {
-      lineBuffer += stripAnsi(data)
+  proc.stdout.on('data', (chunk: Buffer) => {
+    const data = chunk.toString('utf8')
+    sess.lineBuffer += stripAnsi(data)
 
-      // Cap line buffer to prevent unbounded memory growth
-      if (lineBuffer.length > MAX_LINE_BUFFER) {
-        log(`Line buffer exceeded ${MAX_LINE_BUFFER} bytes, truncating`)
-        lineBuffer = lineBuffer.slice(-MAX_LINE_BUFFER / 2)
-      }
+    if (sess.lineBuffer.length > MAX_LINE_BUFFER) {
+      log(`Line buffer exceeded ${MAX_LINE_BUFFER} bytes, truncating`)
+      sess.lineBuffer = sess.lineBuffer.slice(-MAX_LINE_BUFFER / 2)
+    }
 
-      const lines = lineBuffer.split('\n')
-      lineBuffer = lines.pop() ?? ''
+    const lines = sess.lineBuffer.split('\n')
+    sess.lineBuffer = lines.pop() ?? ''
 
-      for (const line of lines) {
-        const trimmed = line.trim()
-        if (!trimmed) continue
-        try {
-          const raw = JSON.parse(trimmed)
-          log(`Event [${coideSessionId.slice(0, 8)}]: ${JSON.stringify(raw).slice(0, 200)}`)
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed) continue
+      try {
+        const raw = JSON.parse(trimmed)
+        log(`Event [${coideSessionId.slice(0, 8)}]: ${JSON.stringify(raw).slice(0, 200)}`)
 
-          if (raw.type === 'result') {
-            // Auto-recover from stale --resume: if the CLI reported the conversation
-            // wasn't found, silently retry without --resume. Suppress the error result
-            // from propagating to the renderer.
-            if (sessionId && staleResumeDetected && raw.is_error) {
-              retryWithoutResume()
+        if (raw.type === 'result') {
+          if (sess.resumeSessionId && sess.staleResumeDetected && raw.is_error) {
+            retryWithoutResume()
+            continue
+          }
+          settle((turn) => turn.resolve((raw.session_id as string) ?? null))
+          // First-result clears the resume — subsequent turns are continuations of the live PTY
+          sess.resumeSessionId = null
+          sess.staleResumeDetected = false
+        }
+
+        if (raw.type === 'assistant') {
+          const msg = raw.message as Record<string, unknown> | undefined
+          const usage = msg?.usage as Record<string, number> | undefined
+          if (usage) {
+            const normalized = {
+              input_tokens: usage.input_tokens ?? 0,
+              output_tokens: usage.output_tokens ?? 0,
+              cache_creation_input_tokens: usage.cache_creation_input_tokens ?? 0,
+              cache_read_input_tokens: usage.cache_read_input_tokens ?? 0
+            }
+            win.webContents.send('claude:event', {
+              ...tag,
+              type: 'usage',
+              ...normalized
+            })
+            const usageCb = usageCallbacks.get(coideSessionId)
+            if (usageCb) {
+              try { usageCb(normalized) } catch { /* ignore */ }
+            }
+          }
+        }
+
+        if (raw.type === 'rate_limit_event') {
+          const info = raw.rate_limit_info as Record<string, unknown> | undefined
+          if (info) {
+            win.webContents.send('claude:event', {
+              ...tag,
+              type: 'rate_limit',
+              status: (info.status as string) ?? 'unknown',
+              resetsAt: (info.resetsAt as number) ?? 0,
+              rateLimitType: (info.rateLimitType as string) ?? 'five_hour'
+            })
+          }
+        }
+
+        if (raw.type === 'assistant') {
+          const msg2 = raw.message as Record<string, unknown> | undefined
+          const content2 = msg2?.content as Array<Record<string, unknown>> | undefined
+          if (Array.isArray(content2)) {
+            const thinkingBlock = content2.find((b) => b.type === 'thinking')
+            if (thinkingBlock) {
+              win.webContents.send('claude:event', { ...tag, type: 'thinking', thinking: thinkingBlock.thinking ?? '' })
+            }
+          }
+        }
+
+        if (raw.type === 'assistant' && !sess.waitingForPermission) {
+          const content = (raw.message as Record<string, unknown>)?.content as Array<Record<string, unknown>>
+          if (Array.isArray(content)) {
+            const toolBlocks = content.filter((b) => b.type === 'tool_use')
+            if (toolBlocks.length > 0) {
+              const needsPermission = toolBlocks.some((b) => PERMISSION_REQUIRED.has(b.name as string))
+              processToolBlocks(toolBlocks, needsPermission).then((shouldSkip) => {
+                if (!shouldSkip) {
+                  if (sess.waitingForPermission) {
+                    if (sess.pendingEventBuffer.length < MAX_EVENT_BUFFER) {
+                      sess.pendingEventBuffer.push(raw)
+                    }
+                  } else {
+                    handleEvent(raw, win, coideSessionId)
+                  }
+                }
+              }).catch((err) => {
+                log(`processToolBlocks error: ${err}`)
+              })
               continue
             }
-            settle(() => resolve((raw.session_id as string) ?? null))
-          }
-
-          if (raw.type === 'assistant') {
-            const msg = raw.message as Record<string, unknown> | undefined
-            const usage = msg?.usage as Record<string, number> | undefined
-            if (usage) {
-              const normalized = {
-                input_tokens: usage.input_tokens ?? 0,
-                output_tokens: usage.output_tokens ?? 0,
-                cache_creation_input_tokens: usage.cache_creation_input_tokens ?? 0,
-                cache_read_input_tokens: usage.cache_read_input_tokens ?? 0
-              }
-              win.webContents.send('claude:event', {
-                ...tag,
-                type: 'usage',
-                ...normalized
-              })
-              const usageCb = usageCallbacks.get(coideSessionId)
-              if (usageCb) {
-                try { usageCb(normalized) } catch { /* ignore */ }
-              }
-            }
-          }
-
-          // Forward rate limit events to renderer
-          if (raw.type === 'rate_limit_event') {
-            const info = raw.rate_limit_info as Record<string, unknown> | undefined
-            if (info) {
-              win.webContents.send('claude:event', {
-                ...tag,
-                type: 'rate_limit',
-                status: (info.status as string) ?? 'unknown',
-                resetsAt: (info.resetsAt as number) ?? 0,
-                rateLimitType: (info.rateLimitType as string) ?? 'five_hour'
-              })
-            }
-          }
-
-          // Detect extended thinking blocks
-          if (raw.type === 'assistant') {
-            const msg2 = raw.message as Record<string, unknown> | undefined
-            const content2 = msg2?.content as Array<Record<string, unknown>> | undefined
-            if (Array.isArray(content2)) {
-              const thinkingBlock = content2.find((b) => b.type === 'thinking')
-              if (thinkingBlock) {
-                win.webContents.send('claude:event', { ...tag, type: 'thinking', thinking: thinkingBlock.thinking ?? '' })
-              }
-            }
-          }
-
-          if (raw.type === 'assistant' && !sess.waitingForPermission) {
-            const content = (raw.message as Record<string, unknown>)?.content as Array<Record<string, unknown>>
-            if (Array.isArray(content)) {
-              const toolBlocks = content.filter((b) => b.type === 'tool_use')
-              if (toolBlocks.length > 0) {
-                const needsPermission = toolBlocks.some((b) => PERMISSION_REQUIRED.has(b.name as string))
-                // Process tool blocks async (file reads for original content)
-                processToolBlocks(toolBlocks, needsPermission).then((shouldSkip) => {
-                  if (!shouldSkip) {
-                    if (sess.waitingForPermission) {
-                      if (sess.pendingEventBuffer.length < MAX_EVENT_BUFFER) {
-                        sess.pendingEventBuffer.push(raw)
-                      }
-                    } else {
-                      handleEvent(raw, win, coideSessionId)
-                    }
-                  }
-                }).catch((err) => {
-                  log(`processToolBlocks error: ${err}`)
-                })
-                continue
-              }
-            }
-          }
-
-          // When stale-resume auto-recovery fires, suppress the doomed result event
-          // so the renderer never renders the "No conversation found" error.
-          if (retryInFlight) continue
-          if (sess.waitingForPermission) {
-            if (sess.pendingEventBuffer.length < MAX_EVENT_BUFFER) {
-              sess.pendingEventBuffer.push(raw)
-            }
-          } else {
-            handleEvent(raw, win, coideSessionId)
-          }
-        } catch {
-          log(`Non-JSON line: ${trimmed.slice(0, 120)}`)
-          if (sessionId && /No conversation found with session ID/i.test(trimmed)) {
-            staleResumeDetected = true
           }
         }
-      }
-    })
 
-    ptyProc.onExit(({ exitCode }) => {
-      log(`PTY [${coideSessionId.slice(0, 8)}] exited with code: ${exitCode}`)
-
-      // Auto-retry already took over — don't touch the outer promise
-      if (retryInFlight) return
-
-      if (lineBuffer.trim()) {
-        try {
-          const raw = JSON.parse(lineBuffer.trim())
-          if (raw.type === 'result') {
-            if (sessionId && staleResumeDetected && raw.is_error) {
-              retryWithoutResume()
-              return
-            }
-            settle(() => resolve((raw.session_id as string) ?? null))
-          }
-          if (sess.waitingForPermission) {
+        if (sess.retryInFlight) continue
+        if (sess.waitingForPermission) {
+          if (sess.pendingEventBuffer.length < MAX_EVENT_BUFFER) {
             sess.pendingEventBuffer.push(raw)
-          } else if (!retryInFlight) {
-            handleEvent(raw, win, coideSessionId)
           }
-        } catch {
-          if (sessionId && /No conversation found with session ID/i.test(lineBuffer)) {
-            staleResumeDetected = true
-          }
+        } else {
+          handleEvent(raw, win, coideSessionId)
         }
-        lineBuffer = ''
+      } catch {
+        log(`Non-JSON line: ${trimmed.slice(0, 120)}`)
+        if (sess.resumeSessionId && /No conversation found with session ID/i.test(trimmed)) {
+          sess.staleResumeDetected = true
+        }
       }
+    }
+  })
 
-      // Line buffer was empty but exit code suggests error and we flagged stale resume earlier
-      if (sessionId && staleResumeDetected && exitCode !== 0 && !sess.settled) {
-        retryWithoutResume()
-        return
+  proc.stderr.on('data', (chunk: Buffer) => {
+    const text = chunk.toString('utf8').trim()
+    if (text) log(`stderr [${coideSessionId.slice(0, 8)}]: ${text.slice(0, 400)}`)
+  })
+
+  proc.on('exit', (exitCode) => {
+    log(`Claude [${coideSessionId.slice(0, 8)}] exited with code: ${exitCode}`)
+    sess.alive = false
+
+    if (sess.retryInFlight) return
+
+    if (sess.lineBuffer.trim()) {
+      try {
+        const raw = JSON.parse(sess.lineBuffer.trim())
+        if (raw.type === 'result') {
+          if (sess.resumeSessionId && sess.staleResumeDetected && raw.is_error) {
+            retryWithoutResume()
+            return
+          }
+          settle((turn) => turn.resolve((raw.session_id as string) ?? null))
+        }
+        if (sess.waitingForPermission) {
+          sess.pendingEventBuffer.push(raw)
+        } else if (!sess.retryInFlight) {
+          handleEvent(raw, win, coideSessionId)
+        }
+      } catch {
+        if (sess.resumeSessionId && /No conversation found with session ID/i.test(sess.lineBuffer)) {
+          sess.staleResumeDetected = true
+        }
       }
+      sess.lineBuffer = ''
+    }
 
-      // If waiting for permission, keep the session alive so respondPermission
-      // can replay buffered events (CLI exits before user clicks Accept/Reject)
-      if (sess.waitingForPermission) {
-        log(`PTY exited while waiting for permission — session kept alive for user response`)
-        return
-      }
+    if (sess.resumeSessionId && sess.staleResumeDetected && exitCode !== 0 && (!sess.currentTurn || !sess.currentTurn.settled)) {
+      retryWithoutResume()
+      return
+    }
 
-      if (!sess.settled) {
-        const errMsg = `Claude exited with code ${exitCode}`
-        win.webContents.send('claude:event', { ...tag, type: 'error', result: errMsg })
-        win.webContents.send('claude:event', { ...tag, type: 'stream_end' })
-        settle(() => reject(new Error(errMsg)))
-      }
+    if (sess.waitingForPermission) {
+      log(`PTY exited while waiting for permission — session kept alive for user response`)
+      return
+    }
 
-      ptySessions.delete(coideSessionId)
-    })
+    if (sess.currentTurn && !sess.currentTurn.settled) {
+      const errMsg = `Claude exited with code ${exitCode}`
+      win.webContents.send('claude:event', { ...tag, type: 'error', result: errMsg })
+      win.webContents.send('claude:event', { ...tag, type: 'stream_end' })
+      settle((turn) => turn.reject(new Error(errMsg)))
+    }
+
+    ptySessions.delete(coideSessionId)
   })
 }

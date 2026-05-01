@@ -245,6 +245,8 @@ export const useSessionsStore = create<SessionsStore>()(
       },
 
       deleteSession: (sessionId: string) => {
+        // Tear down the long-lived Claude PTY for this session before forgetting it
+        try { window.api.claude.dispose(sessionId) } catch { /* ignore */ }
         set((state) => {
           const sessions = state.sessions.filter((s) => s.id !== sessionId)
           const activeSessionId =
