@@ -19,12 +19,10 @@ import { parseMcpFromInit } from '../utils/mcpParsing'
 import { useRateLimitStore } from '../store/rateLimit'
 import { useLoopsStore } from '../store/loops'
 import { BUILT_IN_COMMANDS } from '../data/commands'
+import HeaderModelPill from './HeaderModelPill'
 
 const EMPTY_MESSAGES: Message[] = []
 const BOUNCE_DOTS = [0, 1, 2]
-const MODELS = ['opus', 'sonnet', 'haiku'] as const
-const EFFORT_LEVELS = ['low', 'med', 'high', 'max'] as const
-
 type ClaudeEventBase = { coideSessionId?: string }
 
 type ClaudeEvent = ClaudeEventBase & (
@@ -945,40 +943,46 @@ export default function Chat({
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-line-soft px-4 pt-[46px] pb-2.5">
-        <div className="flex items-center gap-2.5">
+      <div className="flex items-center justify-between border-b border-line-soft px-4 pt-[46px] pb-2.5 gap-3">
+        {/* CWD pill */}
+        <button
+          onClick={handlePickFolder}
+          className="flex items-center gap-2 rounded-md border border-line-soft bg-overlay-1 hover:bg-overlay-2 px-2.5 py-1 transition-colors min-w-0 max-w-[420px]"
+          title="Click to change project folder"
+        >
           <span
             className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${isLoading ? 'bg-yellow-400 animate-pulse' : 'bg-green-500/70'}`}
           />
-          <button
-            onClick={handlePickFolder}
-            className="text-xs text-fg-subtle font-mono truncate max-w-[260px] hover:text-fg-muted transition-colors text-left"
-            title="Click to change project folder"
-          >
-            {cwd}
-          </button>
+          <span className="text-[11px] text-fg-muted font-mono truncate">
+            {homedir && cwd.startsWith(homedir) ? '~' + cwd.slice(homedir.length) : cwd}
+          </span>
           {activeSession?.branch && (
-            <span className={`flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded flex-shrink-0 ${
-              activeSession.worktree
-                ? 'bg-green-500/15 text-green-400/70'
-                : 'bg-overlay-2 text-fg-subtle'
-            }`}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="6" y1="3" x2="6" y2="15" />
-                <circle cx="18" cy="6" r="3" />
-                <circle cx="6" cy="18" r="3" />
-                <path d="M18 9a9 9 0 0 1-9 9" />
-              </svg>
-              {activeSession.branch}
-            </span>
+            <>
+              <span className="h-3 w-px bg-line flex-shrink-0" />
+              <span className={`flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded flex-shrink-0 ${
+                activeSession.worktree
+                  ? 'bg-green-500/15 text-green-400/70'
+                  : 'bg-purple-500/10 text-purple-400/70'
+              }`}>
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="6" y1="3" x2="6" y2="15" />
+                  <circle cx="18" cy="6" r="3" />
+                  <circle cx="6" cy="18" r="3" />
+                  <path d="M18 9a9 9 0 0 1-9 9" />
+                </svg>
+                {activeSession.branch}
+              </span>
+            </>
           )}
           {activeSession?.worktree && (
-            <span className="text-[9px] font-semibold text-purple-400/50 bg-purple-500/10 px-1.5 py-0.5 rounded flex-shrink-0">
+            <span className="text-[9px] font-semibold text-purple-400/60 bg-purple-500/10 px-1.5 py-0.5 rounded flex-shrink-0">
               worktree
             </span>
           )}
-        </div>
-        <div className="flex items-center gap-2">
+        </button>
+
+        {/* Right zone: status chips, model pill, mode group, divider, utility group */}
+        <div className="flex items-center gap-2 flex-shrink-0">
           {activeSession?.worktree && !isLoading && (
             <>
               <button
@@ -1048,136 +1052,99 @@ export default function Chat({
               </button>
             )
           })()}
-          <div className="flex items-center rounded-md border border-line-soft overflow-hidden" title="Model — click to switch, click active to reset to default (opus).">
-            {MODELS.map((m) => {
-              const isActive = model === m
-              const isDefault = !model && m === 'opus'
-              return (
-                <button
-                  key={m}
-                  onClick={() => updateSettings({ model: isActive ? '' : m })}
-                  className={`px-1.5 py-0.5 text-[10px] transition-colors ${
-                    isActive || isDefault
-                      ? 'bg-violet-500/20 text-violet-400 font-medium'
-                      : 'text-fg-faint hover:text-fg-muted hover:bg-overlay-1'
-                  }`}
-                >
-                  {m}
-                </button>
-              )
-            })}
+          <HeaderModelPill />
+          {/* Mode group: plan / compact / approve — labels always shown so state reads at a glance */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => updateSettings({ planMode: !planMode })}
+              title={planMode ? 'Plan mode ON — Claude will plan before executing. Click to disable.' : 'Click to enable plan mode (plan before executing)'}
+              className={`flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] transition-colors ${
+                planMode
+                  ? 'border-blue-500/40 bg-blue-500/10 text-blue-400'
+                  : 'border-line-soft text-fg-faint hover:text-fg-muted hover:bg-overlay-1'
+              }`}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+              </svg>
+              <span>plan</span>
+            </button>
+            <button
+              onClick={() => updateSettings({ compactMode: !compactMode })}
+              title={compactMode ? 'Compact mode ON — denser layout. Click to disable.' : 'Click to enable compact mode (denser layout)'}
+              className={`flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] transition-colors ${
+                compactMode
+                  ? 'border-teal-500/40 bg-teal-500/10 text-teal-400'
+                  : 'border-line-soft text-fg-faint hover:text-fg-muted hover:bg-overlay-1'
+              }`}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+                <line x1="3" y1="14" x2="21" y2="14" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+              <span>compact</span>
+            </button>
+            <button
+              onClick={() => updateSettings({ skipPermissions: !skipPermissions })}
+              title={skipPermissions ? 'Auto-approve enabled — click to require approval' : 'Click to auto-approve all tools'}
+              className={`flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] transition-colors ${
+                skipPermissions
+                  ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
+                  : 'border-line-soft text-fg-faint hover:text-fg-muted hover:bg-overlay-1'
+              }`}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                {skipPermissions && <polyline points="9 12 11 14 15 10" />}
+              </svg>
+              <span>approve</span>
+            </button>
           </div>
-          <div className="flex items-center rounded-md border border-line-soft overflow-hidden" title="Effort level — controls reasoning depth. Click active level to reset to default.">
-            {EFFORT_LEVELS.map((level) => {
-              const value = level === 'med' ? 'medium' : level
-              const isActive = effort === value
-              const isDefault = !effort && value === 'high'
-              return (
-                <button
-                  key={level}
-                  onClick={() => updateSettings({ effort: isActive ? '' : value })}
-                  className={`px-1.5 py-0.5 text-[10px] transition-colors ${
-                    isActive
-                      ? 'bg-violet-500/20 text-violet-400 font-medium'
-                      : isDefault
-                        ? 'text-fg-subtle border-b border-b-line-strong'
-                        : 'text-fg-faint hover:text-fg-muted hover:bg-overlay-1'
-                  }`}
-                >
-                  {level}
-                </button>
-              )
-            })}
-          </div>
+
+          {/* Divider between mode toggles and utility icons */}
+          <span className="h-4 w-px bg-line" />
+
           <button
-            onClick={() => updateSettings({ planMode: !planMode })}
-            title={planMode ? 'Plan mode ON — Claude will plan before executing. Click to disable.' : 'Click to enable plan mode (plan before executing)'}
-            className={`rounded-md px-2 py-0.5 text-[11px] transition-colors flex items-center gap-1 ${
-              planMode
-                ? 'border border-blue-500/40 bg-blue-500/10 text-blue-400'
-                : 'text-fg-faint hover:text-fg-muted'
+            onClick={() => setSearchOpen((o) => !o)}
+            disabled={messages.length === 0}
+            title="Find in conversation (⌘F)"
+            className={`rounded-md px-2 py-0.5 transition-colors ${
+              messages.length === 0
+                ? 'text-fg-ghost cursor-not-allowed'
+                : searchOpen ? 'text-fg-muted' : 'text-fg-faint hover:text-fg-muted'
             }`}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="16" y1="13" x2="8" y2="13" />
-              <line x1="16" y1="17" x2="8" y2="17" />
-              <polyline points="10 9 9 9 8 9" />
-            </svg>
-            {planMode && <span>Plan</span>}
-          </button>
-          <button
-            onClick={() => updateSettings({ compactMode: !compactMode })}
-            title={compactMode ? 'Compact mode ON — denser layout. Click to disable.' : 'Click to enable compact mode (denser layout)'}
-            className={`rounded-md px-2 py-0.5 text-[11px] transition-colors flex items-center gap-1 ${
-              compactMode
-                ? 'border border-teal-500/40 bg-teal-500/10 text-teal-400'
-                : 'text-fg-faint hover:text-fg-muted'
-            }`}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="10" x2="21" y2="10" />
-              <line x1="3" y1="14" x2="21" y2="14" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-            {compactMode && <span>Compact</span>}
-          </button>
-          <button
-            onClick={() => updateSettings({ skipPermissions: !skipPermissions })}
-            title={skipPermissions ? 'Auto-approve enabled — click to require approval' : 'Click to auto-approve all tools'}
-            className={`rounded-md px-2 py-0.5 text-[11px] transition-colors flex items-center gap-1 ${
-              skipPermissions
-                ? 'border border-amber-500/40 bg-amber-500/10 text-amber-400'
-                : 'text-fg-faint hover:text-fg-muted'
-            }`}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
-            {skipPermissions && <span>Auto</span>}
-          </button>
-          <button
-            onClick={() => setSettingsOpen(true)}
-            title="Settings"
-            className="rounded-md px-2 py-0.5 text-fg-faint hover:text-fg-muted transition-colors"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
           </button>
-          {messages.length > 0 && (
-            <button
-              onClick={() => setSearchOpen((o) => !o)}
-              title="Find in conversation (⌘F)"
-              className={`rounded-md px-2 py-0.5 transition-colors ${searchOpen ? 'text-fg-muted' : 'text-fg-faint hover:text-fg-muted'}`}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          <button
+            onClick={copyConversation}
+            disabled={messages.length === 0}
+            title="Copy conversation as markdown"
+            className={`rounded-md px-2 py-0.5 transition-colors ${
+              messages.length === 0
+                ? 'text-fg-ghost cursor-not-allowed'
+                : copied ? 'text-green-400' : 'text-fg-faint hover:text-fg-muted'
+            }`}
+          >
+            {copied ? (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
               </svg>
-            </button>
-          )}
-          {messages.length > 0 && (
-            <button
-              onClick={copyConversation}
-              title="Copy conversation as markdown"
-              className={`rounded-md px-2 py-0.5 transition-colors ${copied ? 'text-green-400' : 'text-fg-faint hover:text-fg-muted'}`}
-            >
-              {copied ? (
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              ) : (
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                </svg>
-              )}
-            </button>
-          )}
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+            )}
+          </button>
           {onToggleTerminal && (
             <button
               onClick={onToggleTerminal}
@@ -1194,11 +1161,24 @@ export default function Chat({
           )}
           <button
             onClick={onToggleRightPanel}
-            className={`rounded-md px-2 py-0.5 text-[11px] transition-colors ${
+            className={`rounded-md px-2 py-0.5 transition-colors ${
               rightPanelOpen ? 'text-fg-muted hover:text-fg-muted' : 'text-fg-faint hover:text-fg-muted'
             }`}
           >
-            ⊞
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <line x1="15" y1="3" x2="15" y2="21" />
+            </svg>
+          </button>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            title="Settings"
+            className="rounded-md px-2 py-0.5 text-fg-faint hover:text-fg-muted transition-colors"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
           </button>
         </div>
       </div>
