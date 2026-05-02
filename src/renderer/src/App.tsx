@@ -18,6 +18,7 @@ const FilePreviewModal = React.lazy(() => import('./components/FilePreviewModal'
 const SkillEditorModal = React.lazy(() => import('./components/SkillEditorModal'))
 const HookEditorModal = React.lazy(() => import('./components/HookEditorModal'))
 const WelcomeModal = React.lazy(() => import('./components/WelcomeModal'))
+const LoginModal = React.lazy(() => import('./components/LoginModal'))
 
 export default function App(): React.JSX.Element {
   const [rightPanelOpen, setRightPanelOpen] = useState(true)
@@ -142,6 +143,7 @@ export default function App(): React.JSX.Element {
         <SkillEditorModal />
         <HookEditorModal />
         <WelcomeModal />
+        <LoginModal />
       </Suspense>
     </div>
   )

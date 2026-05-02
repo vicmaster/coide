@@ -8,6 +8,7 @@ import { runClaude, abortClaude, respondPermission, resolveClaudeBinary, dispose
 import * as processes from './processes'
 import { listMemoryFiles, readMemoryFile, writeMemoryFile, deleteMemoryFile } from './memory'
 import { spawnTerminal, writeTerminal, resizeTerminal, killTerminal, killAllTerminals } from './terminal'
+import { startLogin, writeLogin, resizeLogin, cancelLogin } from './login'
 import { processFile, FILES_DIR } from './fileExtractor'
 import { type CoideSettings, DEFAULT_SETTINGS } from '../shared/types'
 import type { WorkflowDefinition } from '../shared/workflow-types'
@@ -811,6 +812,23 @@ ipcMain.handle('terminal:kill', (_event, { id }: { id: string }) => {
   killTerminal(id)
 })
 
+ipcMain.handle('login:start', () => {
+  if (!mainWindow) return { error: 'No window' }
+  return startLogin(currentSettings.claudeBinaryPath, mainWindow)
+})
+
+ipcMain.handle('login:input', (_event, { data }: { data: string }) => {
+  writeLogin(data)
+})
+
+ipcMain.handle('login:resize', (_event, { cols, rows }: { cols: number; rows: number }) => {
+  resizeLogin(cols, rows)
+})
+
+ipcMain.handle('login:cancel', () => {
+  cancelLogin()
+})
+
 app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.coide')
   if (process.platform === 'darwin') {
@@ -833,6 +851,7 @@ app.whenReady().then(async () => {
 
 app.on('will-quit', () => {
   killAllTerminals()
+  cancelLogin()
   disposeAllClaudeSessions()
   stopTriggerRuntime()
   stopWebhookServer()

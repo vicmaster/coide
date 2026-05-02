@@ -122,6 +122,11 @@ function notify(win: BrowserWindow, title: string, body: string): void {
   }
 }
 
+export function isAuthError(msg: string): boolean {
+  if (!msg) return false
+  return /\b401\b|authentication_error|invalid authentication|invalid api key|unauthorized/i.test(msg)
+}
+
 function stripAnsi(str: string): string {
   return str
     .replace(/\u001B\[[\d;]*[a-zA-Z]/g, '')
@@ -378,8 +383,12 @@ function handleEvent(raw: Record<string, unknown>, win: BrowserWindow, coideSess
     win.webContents.send('claude:event', { ...tag, type: 'stream_end' })
 
     if (raw.is_error) {
-      const errText = String(raw.result ?? 'Something went wrong').slice(0, 80)
-      notify(win, 'Task Failed', errText)
+      const errText = String(raw.result ?? 'Something went wrong')
+      // Surface auth failures so the renderer can prompt for /login and retry
+      if (isAuthError(errText)) {
+        win.webContents.send('claude:event', { ...tag, type: 'auth_required', message: errText.slice(0, 200) })
+      }
+      notify(win, 'Task Failed', errText.slice(0, 80))
     } else {
       const resultText = String(raw.result ?? '').slice(0, 80) || 'Claude finished your task'
       notify(win, 'Task Complete', resultText)

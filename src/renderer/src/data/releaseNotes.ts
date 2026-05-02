@@ -8,7 +8,9 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     version: 'next',
     date: '',
-    notes: []
+    notes: [
+      '/login works in-app — opens a modal with an embedded terminal running claude /login; auth failures mid-turn auto-prompt and re-send the failed message after sign-in'
+    ]
   },
   {
     version: '0.25.0',

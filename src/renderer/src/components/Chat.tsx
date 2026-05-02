@@ -40,6 +40,7 @@ type ClaudeEvent = ClaudeEventBase & (
   | { type: 'system'; subtype: string; mcp_servers?: { name: string; status: string }[]; tools?: string[] }
   | { type: 'rate_limit'; status: string; resetsAt: number; rateLimitType: string }
   | { type: 'session_reset'; reason: string }
+  | { type: 'auth_required'; message: string }
 )
 
 export default function Chat({
@@ -77,6 +78,8 @@ export default function Chat({
   const [activeMatchIndex, setActiveMatchIndex] = useState(0)
   const dragCounterRef = useRef(0)
   const sendMessageRef = useRef<((text: string, images?: ImageAttachment[], files?: FileAttachment[]) => Promise<void>) | null>(null)
+  // After 401, holds the prompt to re-send once /login succeeds, keyed by session id
+  const pendingAuthRetryRef = useRef<Map<string, { text: string; images?: ImageAttachment[]; files?: FileAttachment[] }>>(new Map())
   // Extended thinking state: tracks when Claude is actively reasoning
   const [thinkingSessions, setThinkingSessions] = useState<Map<string, number>>(new Map()) // sessionId → startTime
 
@@ -110,6 +113,19 @@ export default function Chat({
     const handler = (): void => setReleaseNotesOpen(true)
     window.addEventListener('coide:open-release-notes', handler)
     return () => window.removeEventListener('coide:open-release-notes', handler)
+  }, [])
+
+  useEffect(() => {
+    const handler = (): void => {
+      // After /login completes, re-send any prompts stashed by the auth_required handler
+      const pending = pendingAuthRetryRef.current
+      pendingAuthRetryRef.current = new Map()
+      for (const [, payload] of pending) {
+        sendMessageRef.current?.(payload.text, payload.images, payload.files)
+      }
+    }
+    window.addEventListener('coide:login-success', handler)
+    return () => window.removeEventListener('coide:login-success', handler)
   }, [])
 
   useEffect(() => {
@@ -543,6 +559,21 @@ export default function Chat({
         // Main process dropped a stale --resume conversation; clear the local id so
         // the retry's fresh session_id can replace it on the upcoming 'result'.
         updateClaudeSessionId(sid, null)
+        return
+      }
+
+      if (event.type === 'auth_required') {
+        // Stash the last user message so we can re-send it after the user logs in
+        const sess = useSessionsStore.getState().sessions.find((s) => s.id === sid)
+        const lastUser = sess?.messages.slice().reverse().find((m) => m.role === 'user') as TextMessage | undefined
+        if (lastUser?.text) {
+          pendingAuthRetryRef.current.set(sid, {
+            text: lastUser.text,
+            images: lastUser.images,
+            files: lastUser.files
+          })
+        }
+        window.dispatchEvent(new CustomEvent('coide:open-login'))
         return
       }
 

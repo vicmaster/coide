@@ -156,3 +156,4 @@ Archive of completed features. User-facing changelog lives in `src/renderer/src/
 - `/release-notes` — show changelog/what's new per coide version in a modal
 - Named subagents in @-mention — autocomplete shows running agents by name in chat input
 - `/permissions` dialog — per-tool auto-approve toggles plus "Always allow" button on prompts, replacing the binary skipPermissions toggle
+- In-app `/login` — typing `/login` (or hitting a 401 mid-turn) opens a modal that runs `claude /login` in an embedded xterm.js terminal; on success the failed prompt is automatically retried

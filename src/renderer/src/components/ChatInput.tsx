@@ -274,6 +274,12 @@ export default function ChatInput({ cwd, isLoading, sendMessage }: ChatInputProp
       case 'tasks':
         useUiStore.getState().focusProcessesTab()
         break
+      case 'login':
+      case 'logout':
+        // Open the in-app login flow (spawns `claude /login` in a side PTY).
+        // Forwarding `/login` to Claude returns "/login isn't available in this environment".
+        window.dispatchEvent(new CustomEvent('coide:open-login'))
+        break
       case 'fork': {
         const store = useSessionsStore.getState()
         const currentSid = store.activeSessionId

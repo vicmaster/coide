@@ -100,6 +100,14 @@ interface Window {
       clear: (coideSessionId: string) => Promise<void>
       onUpdate: (callback: (event: { coideSessionId: string; processes: BgProcessRow[] }) => void) => () => void
     }
+    login: {
+      start: () => Promise<{ pid?: number; error?: string }>
+      input: (data: string) => Promise<void>
+      resize: (cols: number, rows: number) => Promise<void>
+      cancel: () => Promise<void>
+      onData: (callback: (event: { data: string }) => void) => () => void
+      onExit: (callback: (event: { exitCode: number; success: boolean }) => void) => () => void
+    }
   }
 }
 

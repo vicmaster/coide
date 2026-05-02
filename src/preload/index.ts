@@ -148,6 +148,22 @@ const api = {
       return () => ipcRenderer.removeListener('processes:update', handler)
     }
   },
+  login: {
+    start: (): Promise<{ pid?: number; error?: string }> => ipcRenderer.invoke('login:start'),
+    input: (data: string): Promise<void> => ipcRenderer.invoke('login:input', { data }),
+    resize: (cols: number, rows: number): Promise<void> => ipcRenderer.invoke('login:resize', { cols, rows }),
+    cancel: (): Promise<void> => ipcRenderer.invoke('login:cancel'),
+    onData: (callback: (event: { data: string }) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: { data: string }): void => callback(data)
+      ipcRenderer.on('login:data', handler)
+      return () => ipcRenderer.removeListener('login:data', handler)
+    },
+    onExit: (callback: (event: { exitCode: number; success: boolean }) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: { exitCode: number; success: boolean }): void => callback(data)
+      ipcRenderer.on('login:exit', handler)
+      return () => ipcRenderer.removeListener('login:exit', handler)
+    }
+  },
   terminal: {
     spawn: (id: string, cwd: string): Promise<{ pid: number }> =>
       ipcRenderer.invoke('terminal:spawn', { id, cwd }),
