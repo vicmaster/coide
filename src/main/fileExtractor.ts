@@ -63,7 +63,42 @@ function truncateText(text: string, maxLen: number): string {
   return text.slice(0, maxLen) + `\n\n[... truncated at ${maxLen.toLocaleString()} characters]`
 }
 
+// pdfjs-dist (under pdf-parse v2) needs DOMMatrix/ImageData/Path2D for text extraction.
+// In dev these come from @napi-rs/canvas, but that native module is excluded from the
+// packaged build to keep size down — so text extraction throws "DOMMatrix is not defined"
+// in production. Provide tiny stubs (text extraction never touches their methods) so we
+// don't have to ship the ~28MB per-arch native module.
+export function ensurePdfGlobals(): void {
+  const g = globalThis as Record<string, unknown>
+  if (typeof g.DOMMatrix === 'undefined') {
+    g.DOMMatrix = class DOMMatrix {
+      a = 1
+      b = 0
+      c = 0
+      d = 1
+      e = 0
+      f = 0
+    }
+  }
+  if (typeof g.ImageData === 'undefined') {
+    g.ImageData = class ImageData {
+      width: number
+      height: number
+      data: Uint8ClampedArray
+      constructor(width: number, height: number) {
+        this.width = width
+        this.height = height
+        this.data = new Uint8ClampedArray(width * height * 4)
+      }
+    }
+  }
+  if (typeof g.Path2D === 'undefined') {
+    g.Path2D = class Path2D {}
+  }
+}
+
 async function extractPdf(filePath: string): Promise<string> {
+  ensurePdfGlobals()
   const buffer = await readFile(filePath)
   const { PDFParse } = getPdfParse()
   const parser = new PDFParse({ data: new Uint8Array(buffer) })
