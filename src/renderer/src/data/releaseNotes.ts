@@ -8,7 +8,9 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     version: 'next',
     date: '',
-    notes: []
+    notes: [
+      'Favorite sessions — star sessions into a Favorites section above Recent, drag to reorder'
+    ]
   },
   {
     version: '0.27.1',

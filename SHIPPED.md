@@ -39,6 +39,7 @@ Archive of completed features. User-facing changelog lives in `src/renderer/src/
 - Tabs: Sessions | Skills | Commands
 - Skills panel (hardcoded list with Run button on hover)
 - Commands panel (hardcoded list)
+- Favorite / pin sessions — star a session into a dedicated "Favorites" section above "Recent" (gold star always-on for pins, hover-reveal star to pin others), with drag-to-reorder within Favorites persisted as a manual `favoriteOrder`; Recent stays auto-sorted by activity (requested by Jose David Arroyo)
 
 ## Right Panel
 - Tabs: Agents | Todo | Context

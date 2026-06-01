@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useSessionsStore } from '../store/sessions'
+import type { Session } from '../store/sessions'
 import { useSkillEditorStore } from '../store/skillEditor'
 import { useWorkflowStore } from '../store/workflow'
 import { BUILT_IN_COMMANDS } from '../data/commands'
@@ -251,15 +252,39 @@ function SectionLabel({ label }: { label: string }): React.JSX.Element {
 function SessionsList(): React.JSX.Element {
   const sessions = useSessionsStore((state) => state.sessions)
   const activeSessionId = useSessionsStore((state) => state.activeSessionId)
-  const { setActiveSession, deleteSession, renameSession } = useSessionsStore()
+  const { setActiveSession, deleteSession, renameSession, toggleFavorite, reorderFavorites } =
+    useSessionsStore()
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [dragOverId, setDragOverId] = useState<string | null>(null)
 
   const commitRename = (): void => {
     if (renamingId && renameValue.trim()) {
       renameSession(renamingId, renameValue.trim())
     }
     setRenamingId(null)
+  }
+
+  const favorites = sessions
+    .filter((s) => s.favorite)
+    .sort((a, b) => (a.favoriteOrder ?? 0) - (b.favoriteOrder ?? 0))
+  const recents = sessions.filter((s) => !s.favorite)
+
+  const handleDrop = (targetId: string): void => {
+    const sourceId = dragId
+    setDragId(null)
+    setDragOverId(null)
+    if (!sourceId || sourceId === targetId) return
+    const ids = favorites.map((s) => s.id)
+    const from = ids.indexOf(sourceId)
+    const to = ids.indexOf(targetId)
+    if (from === -1 || to === -1) return
+    ids.splice(from, 1)
+    // The drop indicator renders at the top of the target row ("insert before"),
+    // so when dragging downward the target shifts left by one after removal.
+    ids.splice(from < to ? to - 1 : to, 0, sourceId)
+    reorderFavorites(ids)
   }
 
   if (sessions.length === 0) {
@@ -271,73 +296,145 @@ function SessionsList(): React.JSX.Element {
     )
   }
 
-  return (
-    <div>
-      <SectionLabel label="Recent" />
-      {sessions.map((session) => (
-        <div key={session.id} className="group relative">
-          <button
-            onClick={() => setActiveSession(session.id)}
-            onDoubleClick={() => {
-              setRenamingId(session.id)
-              setRenameValue(session.title)
+  const renderRow = (session: Session): React.JSX.Element => {
+    const isFavorite = !!session.favorite
+    const isActive = session.id === activeSessionId
+    return (
+      <div
+        key={session.id}
+        className={`group relative flex items-center rounded-md transition-colors ${
+          isActive ? 'bg-overlay-3' : 'hover:bg-overlay-2'
+        } ${dragId === session.id ? 'opacity-40' : ''}`}
+        onDragOver={
+          isFavorite
+            ? (e) => {
+                if (!dragId) return
+                e.preventDefault()
+                if (dragOverId !== session.id) setDragOverId(session.id)
+              }
+            : undefined
+        }
+        onDragLeave={isFavorite ? () => setDragOverId((id) => (id === session.id ? null : id)) : undefined}
+        onDrop={isFavorite ? () => handleDrop(session.id) : undefined}
+      >
+        {dragOverId === session.id && dragId !== session.id && (
+          <div className="absolute -top-[2px] left-1 right-1 h-0.5 rounded-full bg-blue-500" />
+        )}
+        {isFavorite && (
+          <div
+            draggable
+            onDragStart={() => setDragId(session.id)}
+            onDragEnd={() => {
+              setDragId(null)
+              setDragOverId(null)
             }}
-            className={`w-full rounded-md px-2 py-1.5 text-left transition-colors ${
-              session.id === activeSessionId
-                ? 'bg-overlay-3 text-fg-strong'
-                : 'text-fg-muted hover:bg-overlay-2 hover:text-fg-muted'
-            }`}
+            className="flex items-center pl-1.5 cursor-grab active:cursor-grabbing text-fg-faint hover:text-fg-muted transition-colors"
+            title="Drag to reorder"
           >
-            {renamingId === session.id ? (
-              <input
-                autoFocus
-                value={renameValue}
-                onChange={(e) => setRenameValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') commitRename()
-                  if (e.key === 'Escape') setRenamingId(null)
-                  e.stopPropagation()
-                }}
-                onBlur={commitRename}
-                onClick={(e) => e.stopPropagation()}
-                className="w-full bg-transparent text-xs text-fg-strong outline-none border-b border-blue-400/50 pr-5"
-              />
-            ) : (
-              <p className="text-xs truncate pr-5">{session.title}</p>
-            )}
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="text-[10px] text-fg-faint font-mono truncate">
-                {session.cwd.split('/').pop()}
+            <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor" aria-hidden>
+              <circle cx="2.5" cy="3" r="1.1" /><circle cx="7.5" cy="3" r="1.1" />
+              <circle cx="2.5" cy="7" r="1.1" /><circle cx="7.5" cy="7" r="1.1" />
+              <circle cx="2.5" cy="11" r="1.1" /><circle cx="7.5" cy="11" r="1.1" />
+            </svg>
+          </div>
+        )}
+        <button
+          onClick={() => setActiveSession(session.id)}
+          onDoubleClick={() => {
+            setRenamingId(session.id)
+            setRenameValue(session.title)
+          }}
+          className={`min-w-0 flex-1 px-2 py-1.5 text-left ${
+            isActive ? 'text-fg-strong' : 'text-fg-muted'
+          }`}
+        >
+          {renamingId === session.id ? (
+            <input
+              autoFocus
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitRename()
+                if (e.key === 'Escape') setRenamingId(null)
+                e.stopPropagation()
+              }}
+              onBlur={commitRename}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full bg-transparent text-xs text-fg-strong outline-none border-b border-blue-400/50"
+            />
+          ) : (
+            <p className="text-xs truncate">{session.title}</p>
+          )}
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-[10px] text-fg-faint font-mono truncate">
+              {session.cwd.split('/').pop()}
+            </span>
+            {session.branch && (
+              <span className={`text-[9px] font-mono px-1 py-0.5 rounded flex-shrink-0 ${
+                session.worktree
+                  ? 'bg-purple-500/15 text-purple-400/60'
+                  : 'bg-overlay-2 text-fg-faint'
+              }`}>
+                {session.branch}
               </span>
-              {session.branch && (
-                <span className={`text-[9px] font-mono px-1 py-0.5 rounded flex-shrink-0 ${
-                  session.worktree
-                    ? 'bg-purple-500/15 text-purple-400/60'
-                    : 'bg-overlay-2 text-fg-faint'
-                }`}>
-                  {session.branch}
-                </span>
-              )}
-              {session.worktree && (
-                <span className="text-[8px] font-medium text-purple-400/40 flex-shrink-0">wt</span>
-              )}
-              {session.forkOf && (
-                <span className="text-[9px] font-medium text-fg-subtle flex-shrink-0" title={`Forked from "${session.forkOf.title}"`}>⑂</span>
-              )}
-            </div>
+            )}
+            {session.worktree && (
+              <span className="text-[8px] font-medium text-purple-400/40 flex-shrink-0">wt</span>
+            )}
+            {session.forkOf && (
+              <span className="text-[9px] font-medium text-fg-subtle flex-shrink-0" title={`Forked from "${session.forkOf.title}"`}>⑂</span>
+            )}
+          </div>
+        </button>
+        <div className="flex items-center shrink-0 pr-1.5">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              toggleFavorite(session.id)
+            }}
+            className={`p-1 transition-all ${
+              isFavorite
+                ? 'text-yellow-400 hover:text-yellow-300'
+                : 'text-fg-faint hover:text-fg-muted opacity-0 group-hover:opacity-100'
+            }`}
+            title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
           </button>
           <button
             onClick={(e) => {
               e.stopPropagation()
               deleteSession(session.id)
             }}
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 text-fg-faint hover:text-fg-muted transition-all"
+            className="opacity-0 group-hover:opacity-100 p-1 text-fg-faint hover:text-fg-muted transition-all"
             title="Delete session"
           >
             ×
           </button>
         </div>
-      ))}
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {favorites.length > 0 && (
+        <div className="mb-2">
+          <div className="flex items-center gap-1 px-2 mb-1.5">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="text-yellow-400/80">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-fg-faint">
+              Favorites
+            </span>
+          </div>
+          {favorites.map(renderRow)}
+        </div>
+      )}
+      <SectionLabel label="Recent" />
+      {recents.map(renderRow)}
     </div>
   )
 }

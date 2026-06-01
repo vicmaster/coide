@@ -106,6 +106,9 @@ export type Session = {
   autoCompacted?: boolean
   pendingAutoCompact?: boolean
   forkOf?: { sessionId: string; messageId: string; title: string }
+  favorite?: boolean
+  /** Manual sort position within Favorites (lower = higher up). Decoupled from recency. */
+  favoriteOrder?: number
 }
 
 export type PendingAction = { type: 'send' | 'insert'; text: string }
@@ -123,6 +126,8 @@ type SessionsStore = {
   clearMessages: (sessionId: string) => void
   restartSession: (sessionId: string) => void
   renameSession: (sessionId: string, title: string) => void
+  toggleFavorite: (sessionId: string) => void
+  reorderFavorites: (orderedIds: string[]) => void
   deleteSession: (sessionId: string) => void
   addTask: (sessionId: string, task: Task) => void
   updateTask: (sessionId: string, taskId: string, updates: Partial<Task>) => void
@@ -242,6 +247,41 @@ export const useSessionsStore = create<SessionsStore>()(
             s.id === sessionId ? { ...s, title: title.trim() || s.title } : s
           )
         }))
+      },
+
+      toggleFavorite: (sessionId: string) => {
+        set((state) => {
+          const target = state.sessions.find((s) => s.id === sessionId)
+          if (!target) return state
+          const turningOn = !target.favorite
+          // New favorites append to the bottom of the manual order, preserving existing arrangement.
+          const maxOrder = state.sessions.reduce(
+            (m, s) => (s.favorite ? Math.max(m, s.favoriteOrder ?? 0) : m),
+            -1
+          )
+          return {
+            sessions: state.sessions.map((s) =>
+              s.id === sessionId
+                ? {
+                    ...s,
+                    favorite: turningOn,
+                    favoriteOrder: turningOn ? maxOrder + 1 : s.favoriteOrder
+                  }
+                : s
+            )
+          }
+        })
+      },
+
+      reorderFavorites: (orderedIds: string[]) => {
+        set((state) => {
+          const orderMap = new Map(orderedIds.map((id, i) => [id, i]))
+          return {
+            sessions: state.sessions.map((s) =>
+              orderMap.has(s.id) ? { ...s, favoriteOrder: orderMap.get(s.id) } : s
+            )
+          }
+        })
       },
 
       deleteSession: (sessionId: string) => {

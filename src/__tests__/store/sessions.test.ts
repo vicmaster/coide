@@ -351,4 +351,63 @@ describe('Sessions Store', () => {
       expect(useSessionsStore.getState().pendingAction).toBeNull()
     })
   })
+
+  describe('toggleFavorite', () => {
+    const fav = (id: string): boolean =>
+      !!useSessionsStore.getState().sessions.find((s) => s.id === id)?.favorite
+    const order = (id: string): number | undefined =>
+      useSessionsStore.getState().sessions.find((s) => s.id === id)?.favoriteOrder
+
+    it('marks a session as favorite and back', () => {
+      const id = createTestSession()
+      expect(fav(id)).toBe(false)
+      useSessionsStore.getState().toggleFavorite(id)
+      expect(fav(id)).toBe(true)
+      useSessionsStore.getState().toggleFavorite(id)
+      expect(fav(id)).toBe(false)
+    })
+
+    it('appends new favorites to the bottom of the manual order', () => {
+      const a = createTestSession()
+      const b = createTestSession()
+      const c = createTestSession()
+      useSessionsStore.getState().toggleFavorite(a)
+      useSessionsStore.getState().toggleFavorite(b)
+      useSessionsStore.getState().toggleFavorite(c)
+      expect(order(a)).toBe(0)
+      expect(order(b)).toBe(1)
+      expect(order(c)).toBe(2)
+    })
+
+    it('does nothing for an unknown session id', () => {
+      const id = createTestSession()
+      useSessionsStore.getState().toggleFavorite('nope')
+      expect(fav(id)).toBe(false)
+    })
+  })
+
+  describe('reorderFavorites', () => {
+    it('rewrites favoriteOrder to match the given id order', () => {
+      const a = createTestSession()
+      const b = createTestSession()
+      const store = useSessionsStore.getState()
+      store.toggleFavorite(a)
+      store.toggleFavorite(b)
+      // a=0, b=1 → move b above a
+      useSessionsStore.getState().reorderFavorites([b, a])
+      const get = (id: string): number | undefined =>
+        useSessionsStore.getState().sessions.find((s) => s.id === id)?.favoriteOrder
+      expect(get(b)).toBe(0)
+      expect(get(a)).toBe(1)
+    })
+
+    it('leaves sessions not in the list untouched', () => {
+      const a = createTestSession()
+      const b = createTestSession()
+      useSessionsStore.getState().toggleFavorite(a)
+      useSessionsStore.getState().reorderFavorites([a])
+      const bSession = useSessionsStore.getState().sessions.find((s) => s.id === b)!
+      expect(bSession.favoriteOrder).toBeUndefined()
+    })
+  })
 })

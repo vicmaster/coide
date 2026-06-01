@@ -1,0 +1,830 @@
+{
+  "components": {},
+  "createdAt": "2026-06-01T17:40:17.313Z",
+  "id": "O21-69a3t2",
+  "lastModified": "2026-06-01T17:46:04.881Z",
+  "name": "Sidebar — favorite/pin sessions",
+  "projectId": "repo-proj-42Ymr2v5",
+  "root": {
+    "children": [
+      {
+        "alignItems": "start",
+        "children": [
+          {
+            "children": [
+              {
+                "alignItems": "center",
+                "children": [
+                  {
+                    "color": "$fg-strong",
+                    "content": "coide",
+                    "fontSize": 13,
+                    "fontWeight": 600,
+                    "id": "a-pmIuHX2r",
+                    "type": "text"
+                  },
+                  {
+                    "icon": "search",
+                    "iconColor": "$fg-faint",
+                    "iconSize": 14,
+                    "id": "Tyejostmq6",
+                    "type": "icon"
+                  }
+                ],
+                "id": "K9kxLv3J-E",
+                "justifyContent": "space-between",
+                "layout": "horizontal",
+                "padding": [
+                  16,
+                  16,
+                  12,
+                  16
+                ],
+                "type": "frame",
+                "width": "100%"
+              },
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "color": "$fg",
+                        "content": "Sessions",
+                        "fontSize": 11,
+                        "fontWeight": 500,
+                        "id": "gds7ePI2t3",
+                        "type": "text"
+                      }
+                    ],
+                    "cornerRadius": 6,
+                    "fill": "$overlay-3",
+                    "id": "DZJWPN3yDf",
+                    "justifyContent": "center",
+                    "layout": "horizontal",
+                    "padding": [
+                      6,
+                      0
+                    ],
+                    "type": "frame",
+                    "width": "25%"
+                  },
+                  {
+                    "children": [
+                      {
+                        "color": "$fg-subtle",
+                        "content": "Skills",
+                        "fontSize": 11,
+                        "fontWeight": 500,
+                        "id": "1btYN8dFTC",
+                        "type": "text"
+                      }
+                    ],
+                    "cornerRadius": 6,
+                    "id": "8cfsLnpRO5",
+                    "justifyContent": "center",
+                    "layout": "horizontal",
+                    "padding": [
+                      6,
+                      0
+                    ],
+                    "type": "frame",
+                    "width": "25%"
+                  },
+                  {
+                    "children": [
+                      {
+                        "color": "$fg-subtle",
+                        "content": "Cmds",
+                        "fontSize": 11,
+                        "fontWeight": 500,
+                        "id": "8ACIA54N-6",
+                        "type": "text"
+                      }
+                    ],
+                    "cornerRadius": 6,
+                    "id": "h9-u6DeB9S",
+                    "justifyContent": "center",
+                    "layout": "horizontal",
+                    "padding": [
+                      6,
+                      0
+                    ],
+                    "type": "frame",
+                    "width": "25%"
+                  },
+                  {
+                    "children": [
+                      {
+                        "color": "$fg-subtle",
+                        "content": "Flows",
+                        "fontSize": 11,
+                        "fontWeight": 500,
+                        "id": "-pfOyxVtMN",
+                        "type": "text"
+                      }
+                    ],
+                    "cornerRadius": 6,
+                    "id": "qf8T3UIDgX",
+                    "justifyContent": "center",
+                    "layout": "horizontal",
+                    "padding": [
+                      6,
+                      0
+                    ],
+                    "type": "frame",
+                    "width": "25%"
+                  }
+                ],
+                "gap": 4,
+                "id": "oE2WsOiU1v",
+                "layout": "horizontal",
+                "padding": [
+                  0,
+                  8,
+                  8,
+                  8
+                ],
+                "type": "frame",
+                "width": "100%"
+              },
+              {
+                "children": [
+                  {
+                    "alignItems": "center",
+                    "children": [
+                      {
+                        "icon": "star",
+                        "iconColor": "$highlight",
+                        "iconSize": 10,
+                        "id": "azPyWe6YNU",
+                        "type": "icon"
+                      },
+                      {
+                        "color": "$fg-faint",
+                        "content": "FAVORITES",
+                        "fontSize": 10,
+                        "fontWeight": 600,
+                        "id": "ZGxkBb3gs2",
+                        "type": "text"
+                      }
+                    ],
+                    "gap": 5,
+                    "id": "-Mn7lAn6-j",
+                    "layout": "horizontal",
+                    "padding": [
+                      4,
+                      2,
+                      2,
+                      2
+                    ],
+                    "type": "frame",
+                    "width": "100%"
+                  },
+                  {
+                    "children": [],
+                    "cornerRadius": 9999,
+                    "fill": "$accent",
+                    "height": 2,
+                    "id": "13-wVS42Vr",
+                    "type": "frame",
+                    "width": "100%"
+                  },
+                  {
+                    "children": [
+                      {
+                        "alignItems": "center",
+                        "children": [
+                          {
+                            "alignItems": "center",
+                            "children": [
+                              {
+                                "icon": "grip-vertical",
+                                "iconColor": "$fg-subtle",
+                                "iconSize": 12,
+                                "id": "JXtdtRNN7p",
+                                "type": "icon"
+                              },
+                              {
+                                "color": "$fg-muted",
+                                "content": "Auth refactor — token revert",
+                                "fontSize": 12,
+                                "id": "Ks-rwMaivI",
+                                "type": "text"
+                              }
+                            ],
+                            "gap": 6,
+                            "id": "htrwUTHps2",
+                            "layout": "horizontal",
+                            "type": "frame"
+                          },
+                          {
+                            "icon": "star",
+                            "iconColor": "$highlight",
+                            "iconSize": 13,
+                            "id": "ywR5V-8bo-",
+                            "type": "icon"
+                          }
+                        ],
+                        "id": "Oj5jberXBO",
+                        "justifyContent": "space-between",
+                        "layout": "horizontal",
+                        "type": "frame",
+                        "width": "100%"
+                      },
+                      {
+                        "alignItems": "center",
+                        "children": [
+                          {
+                            "color": "$fg-faint",
+                            "content": "coide",
+                            "fontFamily": "'SF Mono', ui-monospace, Menlo, monospace",
+                            "fontSize": 10,
+                            "id": "ICvECuDBn6",
+                            "type": "text"
+                          },
+                          {
+                            "children": [
+                              {
+                                "color": "$fg-faint",
+                                "content": "main",
+                                "fontFamily": "'SF Mono', ui-monospace, Menlo, monospace",
+                                "fontSize": 9,
+                                "id": "pKlvDDcAdg",
+                                "type": "text"
+                              }
+                            ],
+                            "cornerRadius": 4,
+                            "fill": "$overlay-2",
+                            "id": "5knBJsKizm",
+                            "layout": "horizontal",
+                            "padding": [
+                              1,
+                              4
+                            ],
+                            "type": "frame"
+                          }
+                        ],
+                        "gap": 6,
+                        "id": "BmOAUMzvup",
+                        "layout": "horizontal",
+                        "type": "frame",
+                        "width": "100%"
+                      }
+                    ],
+                    "cornerRadius": 6,
+                    "fill": "$overlay-1",
+                    "gap": 3,
+                    "id": "FlqgEX3PnE",
+                    "layout": "vertical",
+                    "padding": [
+                      7,
+                      8
+                    ],
+                    "type": "frame",
+                    "width": "100%"
+                  },
+                  {
+                    "children": [
+                      {
+                        "alignItems": "center",
+                        "children": [
+                          {
+                            "alignItems": "center",
+                            "children": [
+                              {
+                                "icon": "grip-vertical",
+                                "iconColor": "$fg",
+                                "iconSize": 12,
+                                "id": "Qm4UZN1SFj",
+                                "type": "icon"
+                              },
+                              {
+                                "color": "$fg-muted",
+                                "content": "PDF upload fix",
+                                "fontSize": 12,
+                                "id": "km5AhldD9E",
+                                "type": "text"
+                              }
+                            ],
+                            "gap": 6,
+                            "id": "BENSv8NQct",
+                            "layout": "horizontal",
+                            "type": "frame"
+                          },
+                          {
+                            "icon": "star",
+                            "iconColor": "$highlight",
+                            "iconSize": 13,
+                            "id": "eMQ0AMhPKq",
+                            "type": "icon"
+                          }
+                        ],
+                        "id": "ZFMvpq2YJY",
+                        "justifyContent": "space-between",
+                        "layout": "horizontal",
+                        "type": "frame",
+                        "width": "100%"
+                      },
+                      {
+                        "alignItems": "center",
+                        "children": [
+                          {
+                            "color": "$fg-faint",
+                            "content": "coide",
+                            "fontFamily": "'SF Mono', ui-monospace, Menlo, monospace",
+                            "fontSize": 10,
+                            "id": "bjdL0Lhg0B",
+                            "type": "text"
+                          },
+                          {
+                            "children": [
+                              {
+                                "color": "$worktree-soft",
+                                "content": "fix/pdf",
+                                "fontFamily": "'SF Mono', ui-monospace, Menlo, monospace",
+                                "fontSize": 9,
+                                "id": "kLVde4LjQg",
+                                "type": "text"
+                              }
+                            ],
+                            "cornerRadius": 4,
+                            "fill": "$worktree",
+                            "id": "X7G1xEd596",
+                            "layout": "horizontal",
+                            "padding": [
+                              1,
+                              4
+                            ],
+                            "type": "frame"
+                          }
+                        ],
+                        "gap": 6,
+                        "id": "L0Q5OUO7KO",
+                        "layout": "horizontal",
+                        "type": "frame",
+                        "width": "100%"
+                      }
+                    ],
+                    "cornerRadius": 6,
+                    "fill": "$surface-3",
+                    "gap": 3,
+                    "id": "Wlo5avW3QI",
+                    "layout": "vertical",
+                    "padding": [
+                      7,
+                      8
+                    ],
+                    "shadows": [
+                      {
+                        "blur": 18,
+                        "color": "rgba(0,0,0,0.5)",
+                        "x": 0,
+                        "y": 6
+                      }
+                    ],
+                    "stroke": "$accent",
+                    "strokeWidth": 1,
+                    "type": "frame",
+                    "width": "100%"
+                  },
+                  {
+                    "alignItems": "center",
+                    "children": [
+                      {
+                        "color": "$fg-faint",
+                        "content": "RECENT",
+                        "fontSize": 10,
+                        "fontWeight": 600,
+                        "id": "zSkZoYMIp9",
+                        "type": "text"
+                      }
+                    ],
+                    "id": "3TKEUQ5lgG",
+                    "layout": "horizontal",
+                    "padding": [
+                      8,
+                      2,
+                      2,
+                      2
+                    ],
+                    "type": "frame",
+                    "width": "100%"
+                  },
+                  {
+                    "children": [
+                      {
+                        "alignItems": "center",
+                        "children": [
+                          {
+                            "color": "$fg-strong",
+                            "content": "Sidebar favorites design",
+                            "fontSize": 12,
+                            "id": "l7lvY4CXWx",
+                            "type": "text"
+                          }
+                        ],
+                        "id": "jDO4Coq2ua",
+                        "justifyContent": "space-between",
+                        "layout": "horizontal",
+                        "type": "frame",
+                        "width": "100%"
+                      },
+                      {
+                        "alignItems": "center",
+                        "children": [
+                          {
+                            "color": "$fg-faint",
+                            "content": "coide",
+                            "fontFamily": "'SF Mono', ui-monospace, Menlo, monospace",
+                            "fontSize": 10,
+                            "id": "hKqnnhub6-",
+                            "type": "text"
+                          }
+                        ],
+                        "gap": 6,
+                        "id": "3K8o6Nzu3l",
+                        "layout": "horizontal",
+                        "type": "frame",
+                        "width": "100%"
+                      }
+                    ],
+                    "cornerRadius": 6,
+                    "fill": "$overlay-3",
+                    "gap": 3,
+                    "id": "eIJ41c9MmS",
+                    "layout": "vertical",
+                    "padding": [
+                      7,
+                      8
+                    ],
+                    "type": "frame",
+                    "width": "100%"
+                  },
+                  {
+                    "children": [
+                      {
+                        "alignItems": "center",
+                        "children": [
+                          {
+                            "color": "$fg-muted",
+                            "content": "Release notes script",
+                            "fontSize": 12,
+                            "id": "rJverTXGOz",
+                            "type": "text"
+                          },
+                          {
+                            "icon": "star",
+                            "iconColor": "$fg-subtle",
+                            "iconSize": 13,
+                            "id": "Y1PscMxRfK",
+                            "type": "icon"
+                          }
+                        ],
+                        "id": "Ljx6uGwlNg",
+                        "justifyContent": "space-between",
+                        "layout": "horizontal",
+                        "type": "frame",
+                        "width": "100%"
+                      },
+                      {
+                        "alignItems": "center",
+                        "children": [
+                          {
+                            "color": "$fg-faint",
+                            "content": "coide",
+                            "fontFamily": "'SF Mono', ui-monospace, Menlo, monospace",
+                            "fontSize": 10,
+                            "id": "1PIoAER95a",
+                            "type": "text"
+                          }
+                        ],
+                        "gap": 6,
+                        "id": "ADXdAoJGGb",
+                        "layout": "horizontal",
+                        "type": "frame",
+                        "width": "100%"
+                      }
+                    ],
+                    "cornerRadius": 6,
+                    "fill": "$overlay-2",
+                    "gap": 3,
+                    "id": "XjYgUtapzq",
+                    "layout": "vertical",
+                    "padding": [
+                      7,
+                      8
+                    ],
+                    "type": "frame",
+                    "width": "100%"
+                  },
+                  {
+                    "children": [
+                      {
+                        "alignItems": "center",
+                        "children": [
+                          {
+                            "color": "$fg-muted",
+                            "content": "Memory consolidation",
+                            "fontSize": 12,
+                            "id": "nn-Wh_goxu",
+                            "type": "text"
+                          }
+                        ],
+                        "id": "-buCgoreRX",
+                        "justifyContent": "space-between",
+                        "layout": "horizontal",
+                        "type": "frame",
+                        "width": "100%"
+                      },
+                      {
+                        "alignItems": "center",
+                        "children": [
+                          {
+                            "color": "$fg-faint",
+                            "content": "agentic-dev-book",
+                            "fontFamily": "'SF Mono', ui-monospace, Menlo, monospace",
+                            "fontSize": 10,
+                            "id": "iCtG3GXUVM",
+                            "type": "text"
+                          }
+                        ],
+                        "gap": 6,
+                        "id": "LsWC8RnjiH",
+                        "layout": "horizontal",
+                        "type": "frame",
+                        "width": "100%"
+                      }
+                    ],
+                    "cornerRadius": 6,
+                    "gap": 3,
+                    "id": "g0_dwnO4SU",
+                    "layout": "vertical",
+                    "padding": [
+                      7,
+                      8
+                    ],
+                    "type": "frame",
+                    "width": "100%"
+                  },
+                  {
+                    "children": [
+                      {
+                        "alignItems": "center",
+                        "children": [
+                          {
+                            "color": "$fg-muted",
+                            "content": "Slack digest workflow",
+                            "fontSize": 12,
+                            "id": "ny7mRb38rp",
+                            "type": "text"
+                          }
+                        ],
+                        "id": "1OOPI_WDEp",
+                        "justifyContent": "space-between",
+                        "layout": "horizontal",
+                        "type": "frame",
+                        "width": "100%"
+                      },
+                      {
+                        "alignItems": "center",
+                        "children": [
+                          {
+                            "color": "$fg-faint",
+                            "content": "forge",
+                            "fontFamily": "'SF Mono', ui-monospace, Menlo, monospace",
+                            "fontSize": 10,
+                            "id": "HK2nzv4o6i",
+                            "type": "text"
+                          }
+                        ],
+                        "gap": 6,
+                        "id": "kW5hJc7EnB",
+                        "layout": "horizontal",
+                        "type": "frame",
+                        "width": "100%"
+                      }
+                    ],
+                    "cornerRadius": 6,
+                    "gap": 3,
+                    "id": "0evjWl8rJY",
+                    "layout": "vertical",
+                    "padding": [
+                      7,
+                      8
+                    ],
+                    "type": "frame",
+                    "width": "100%"
+                  }
+                ],
+                "gap": 10,
+                "id": "HU-HsFxkvT",
+                "layout": "vertical",
+                "padding": [
+                  4,
+                  8
+                ],
+                "type": "frame",
+                "width": "100%"
+              },
+              {
+                "children": [],
+                "fill": "$line-soft",
+                "height": 1,
+                "id": "R6Kq2sPQhi",
+                "type": "frame",
+                "width": "100%"
+              },
+              {
+                "children": [
+                  {
+                    "alignItems": "center",
+                    "children": [
+                      {
+                        "color": "$fg",
+                        "content": "+ New Session",
+                        "fontSize": 12,
+                        "fontWeight": 500,
+                        "id": "SWWS_9uhEH",
+                        "type": "text"
+                      }
+                    ],
+                    "cornerRadius": 6,
+                    "fill": "$accent-strong",
+                    "id": "HYya2JnXCZ",
+                    "justifyContent": "center",
+                    "layout": "horizontal",
+                    "padding": [
+                      7,
+                      0
+                    ],
+                    "type": "frame",
+                    "width": "100%"
+                  }
+                ],
+                "id": "u_Sr89CV6J",
+                "layout": "horizontal",
+                "padding": 8,
+                "type": "frame",
+                "width": "100%"
+              }
+            ],
+            "cornerRadius": 10,
+            "fill": "$surface-2",
+            "height": "fit-content",
+            "id": "n3BWBmmp8A",
+            "layout": "vertical",
+            "overflow": "hidden",
+            "stroke": "$line-soft",
+            "strokeWidth": 1,
+            "type": "frame",
+            "width": 256
+          },
+          {
+            "children": [
+              {
+                "color": "$fg-strong",
+                "content": "Favorite / pin sessions",
+                "fontSize": 20,
+                "fontWeight": 600,
+                "id": "AhE4HJ9ojy",
+                "type": "text"
+              },
+              {
+                "color": "$fg-muted",
+                "content": "A pinned section above Recent so important sessions stop sinking as new activity pushes them down.",
+                "fontSize": 13,
+                "id": "6m5ojNM4U4",
+                "type": "text",
+                "width": "100%"
+              },
+              {
+                "alignItems": "start",
+                "children": [
+                  {
+                    "icon": "star",
+                    "iconColor": "$highlight",
+                    "iconSize": 16,
+                    "id": "3Xe3YnxlbP",
+                    "type": "icon"
+                  },
+                  {
+                    "color": "$fg-muted",
+                    "content": "Gold star = favorited. Always visible; click to unpin.",
+                    "fontSize": 13,
+                    "id": "xkW_WZkeeP",
+                    "type": "text",
+                    "width": "100%"
+                  }
+                ],
+                "gap": 10,
+                "id": "aPiL1PCPAU",
+                "layout": "horizontal",
+                "type": "frame",
+                "width": "100%"
+              },
+              {
+                "alignItems": "start",
+                "children": [
+                  {
+                    "icon": "star",
+                    "iconColor": "$fg-subtle",
+                    "iconSize": 16,
+                    "id": "hyW1C2XVab",
+                    "type": "icon"
+                  },
+                  {
+                    "color": "$fg-muted",
+                    "content": "Faint star appears on row hover — click to add to Favorites.",
+                    "fontSize": 13,
+                    "id": "BlQUeP7-dr",
+                    "type": "text",
+                    "width": "100%"
+                  }
+                ],
+                "gap": 10,
+                "id": "38P0ZS30d2",
+                "layout": "horizontal",
+                "type": "frame",
+                "width": "100%"
+              },
+              {
+                "alignItems": "start",
+                "children": [
+                  {
+                    "icon": "arrow-up",
+                    "iconColor": "$accent-soft",
+                    "iconSize": 16,
+                    "id": "G66XkVGjql",
+                    "type": "icon"
+                  },
+                  {
+                    "color": "$fg-muted",
+                    "content": "Favorites sort to the top and persist across new activity & restarts.",
+                    "fontSize": 13,
+                    "id": "6eehuatQmM",
+                    "type": "text",
+                    "width": "100%"
+                  }
+                ],
+                "gap": 10,
+                "id": "E4a7CMlIBr",
+                "layout": "horizontal",
+                "type": "frame",
+                "width": "100%"
+              },
+              {
+                "alignItems": "start",
+                "children": [
+                  {
+                    "icon": "grip-vertical",
+                    "iconColor": "$fg-subtle",
+                    "iconSize": 16,
+                    "id": "t67ZOBtfIW",
+                    "type": "icon"
+                  },
+                  {
+                    "color": "$fg-muted",
+                    "content": "Drag the grip to reorder pins — favorites keep your manual order; Recent stays auto-sorted by activity.",
+                    "fontSize": 13,
+                    "id": "XcIKSlHxLc",
+                    "type": "text",
+                    "width": "100%"
+                  }
+                ],
+                "gap": 10,
+                "id": "2DPqJf23Br",
+                "layout": "horizontal",
+                "type": "frame",
+                "width": "100%"
+              }
+            ],
+            "gap": 18,
+            "id": "so5IsQ4ibd",
+            "layout": "vertical",
+            "padding": [
+              8,
+              0
+            ],
+            "type": "frame",
+            "width": 320
+          }
+        ],
+        "fill": "$canvas",
+        "gap": 40,
+        "height": "fit-content",
+        "id": "UTOAFTrRrT",
+        "layout": "horizontal",
+        "padding": 40,
+        "type": "frame",
+        "width": "fit-content"
+      }
+    ],
+    "fill": "#FFFFFF",
+    "height": 900,
+    "id": "cNuksy6rSQ",
+    "name": "Document",
+    "type": "document",
+    "width": 1440
+  },
+  "variables": {}
+}
