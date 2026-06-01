@@ -8,6 +8,11 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     version: 'next',
     date: '',
+    notes: []
+  },
+  {
+    version: '0.27.1',
+    date: '2026-06-01',
     notes: [
       'Fix: queued messages now stay with their original session if you switch sessions before the previous turn finishes',
       'Fix: PDF uploads (attach button and drag-and-drop) now work in the packaged app'
