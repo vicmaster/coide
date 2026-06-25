@@ -8,6 +8,11 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     version: 'next',
     date: '',
+    notes: []
+  },
+  {
+    version: '0.27.3',
+    date: '2026-06-25',
     notes: [
       'Faster startup and lighter memory — smaller initial load, and sessions now persist reliably without hitting browser storage limits'
     ]
