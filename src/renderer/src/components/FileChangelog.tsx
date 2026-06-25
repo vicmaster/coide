@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, memo } from 'react'
 import { useSessionsStore, type Message } from '../store/sessions'
 import { buildFileChangelog, type FileChangelogEntry, type FileStatus } from '../utils/changelog'
-import DiffViewer from './DiffViewer'
+import DiffViewer from './LazyDiffViewer'
 
 const EMPTY_MESSAGES: Message[] = []
 const STATUS_BADGE: Record<FileStatus | 'reverted' | 'deleted', { label: string; className: string }> = {

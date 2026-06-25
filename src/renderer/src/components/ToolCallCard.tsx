@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import type { ToolCallMessage } from '../store/sessions'
 import { useSessionsStore } from '../store/sessions'
-import DiffViewer from './DiffViewer'
+import DiffViewer from './LazyDiffViewer'
 import { buildDiffFromToolInput } from '../utils/diff'
 import { useFilePreviewStore } from '../store/filePreview'
 import { useSettingsStore } from '../store/settings'

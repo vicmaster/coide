@@ -1,9 +1,9 @@
 import { BrowserWindow } from 'electron'
-import { appendFile } from 'fs'
 import * as cron from 'node-cron'
 import chokidar from 'chokidar'
 import { listWorkflows, loadWorkflow } from './workflowStore'
 import { executeWorkflow } from './workflow'
+import { createLogger } from './logger'
 import type { CoideSettings } from '../shared/types'
 import type {
   WorkflowDefinition,
@@ -13,11 +13,7 @@ import type {
   WorkflowTriggerWebhook
 } from '../shared/workflow-types'
 
-function tLog(msg: string): void {
-  const line = `[${new Date().toISOString()}] [workflow-triggers] ${msg}\n`
-  console.log(line.trim())
-  appendFile('/tmp/coide-debug.log', line, () => {})
-}
+const tLog = createLogger('workflow-triggers')
 
 type CronRegistration = {
   workflowId: string
@@ -25,12 +21,13 @@ type CronRegistration = {
   task: cron.ScheduledTask
 }
 
-type WatcherRegistration = {
-  workflowId: string
-  triggerId: string
+// One chokidar watcher per unique (cwd, paths) set, shared by every trigger that
+// watches the same paths — so N identical file-watcher triggers don't spawn N watchers.
+type WatcherPoolEntry = {
   watcher: chokidar.FSWatcher
-  debounceTimer?: NodeJS.Timeout
+  listeners: Map<string, (event: string, path: string) => void> // key: `${workflowId}:${triggerId}`
 }
+const MAX_FILE_WATCHERS = 24
 
 type WebhookRegistration = {
   workflowId: string
@@ -41,7 +38,7 @@ type WebhookRegistration = {
 }
 
 const cronRegistrations: CronRegistration[] = []
-const watcherRegistrations: WatcherRegistration[] = []
+const fileWatcherPool = new Map<string, WatcherPoolEntry>()
 const webhookRegistrations = new Map<string, WebhookRegistration>() // key: `${workflowId}:${triggerId}`
 
 let runtimeWin: BrowserWindow | null = null
@@ -89,34 +86,43 @@ function registerFileWatcher(
   }
   const events = trigger.events ?? ['change']
   const debounceMs = trigger.debounceMs ?? 1000
+  const key = JSON.stringify([trigger.cwd, [...trigger.paths].sort()])
+  const listenerKey = `${workflow.id}:${trigger.id}`
 
-  const watcher = chokidar.watch(trigger.paths, {
-    cwd: trigger.cwd,
-    ignoreInitial: true,
-    persistent: true
-  })
-
-  const reg: WatcherRegistration = {
-    workflowId: workflow.id,
-    triggerId: trigger.id,
-    watcher
+  let entry = fileWatcherPool.get(key)
+  if (!entry) {
+    if (fileWatcherPool.size >= MAX_FILE_WATCHERS) {
+      tLog(`File-watcher cap (${MAX_FILE_WATCHERS}) reached; skipping ${workflow.name}/${trigger.id} on ${trigger.paths.join(', ')}`)
+      return
+    }
+    const watcher = chokidar.watch(trigger.paths, {
+      cwd: trigger.cwd,
+      ignoreInitial: true,
+      persistent: true
+    })
+    const created: WatcherPoolEntry = { watcher, listeners: new Map() }
+    const dispatch = (event: string, path: string): void => {
+      for (const fn of created.listeners.values()) fn(event, path)
+    }
+    watcher.on('add', (p) => dispatch('add', p))
+    watcher.on('change', (p) => dispatch('change', p))
+    watcher.on('unlink', (p) => dispatch('unlink', p))
+    watcher.on('error', (err) => tLog(`Watcher error on ${key}: ${err}`))
+    fileWatcherPool.set(key, created)
+    entry = created
   }
 
-  const fire = (event: string, path: string): void => {
+  // Each trigger gets its own debounced listener fanned out from the shared watcher.
+  let debounceTimer: NodeJS.Timeout | undefined
+  const listener = (event: string, path: string): void => {
     if (!events.includes(event as 'add' | 'change' | 'unlink')) return
-    if (reg.debounceTimer) clearTimeout(reg.debounceTimer)
-    reg.debounceTimer = setTimeout(() => {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
       fireTrigger(workflow.id, trigger, 'fileWatcher', { trigger_event: event, trigger_path: path })
     }, debounceMs)
   }
-
-  watcher.on('add', (p) => fire('add', p))
-  watcher.on('change', (p) => fire('change', p))
-  watcher.on('unlink', (p) => fire('unlink', p))
-  watcher.on('error', (err) => tLog(`Watcher error for ${workflow.name}: ${err}`))
-
-  watcherRegistrations.push(reg)
-  tLog(`Registered file watcher for ${workflow.name} on ${trigger.paths.join(', ')}`)
+  entry.listeners.set(listenerKey, listener)
+  tLog(`Registered file watcher for ${workflow.name} on ${trigger.paths.join(', ')} (${entry.listeners.size} trigger(s) sharing this watcher)`)
 }
 
 function registerWebhook(
@@ -159,11 +165,11 @@ function clearAll(): void {
     try { reg.task.stop() } catch { /* ignore */ }
   }
   cronRegistrations.length = 0
-  for (const reg of watcherRegistrations) {
-    if (reg.debounceTimer) clearTimeout(reg.debounceTimer)
-    reg.watcher.close().catch(() => {})
+  for (const entry of fileWatcherPool.values()) {
+    entry.listeners.clear()
+    entry.watcher.close().catch(() => {})
   }
-  watcherRegistrations.length = 0
+  fileWatcherPool.clear()
   webhookRegistrations.clear()
 }
 
@@ -184,7 +190,9 @@ export async function refreshTriggers(): Promise<void> {
       }
     }
   }
-  tLog(`Active triggers: ${cronRegistrations.length} cron, ${watcherRegistrations.length} watchers, ${webhookRegistrations.size} webhooks`)
+  let watcherTriggers = 0
+  for (const entry of fileWatcherPool.values()) watcherTriggers += entry.listeners.size
+  tLog(`Active triggers: ${cronRegistrations.length} cron, ${watcherTriggers} file-watcher trigger(s) across ${fileWatcherPool.size} pooled watcher(s), ${webhookRegistrations.size} webhooks`)
 }
 
 export async function startTriggerRuntime(

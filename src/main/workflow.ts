@@ -1,15 +1,11 @@
 import { BrowserWindow } from 'electron'
 import { exec as execCallback } from 'child_process'
-import { appendFile } from 'fs'
 import { runClaude, onClaudeResult, onClaudeUsage, offClaudeUsage, abortClaude } from './claude'
 import { loadWorkflow, saveExecutionRecord, saveWorkflow } from './workflowStore'
 import { interpolate, applyExtractor, evaluateCondition } from '../shared/workflowHelpers'
+import { createLogger } from './logger'
 
-function wfLog(msg: string): void {
-  const line = `[${new Date().toISOString()}] [workflow] ${msg}\n`
-  console.log(line.trim())
-  appendFile('/tmp/coide-debug.log', line, () => {})
-}
+const wfLog = createLogger('workflow')
 import type { CoideSettings } from '../shared/types'
 import type {
   WorkflowDefinition,

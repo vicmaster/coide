@@ -13,19 +13,21 @@ self.MonacoEnvironment = {
   getWorker: () => new Worker(URL.createObjectURL(new Blob([''], { type: 'text/javascript' })))
 }
 
+export type DiffViewerProps = {
+  filePath: string
+  original: string
+  modified: string
+  height?: number
+  renderSideBySide?: boolean
+}
+
 export default function DiffViewer({
   filePath,
   original,
   modified,
   height = 360,
   renderSideBySide = true
-}: {
-  filePath: string
-  original: string
-  modified: string
-  height?: number
-  renderSideBySide?: boolean
-}): React.JSX.Element {
+}: DiffViewerProps): React.JSX.Element {
   const { defined: themeDefined, theme } = useMonacoCoideTheme({ withDiff: true })
   const language = detectLanguage(filePath)
   const fileName = filePath.split('/').pop() ?? filePath

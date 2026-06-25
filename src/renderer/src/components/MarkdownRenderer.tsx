@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { getSingletonHighlighter, createJavaScriptRegexEngine } from 'shiki'
 import type { HighlighterGeneric } from 'shiki'
 import { useFilePreviewStore } from '../store/filePreview'
 import { useSettingsStore } from '../store/settings'
@@ -22,12 +21,21 @@ const DEFERRED_LANGS = ['python', 'sh', 'shell', 'jsonc', 'yaml', 'toml', 'css',
 const ALL_LANGS = [...INITIAL_LANGS, ...DEFERRED_LANGS]
 const deferredSet = new Set(DEFERRED_LANGS)
 
-// Pre-warm with initial languages and both themes
-const highlighterPromise = getSingletonHighlighter({
-  themes: [THEME_DARK, THEME_LIGHT],
-  langs: INITIAL_LANGS,
-  engine: createJavaScriptRegexEngine()
-})
+// Dynamically import shiki on first use so its grammars/engine stay out of the
+// initial bundle — the app shell paints without paying for the highlighter.
+let highlighterPromise: Promise<HighlighterGeneric<string, string>> | null = null
+function getHighlighter(): Promise<HighlighterGeneric<string, string>> {
+  if (!highlighterPromise) {
+    highlighterPromise = import('shiki').then(({ getSingletonHighlighter, createJavaScriptRegexEngine }) =>
+      getSingletonHighlighter({
+        themes: [THEME_DARK, THEME_LIGHT],
+        langs: INITIAL_LANGS,
+        engine: createJavaScriptRegexEngine()
+      })
+    )
+  }
+  return highlighterPromise
+}
 
 // Load deferred languages on first use
 const loadedLangs = new Set(INITIAL_LANGS)
@@ -47,7 +55,7 @@ const CodeBlock = React.memo(function CodeBlock({ language, code, compact }: { l
 
   useEffect(() => {
     const lang = ALL_LANGS.includes(language) ? language : 'text'
-    highlighterPromise.then(async (h) => {
+    getHighlighter().then(async (h) => {
       await ensureLang(h, lang)
       setHtml(
         h.codeToHtml(code, {

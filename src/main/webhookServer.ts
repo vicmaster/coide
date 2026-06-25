@@ -1,13 +1,9 @@
 import { createServer, IncomingMessage, ServerResponse, Server } from 'http'
 import { URL } from 'url'
-import { appendFile } from 'fs'
 import { fireWebhook } from './workflowTriggers'
+import { createLogger } from './logger'
 
-function wLog(msg: string): void {
-  const line = `[${new Date().toISOString()}] [webhook-server] ${msg}\n`
-  console.log(line.trim())
-  appendFile('/tmp/coide-debug.log', line, () => {})
-}
+const wLog = createLogger('webhook-server')
 
 let server: Server | null = null
 let listeningPort: number | null = null

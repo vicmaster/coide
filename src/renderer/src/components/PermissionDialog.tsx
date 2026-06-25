@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import DiffViewer from './DiffViewer'
+import DiffViewer from './LazyDiffViewer'
 import MarkdownRenderer from './MarkdownRenderer'
 import { buildDiffFromToolInput } from '../utils/diff'
 import { computeDiffHeight, extractPlan } from '../utils/permission'

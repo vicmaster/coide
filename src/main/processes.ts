@@ -1,7 +1,7 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { BrowserWindow } from 'electron'
-import { readFile, stat } from 'fs/promises'
+import { open, stat } from 'fs/promises'
 
 const pExecFile = promisify(execFile)
 
@@ -20,6 +20,7 @@ export interface BgProcess {
   exitCode: number | null
   lastOutput: string | null
   lastOutputAt: number | null
+  lastOutputSize?: number | null // byte size at last tail read; lets the poller skip unchanged files
 }
 
 interface SessionState {
@@ -198,9 +199,10 @@ export function noteTaskNotification(
   if (!proc) return
   if (outputFile && proc.outputFile !== outputFile) {
     proc.outputFile = outputFile
-    void readOutputSnippet(outputFile).then((snip) => {
-      if (snip != null) {
-        proc.lastOutput = snip
+    void readOutputTail(outputFile, null).then((res) => {
+      if (res != null) {
+        proc.lastOutput = res.text
+        proc.lastOutputSize = res.size
         proc.lastOutputAt = Date.now()
         broadcast(coideSessionId)
       }
@@ -230,16 +232,31 @@ export function mapClaudeStatus(s: string): ProcStatus {
   }
 }
 
-async function readOutputSnippet(path: string): Promise<string | null> {
+/**
+ * Read just the tail (last 4 KB) of an output file via a positional read, so we
+ * never load a large append-only log fully into memory. Returns null when the
+ * file is unreadable or its size is unchanged since `prevSize` (no new output).
+ */
+export async function readOutputTail(
+  path: string,
+  prevSize: number | null | undefined
+): Promise<{ size: number; text: string } | null> {
+  let fh: Awaited<ReturnType<typeof open>> | null = null
   try {
     const st = await stat(path)
+    if (prevSize != null && st.size === prevSize) return null // unchanged — skip the read
     const MAX = 4096
     const start = Math.max(0, st.size - MAX)
-    const buf = await readFile(path)
-    const text = buf.subarray(start).toString('utf8')
-    return truncateOutput(text)
+    const length = st.size - start
+    if (length <= 0) return { size: st.size, text: '' }
+    fh = await open(path, 'r')
+    const buf = Buffer.allocUnsafe(length)
+    await fh.read(buf, 0, length, start)
+    return { size: st.size, text: truncateOutput(buf.toString('utf8')) }
   } catch {
     return null
+  } finally {
+    await fh?.close().catch(() => {})
   }
 }
 
@@ -300,9 +317,11 @@ function ensurePollTimer(): void {
         // Tail Claude's output file while still running so the user gets live snippets
         if (proc.outputFile && (proc.status === 'running' || proc.status === 'orphaned')) {
           const path = proc.outputFile
-          void readOutputSnippet(path).then((snip) => {
-            if (snip != null && snip !== proc.lastOutput) {
-              proc.lastOutput = snip
+          void readOutputTail(path, proc.lastOutputSize).then((res) => {
+            if (res == null) return
+            proc.lastOutputSize = res.size // record size even if tail text is unchanged
+            if (res.text !== proc.lastOutput) {
+              proc.lastOutput = res.text
               proc.lastOutputAt = Date.now()
               broadcast(coideSessionId)
             }

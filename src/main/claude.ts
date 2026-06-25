@@ -1,35 +1,12 @@
 import { app, BrowserWindow, Notification } from 'electron'
-import { appendFile, writeFile, readFile, unlink, existsSync } from 'fs'
+import { readFile, unlink, existsSync } from 'fs'
 import { writeFile as writeFileAsync, readFile as readFileAsync, unlink as unlinkAsync } from 'fs/promises'
 import { homedir } from 'os'
 import { join } from 'path'
 import { type CoideSettings, DEFAULT_SETTINGS } from '../shared/types'
 import * as processes from './processes'
 import { execFile, spawn as spawnChild, type ChildProcessWithoutNullStreams } from 'child_process'
-
-const LOG = '/tmp/coide-debug.log'
-
-// Buffered async logger — collects messages and flushes periodically to avoid blocking main thread
-let logBuffer: string[] = []
-let logFlushTimer: ReturnType<typeof setTimeout> | null = null
-
-function log(msg: string): void {
-  logBuffer.push(`[${new Date().toISOString()}] ${msg}`)
-  console.log(msg)
-  if (!logFlushTimer) {
-    logFlushTimer = setTimeout(flushLog, 200)
-  }
-}
-
-function flushLog(): void {
-  logFlushTimer = null
-  if (logBuffer.length === 0) return
-  const batch = logBuffer.join('\n') + '\n'
-  logBuffer = []
-  appendFile(LOG, batch, () => {})
-}
-
-writeFile(LOG, '', () => {})
+import { logLine as log } from './logger'
 
 export function resolveClaudeBinary(configured: string): string {
   // If user set an absolute path, use it directly

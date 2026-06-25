@@ -4,6 +4,14 @@ Archive of completed features. User-facing changelog lives in `src/renderer/src/
 
 ---
 
+## Performance (2026-06-25 audit)
+- Async IndexedDB session persistence with coalesced writes — replaces synchronous localStorage (which risked `QuotaExceededError` silently dropping sessions); rapid mutations during a turn serialize once, with a one-time migration from the old localStorage data
+- Lazy-loaded Monaco and shiki off the startup path — initial renderer chunk dropped from ~9 MB to ~1.3 MB; Monaco/editor + workers load only when a diff or editor opens
+- Process monitor tails output files via positional reads of the last 4 KB and skips unchanged files (was reading the whole file every 2s)
+- Centralized buffered debug logger — all main-process modules batch writes (200ms) and gate console output behind dev/`COIDE_DEBUG`
+- Pooled file-watcher workflow triggers — one chokidar watcher per unique `(cwd, paths)` shared across triggers, capped at 24
+- Verified store selectors already return reference-stable values (find-based, `EMPTY_*` fallbacks, memoized derivations) — no change needed
+
 ## Infrastructure
 - Electron + electron-vite + React + TypeScript scaffold
 - Tailwind CSS v3 + PostCSS configured

@@ -1,5 +1,5 @@
-import { appendFile } from 'fs'
 import { saveWorkflow } from './workflowStore'
+import { createLogger } from './logger'
 import {
   MARKETPLACE_OWNER,
   MARKETPLACE_REPO,
@@ -16,11 +16,7 @@ const INDEX_URL = `${MARKETPLACE_RAW_BASE}/index.json`
 const FETCH_TIMEOUT_MS = 8000
 const CACHE_TTL_MS = 5 * 60 * 1000
 
-function mLog(msg: string): void {
-  const line = `[${new Date().toISOString()}] [marketplace] ${msg}\n`
-  console.log(line.trim())
-  appendFile('/tmp/coide-debug.log', line, () => {})
-}
+const mLog = createLogger('marketplace')
 
 async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
   const controller = new AbortController()

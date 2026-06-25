@@ -1,10 +1,12 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react'
+import React, { useState, useMemo, useEffect, useCallback, Suspense } from 'react'
 import { useSessionsStore, type Task, type Agent, type ToolCallMessage, type SessionUsage, type Message, type McpServerInfo } from '../store/sessions'
 import { useRateLimitStore, type RateLimitWindow } from '../store/rateLimit'
 import { useUiStore } from '../store/ui'
 import FileChangelog from './FileChangelog'
-import MemoryTab from './MemoryTab'
 import AvailableAgents from './AvailableAgents'
+
+// Lazy so monaco-editor only loads when the Memory tab is opened.
+const MemoryTab = React.lazy(() => import('./MemoryTab'))
 
 const EMPTY_AGENTS: Agent[] = []
 const EMPTY_TASKS: Task[] = []
@@ -56,7 +58,11 @@ export default function RightPanel(): React.JSX.Element {
             <McpPanel />
           </div>
         )}
-        {activeTab === 'memory' && <MemoryTab />}
+        {activeTab === 'memory' && (
+          <Suspense fallback={<div className="p-3 text-[11px] text-fg-faint">Loading…</div>}>
+            <MemoryTab />
+          </Suspense>
+        )}
       </div>
     </aside>
   )

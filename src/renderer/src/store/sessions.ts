@@ -1,5 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { createIdbStorage } from './idbStorage'
+
+type PersistedState = { sessions: Session[]; activeSessionId: string | null }
 
 export type ImageAttachment = { path: string; mediaType: string; dataUrl: string }
 
@@ -521,6 +524,9 @@ export const useSessionsStore = create<SessionsStore>()(
     }),
     {
       name: 'coide-sessions',
+      // Async IndexedDB backend with coalesced writes — avoids localStorage's
+      // synchronous writes and ~5–10 MB quota (which silently dropped sessions).
+      storage: createIdbStorage<PersistedState>(),
       partialize: (state) => ({
         sessions: state.sessions,
         activeSessionId: state.activeSessionId
